@@ -2,11 +2,12 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { Home, ListIcon, Plus, Settings as SettingsIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
+type NavItem = { to: "/" | "/transactions" | "/settings"; label: string; icon: typeof Home; exact?: boolean };
+const items: NavItem[] = [
   { to: "/", label: "בית", icon: Home, exact: true },
   { to: "/transactions", label: "תנועות", icon: ListIcon },
   { to: "/settings", label: "הגדרות", icon: SettingsIcon },
-] as const;
+];
 
 export function MobileLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
