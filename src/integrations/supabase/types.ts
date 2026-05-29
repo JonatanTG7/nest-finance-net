@@ -14,7 +14,143 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string
+          id: string
+          is_system: boolean
+          name: string
+          sort_order: number
+          type: Database["public"]["Enums"]["transaction_type"]
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          is_system?: boolean
+          name: string
+          sort_order?: number
+          type: Database["public"]["Enums"]["transaction_type"]
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          is_system?: boolean
+          name?: string
+          sort_order?: number
+          type?: Database["public"]["Enums"]["transaction_type"]
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      transaction_tags: {
+        Row: {
+          tag_id: string
+          transaction_id: string
+        }
+        Insert: {
+          tag_id: string
+          transaction_id: string
+        }
+        Update: {
+          tag_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_tags_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          amount_ils: number
+          category_id: string | null
+          created_at: string
+          currency: string
+          entered_by: Database["public"]["Enums"]["person"]
+          fx_rate_to_ils: number
+          id: string
+          note: string | null
+          occurred_at: string
+          title: string
+          type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          amount_ils: number
+          category_id?: string | null
+          created_at?: string
+          currency?: string
+          entered_by: Database["public"]["Enums"]["person"]
+          fx_rate_to_ils?: number
+          id?: string
+          note?: string | null
+          occurred_at?: string
+          title: string
+          type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          amount_ils?: number
+          category_id?: string | null
+          created_at?: string
+          currency?: string
+          entered_by?: Database["public"]["Enums"]["person"]
+          fx_rate_to_ils?: number
+          id?: string
+          note?: string | null
+          occurred_at?: string
+          title?: string
+          type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +159,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      person: "yonatan" | "shiri"
+      transaction_type:
+        | "income"
+        | "expense"
+        | "fixed"
+        | "savings"
+        | "investment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +292,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      person: ["yonatan", "shiri"],
+      transaction_type: ["income", "expense", "fixed", "savings", "investment"],
+    },
   },
 } as const
