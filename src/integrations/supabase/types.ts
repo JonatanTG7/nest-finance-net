@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           icon: string
           id: string
+          investment_account_id: string | null
           is_system: boolean
           name: string
           sort_order: number
@@ -30,6 +31,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          investment_account_id?: string | null
           is_system?: boolean
           name: string
           sort_order?: number
@@ -40,10 +42,52 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          investment_account_id?: string | null
           is_system?: boolean
           name?: string
           sort_order?: number
           type?: Database["public"]["Enums"]["transaction_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_investment_account_id_fkey"
+            columns: ["investment_account_id"]
+            isOneToOne: false
+            referencedRelation: "investment_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investment_accounts: {
+        Row: {
+          color: string
+          created_at: string
+          currency: string
+          id: string
+          kind: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          kind?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          kind?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -105,6 +149,7 @@ export type Database = {
           entered_by: Database["public"]["Enums"]["person"]
           fx_rate_to_ils: number
           id: string
+          investment_account_id: string | null
           note: string | null
           occurred_at: string
           title: string
@@ -120,6 +165,7 @@ export type Database = {
           entered_by: Database["public"]["Enums"]["person"]
           fx_rate_to_ils?: number
           id?: string
+          investment_account_id?: string | null
           note?: string | null
           occurred_at?: string
           title: string
@@ -135,6 +181,7 @@ export type Database = {
           entered_by?: Database["public"]["Enums"]["person"]
           fx_rate_to_ils?: number
           id?: string
+          investment_account_id?: string | null
           note?: string | null
           occurred_at?: string
           title?: string
@@ -147,6 +194,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_investment_account_id_fkey"
+            columns: ["investment_account_id"]
+            isOneToOne: false
+            referencedRelation: "investment_accounts"
             referencedColumns: ["id"]
           },
         ]

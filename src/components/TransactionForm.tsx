@@ -1,12 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { MobileLayout } from "@/components/MobileLayout";
+import { AppShell } from "@/components/AppShell";
 import {
   createTransaction,
   deleteTransaction,
   fetchCategories,
+  fetchInvestmentAccounts,
   fetchTags,
   updateTransaction,
   type Transaction,
@@ -30,12 +31,17 @@ export function TransactionForm({
   const navigate = useNavigate();
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
   const { data: tags = [] } = useQuery({ queryKey: ["tags"], queryFn: fetchTags });
+  const { data: accounts = [] } = useQuery({
+    queryKey: ["investment_accounts"],
+    queryFn: fetchInvestmentAccounts,
+  });
 
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
   const [amount, setAmount] = useState<string>(existing ? String(existing.amount) : "");
   const [currency, setCurrency] = useState(existing?.currency ?? "ILS");
   const [fx, setFx] = useState<string>(existing ? String(existing.fx_rate_to_ils) : "1");
   const [categoryId, setCategoryId] = useState<string | null>(existing?.category_id ?? null);
+  const [accountId, setAccountId] = useState<string | null>(existing?.investment_account_id ?? null);
   const [title, setTitle] = useState(existing?.title ?? "");
   const [note, setNote] = useState(existing?.note ?? "");
   const [date, setDate] = useState(existing?.occurred_at ?? new Date().toISOString().slice(0, 10));
@@ -50,6 +56,15 @@ export function TransactionForm({
     () => categories.filter((c) => c.type === type),
     [categories, type],
   );
+
+  // Auto-link investment category → account
+  useEffect(() => {
+    if (type !== "investment" || !categoryId) return;
+    const cat = categories.find((c) => c.id === categoryId);
+    if (cat?.investment_account_id) {
+      setAccountId(cat.investment_account_id);
+    }
+  }, [type, categoryId, categories]);
 
   const tagSuggestions = useMemo(() => {
     const q = tagInput.trim().toLowerCase();
@@ -90,18 +105,20 @@ export function TransactionForm({
       occurred_at: date,
       entered_by: enteredBy,
       tag_names: tagList,
+      investment_account_id: type === "investment" ? accountId : null,
     };
     setSubmitting(true);
     try {
       if (existing) {
         await updateTransaction(existing.id, input);
         toast.success("התנועה עודכנה");
+        navigate({ to: "/transactions/$id", params: { id: existing.id } });
       } else {
         await createTransaction(input);
         toast.success("התנועה נוספה");
+        navigate({ to: "/" });
       }
       onDone?.();
-      navigate({ to: existing ? "/transactions" : "/" });
     } catch (err) {
       console.error(err);
       toast.error("שגיאה בשמירה");
@@ -123,20 +140,23 @@ export function TransactionForm({
   }
 
   return (
-    <MobileLayout>
-      <form onSubmit={handleSubmit} className="px-5 pt-6 pb-8 space-y-5">
+    <AppShell>
+      <form onSubmit={handleSubmit} className="px-5 md:px-0 pt-6 pb-8 space-y-5 max-w-2xl mx-auto">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{existing ? "עריכת תנועה" : "תנועה חדשה"}</h1>
           <button
             type="button"
-            onClick={() => navigate({ to: existing ? "/transactions" : "/" })}
+            onClick={() =>
+              existing
+                ? navigate({ to: "/transactions/$id", params: { id: existing.id } })
+                : navigate({ to: "/" })
+            }
             className="text-sm text-muted-foreground"
           >
             ביטול
           </button>
         </header>
 
-        {/* Person */}
         <div>
           <Label>מי הזין?</Label>
           <div className="grid grid-cols-2 gap-2 mt-2">
@@ -158,10 +178,9 @@ export function TransactionForm({
           </div>
         </div>
 
-        {/* Type */}
         <div>
           <Label>סוג פעולה</Label>
-          <div className="mt-2 flex gap-2 overflow-x-auto -mx-5 px-5 pb-1">
+          <div className="mt-2 flex gap-2 overflow-x-auto -mx-5 md:mx-0 px-5 md:px-0 pb-1">
             {TYPES.map((t) => (
               <button
                 key={t}
@@ -169,6 +188,7 @@ export function TransactionForm({
                 onClick={() => {
                   setType(t);
                   setCategoryId(null);
+                  if (t !== "investment") setAccountId(null);
                 }}
                 className={cn(
                   "px-4 h-10 rounded-full text-sm whitespace-nowrap border transition",
@@ -183,7 +203,6 @@ export function TransactionForm({
           </div>
         </div>
 
-        {/* Amount + currency */}
         <div>
           <Label>סכום</Label>
           <div className="mt-2 flex gap-2">
@@ -224,7 +243,6 @@ export function TransactionForm({
           )}
         </div>
 
-        {/* Title */}
         <div>
           <Label>שם הפעולה</Label>
           <input
@@ -235,10 +253,9 @@ export function TransactionForm({
           />
         </div>
 
-        {/* Category */}
         <div>
           <Label>קטגוריה</Label>
-          <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="mt-2 grid grid-cols-3 md:grid-cols-4 gap-2">
             {filteredCats.map((c) => (
               <button
                 key={c.id}
@@ -264,7 +281,33 @@ export function TransactionForm({
           </div>
         </div>
 
-        {/* Date */}
+        {type === "investment" && (
+          <div>
+            <Label>חשבון השקעה</Label>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {accounts.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setAccountId(a.id)}
+                  className={cn(
+                    "h-14 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-2 px-2",
+                    accountId === a.id
+                      ? "border-2 border-primary"
+                      : "border-border bg-card",
+                  )}
+                  style={
+                    accountId === a.id ? { background: a.color + "22" } : undefined
+                  }
+                >
+                  <span className="size-2.5 rounded-full" style={{ background: a.color }} />
+                  <span className="truncate">{a.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <Label>תאריך</Label>
           <input
@@ -276,7 +319,6 @@ export function TransactionForm({
           />
         </div>
 
-        {/* Tags */}
         <div>
           <Label>תגיות</Label>
           <div className="mt-2 flex flex-wrap gap-1.5 mb-2">
@@ -319,7 +361,6 @@ export function TransactionForm({
           )}
         </div>
 
-        {/* Note */}
         <div>
           <Label>הערה (לא חובה)</Label>
           <textarea
@@ -349,7 +390,7 @@ export function TransactionForm({
           )}
         </div>
       </form>
-    </MobileLayout>
+    </AppShell>
   );
 }
 
