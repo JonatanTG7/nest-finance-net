@@ -152,6 +152,7 @@ export type Database = {
           investment_account_id: string | null
           note: string | null
           occurred_at: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
           title: string
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string
@@ -168,6 +169,7 @@ export type Database = {
           investment_account_id?: string | null
           note?: string | null
           occurred_at?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           title: string
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
@@ -184,6 +186,7 @@ export type Database = {
           investment_account_id?: string | null
           note?: string | null
           occurred_at?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           title?: string
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
@@ -213,6 +216,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      payment_method: "cash" | "credit" | "standing_order"
       person: "yonatan" | "shiri"
       transaction_type:
         | "income"
@@ -347,6 +351,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      payment_method: ["cash", "credit", "standing_order"],
       person: ["yonatan", "shiri"],
       transaction_type: ["income", "expense", "fixed", "savings", "investment"],
     },
