@@ -7,6 +7,12 @@ import { deleteTransaction, fetchTransaction } from "@/lib/db";
 import { formatILS, txTypeLabel } from "@/lib/finance";
 import { personLabel } from "@/lib/person";
 
+const PAYMENT_METHOD_LABEL: Record<"cash" | "credit" | "standing_order", string> = {
+  cash: "מזומן",
+  credit: "אשראי",
+  standing_order: "הוראת קבע",
+};
+
 export const Route = createFileRoute("/transactions/$id")({
   head: () => ({ meta: [{ title: "פרטי תנועה" }] }),
   component: ViewTx,
@@ -119,6 +125,9 @@ function ViewTx() {
           )}
           <Detail label="תאריך">
             {new Intl.DateTimeFormat("he-IL", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(tx.occurred_at))}
+          </Detail>
+          <Detail label="אמצעי תשלום">
+            {tx.payment_method ? PAYMENT_METHOD_LABEL[tx.payment_method] : <span className="text-muted-foreground">—</span>}
           </Detail>
           <Detail label="הוזן ע״י">{personLabel[tx.entered_by]}</Detail>
           <Detail label="תגיות">
