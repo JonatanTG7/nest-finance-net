@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { TransactionForm } from "@/components/TransactionForm";
 import { fetchTransaction } from "@/lib/db";
 
-export const Route = createFileRoute("/transactions/$id_/edit")({
+export const Route = createFileRoute("/transactions/edit/$id")({
   head: () => ({ meta: [{ title: "עריכת תנועה" }] }),
   component: EditTx,
 });
@@ -14,6 +14,7 @@ function EditTx() {
   const { data, isLoading } = useQuery({
     queryKey: ["transaction", id],
     queryFn: () => fetchTransaction(id),
+    enabled: !!id,
   });
   if (isLoading) {
     return (
