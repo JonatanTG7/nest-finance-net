@@ -84,6 +84,8 @@ export async function fetchInvestmentTransactions() {
   return (data ?? []) as unknown as Transaction[];
 }
 
+export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
+
 export interface TransactionInput {
   type: TxType;
   amount: number;
@@ -96,6 +98,7 @@ export interface TransactionInput {
   entered_by: Person;
   tag_names: string[];
   investment_account_id?: string | null;
+  payment_method?: PaymentMethod | null;
 }
 
 async function ensureTags(names: string[]): Promise<string[]> {
@@ -124,6 +127,7 @@ function rowFromInput(input: TransactionInput) {
     entered_by: input.entered_by,
     investment_account_id:
       input.type === "investment" ? input.investment_account_id ?? null : null,
+    payment_method: input.payment_method ?? null,
   };
 }
 

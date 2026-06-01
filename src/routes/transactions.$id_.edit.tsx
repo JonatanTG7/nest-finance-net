@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { TransactionForm } from "@/components/TransactionForm";
 import { fetchTransaction } from "@/lib/db";
 
-export const Route = createFileRoute("/transactions/$id/edit")({
+export const Route = createFileRoute("/transactions/$id_/edit")({
   head: () => ({ meta: [{ title: "עריכת תנועה" }] }),
   component: EditTx,
 });
