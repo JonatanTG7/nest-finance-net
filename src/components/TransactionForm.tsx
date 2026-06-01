@@ -17,9 +17,15 @@ import { txTypeLabel } from "@/lib/finance";
 import { getDefaultPerson, personLabel, setDefaultPerson, type Person } from "@/lib/person";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
+import type { PaymentMethod } from "@/lib/db";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "savings", "investment"];
 const CURRENCIES = ["ILS", "USD", "EUR", "GBP"];
+const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: "cash", label: "מזומן" },
+  { value: "credit", label: "אשראי" },
+  { value: "standing_order", label: "הוראת קבע" },
+];
 
 export function TransactionForm({
   existing,
@@ -46,6 +52,9 @@ export function TransactionForm({
   const [note, setNote] = useState(existing?.note ?? "");
   const [date, setDate] = useState(existing?.occurred_at ?? new Date().toISOString().slice(0, 10));
   const [enteredBy, setEnteredBy] = useState<Person>(existing?.entered_by ?? getDefaultPerson());
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
+    (existing as unknown as { payment_method?: PaymentMethod | null })?.payment_method ?? null,
+  );
   const [tagInput, setTagInput] = useState("");
   const [tagList, setTagList] = useState<string[]>(
     existing?.transaction_tags?.map((tt) => tt.tag.name) ?? [],
@@ -106,6 +115,7 @@ export function TransactionForm({
       entered_by: enteredBy,
       tag_names: tagList,
       investment_account_id: type === "investment" ? accountId : null,
+      payment_method: paymentMethod,
     };
     setSubmitting(true);
     try {
