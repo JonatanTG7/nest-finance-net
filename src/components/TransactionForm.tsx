@@ -214,6 +214,30 @@ export function TransactionForm({
         </div>
 
         <div>
+          <Label>אמצעי תשלום</Label>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {PAYMENT_METHODS.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() =>
+                  setPaymentMethod(paymentMethod === m.value ? null : m.value)
+                }
+                className={cn(
+                  "h-12 rounded-xl border text-sm font-semibold transition",
+                  paymentMethod === m.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border",
+                )}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+
+        <div>
           <Label>סכום</Label>
           <div className="mt-2 flex gap-2">
             <input
