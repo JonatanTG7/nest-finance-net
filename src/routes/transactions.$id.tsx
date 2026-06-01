@@ -67,7 +67,7 @@ function ViewTx() {
           </Link>
           <div className="flex gap-2">
             <Link
-              to="/transactions/$id_/edit"
+              to="/transactions/edit/$id"
               params={{ id: tx.id }}
               className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1.5"
             >
