@@ -132,6 +132,10 @@ function RealtimeSync() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    // Re-apply stored theme on client (SSR can't read localStorage)
+    document.documentElement.classList.toggle("dark", getTheme() === "dark");
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <RealtimeSync />
