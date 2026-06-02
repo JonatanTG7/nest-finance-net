@@ -13,13 +13,21 @@ export const Route = createFileRoute("/settings")({
 
 function Settings() {
   const [person, setPerson] = useState<Person>("yonatan");
+  const [theme, setThemeState] = useState<Theme>("light");
+
   useEffect(() => {
     setPerson(getDefaultPerson());
+    setThemeState(getTheme());
   }, []);
 
   function choose(p: Person) {
     setPerson(p);
     setDefaultPerson(p);
+  }
+
+  function chooseTheme(t: Theme) {
+    setThemeState(t);
+    setTheme(t);
   }
 
   return (
