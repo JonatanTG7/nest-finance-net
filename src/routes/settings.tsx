@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Sun, Moon } from "lucide-react";
 import { MobileLayout } from "@/components/MobileLayout";
 import { getDefaultPerson, personLabel, setDefaultPerson, type Person } from "@/lib/person";
+import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/settings")({
@@ -11,13 +13,21 @@ export const Route = createFileRoute("/settings")({
 
 function Settings() {
   const [person, setPerson] = useState<Person>("yonatan");
+  const [theme, setThemeState] = useState<Theme>("light");
+
   useEffect(() => {
     setPerson(getDefaultPerson());
+    setThemeState(getTheme());
   }, []);
 
   function choose(p: Person) {
     setPerson(p);
     setDefaultPerson(p);
+  }
+
+  function chooseTheme(t: Theme) {
+    setThemeState(t);
+    setTheme(t);
   }
 
   return (
@@ -47,6 +57,36 @@ function Settings() {
         <p className="mt-2 text-xs text-muted-foreground">
           ערך זה ייבחר אוטומטית במסך הוספת תנועה. תמיד אפשר לשנות לפני שמירה.
         </p>
+      </section>
+
+      <section className="px-5 mt-8">
+        <h2 className="text-sm font-semibold mb-2">מצב תצוגה</h2>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => chooseTheme("light")}
+            className={cn(
+              "h-14 rounded-xl border text-base font-semibold transition flex items-center justify-center gap-2",
+              theme === "light"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border",
+            )}
+          >
+            <Sun className="size-5" />
+            בהיר
+          </button>
+          <button
+            onClick={() => chooseTheme("dark")}
+            className={cn(
+              "h-14 rounded-xl border text-base font-semibold transition flex items-center justify-center gap-2",
+              theme === "dark"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border",
+            )}
+          >
+            <Moon className="size-5" />
+            כהה
+          </button>
+        </div>
       </section>
 
       <section className="px-5 mt-8">
