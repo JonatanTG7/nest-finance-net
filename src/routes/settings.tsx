@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Sun, Moon } from "lucide-react";
 import { MobileLayout } from "@/components/MobileLayout";
 import { getDefaultPerson, personLabel, setDefaultPerson, type Person } from "@/lib/person";
+import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/settings")({
