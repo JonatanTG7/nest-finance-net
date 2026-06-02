@@ -60,6 +60,36 @@ function Settings() {
       </section>
 
       <section className="px-5 mt-8">
+        <h2 className="text-sm font-semibold mb-2">מצב תצוגה</h2>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => chooseTheme("light")}
+            className={cn(
+              "h-14 rounded-xl border text-base font-semibold transition flex items-center justify-center gap-2",
+              theme === "light"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border",
+            )}
+          >
+            <Sun className="size-5" />
+            בהיר
+          </button>
+          <button
+            onClick={() => chooseTheme("dark")}
+            className={cn(
+              "h-14 rounded-xl border text-base font-semibold transition flex items-center justify-center gap-2",
+              theme === "dark"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border",
+            )}
+          >
+            <Moon className="size-5" />
+            כהה
+          </button>
+        </div>
+      </section>
+
+      <section className="px-5 mt-8">
         <h2 className="text-sm font-semibold mb-2">התקנה כאפליקציה</h2>
         <div className="rounded-2xl bg-card border p-4 text-sm leading-relaxed text-muted-foreground">
           <p className="font-medium text-foreground mb-1">להוספה למסך הבית:</p>
