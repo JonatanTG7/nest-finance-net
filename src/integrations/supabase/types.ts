@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          emoji: string | null
           icon: string
           id: string
           investment_account_id: string | null
@@ -29,6 +30,7 @@ export type Database = {
         Insert: {
           color?: string
           created_at?: string
+          emoji?: string | null
           icon?: string
           id?: string
           investment_account_id?: string | null
@@ -40,6 +42,7 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          emoji?: string | null
           icon?: string
           id?: string
           investment_account_id?: string | null
@@ -150,9 +153,11 @@ export type Database = {
           fx_rate_to_ils: number
           id: string
           investment_account_id: string | null
+          location: string | null
           note: string | null
           occurred_at: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
+          photo_url: string | null
           title: string
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string
@@ -167,9 +172,11 @@ export type Database = {
           fx_rate_to_ils?: number
           id?: string
           investment_account_id?: string | null
+          location?: string | null
           note?: string | null
           occurred_at?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          photo_url?: string | null
           title: string
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
@@ -184,9 +191,11 @@ export type Database = {
           fx_rate_to_ils?: number
           id?: string
           investment_account_id?: string | null
+          location?: string | null
           note?: string | null
           occurred_at?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          photo_url?: string | null
           title?: string
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string

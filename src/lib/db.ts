@@ -99,6 +99,8 @@ export interface TransactionInput {
   tag_names: string[];
   investment_account_id?: string | null;
   payment_method?: PaymentMethod | null;
+  photo_url?: string | null;
+  location?: string | null;
 }
 
 async function ensureTags(names: string[]): Promise<string[]> {
@@ -128,7 +130,22 @@ function rowFromInput(input: TransactionInput) {
     investment_account_id:
       input.type === "investment" ? input.investment_account_id ?? null : null,
     payment_method: input.payment_method ?? null,
+    photo_url: input.photo_url ?? null,
+    location: input.location ?? null,
   };
+}
+
+export async function uploadTransactionPhoto(file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from("transaction-photos")
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  const { data } = await supabase.storage
+    .from("transaction-photos")
+    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+  return data?.signedUrl ?? path;
 }
 
 export async function createTransaction(input: TransactionInput) {

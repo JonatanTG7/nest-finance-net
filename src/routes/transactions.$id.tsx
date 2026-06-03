@@ -87,10 +87,10 @@ function ViewTx() {
         {/* Hero amount */}
         <div className="rounded-3xl border bg-card p-6 text-center">
           <div
-            className="mx-auto size-14 rounded-full flex items-center justify-center text-white text-lg font-bold mb-3"
-            style={{ background: color }}
+            className="mx-auto size-16 rounded-2xl flex items-center justify-center text-3xl mb-3"
+            style={{ background: color + "22" }}
           >
-            {tx.title.slice(0, 1)}
+            {tx.category?.emoji ?? tx.title.slice(0, 1)}
           </div>
           <h1 className="text-xl font-semibold">{tx.title}</h1>
           <p className={`text-4xl font-bold mt-3 tabular-nums ${isIn ? "text-income" : "text-foreground"}`}>
@@ -103,18 +103,27 @@ function ViewTx() {
           )}
         </div>
 
+        {tx.photo_url && (
+          <img
+            src={tx.photo_url}
+            alt="צילום הקבלה"
+            className="w-full max-h-72 object-cover rounded-2xl border"
+          />
+        )}
+
         <div className="rounded-2xl border bg-card divide-y">
           <Detail label="סוג">{txTypeLabel[tx.type]}</Detail>
           <Detail label="קטגוריה">
             {tx.category ? (
               <span className="inline-flex items-center gap-2">
-                <span className="size-2.5 rounded-full" style={{ background: tx.category.color }} />
+                <span>{tx.category.emoji ?? "•"}</span>
                 {tx.category.name}
               </span>
             ) : (
               <span className="text-muted-foreground">—</span>
             )}
           </Detail>
+          {tx.location && <Detail label="מיקום">{tx.location}</Detail>}
           {tx.investment_account && (
             <Detail label="חשבון השקעה">
               <span className="inline-flex items-center gap-2">
