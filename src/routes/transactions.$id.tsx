@@ -116,13 +116,14 @@ function ViewTx() {
           <Detail label="קטגוריה">
             {tx.category ? (
               <span className="inline-flex items-center gap-2">
-                <span className="size-2.5 rounded-full" style={{ background: tx.category.color }} />
+                <span>{tx.category.emoji ?? "•"}</span>
                 {tx.category.name}
               </span>
             ) : (
               <span className="text-muted-foreground">—</span>
             )}
           </Detail>
+          {tx.location && <Detail label="מיקום">{tx.location}</Detail>}
           {tx.investment_account && (
             <Detail label="חשבון השקעה">
               <span className="inline-flex items-center gap-2">
