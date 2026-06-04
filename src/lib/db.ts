@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { Person } from "@/lib/person";
 import type { TxType } from "@/lib/finance";
+import { getMyHouseholdId } from "@/lib/household";
 
 export type Category = Database["public"]["Tables"]["categories"]["Row"];
 export type Tag = Database["public"]["Tables"]["tags"]["Row"];
