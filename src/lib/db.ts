@@ -104,19 +104,24 @@ export interface TransactionInput {
   location?: string | null;
 }
 
-async function ensureTags(names: string[]): Promise<string[]> {
+async function ensureTags(names: string[], householdId: string): Promise<string[]> {
   const clean = Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)));
   if (clean.length === 0) return [];
   const { data, error } = await supabase
     .from("tags")
-    .upsert(clean.map((name) => ({ name })), { onConflict: "name" })
+    .upsert(
+      clean.map((name) => ({ name, household_id: householdId })),
+      { onConflict: "household_id,name" },
+    )
     .select("id, name");
   if (error) throw error;
   return (data ?? []).map((t) => t.id);
 }
 
-function rowFromInput(input: TransactionInput) {
+async function rowFromInput(input: TransactionInput) {
   const amount_ils = Number((input.amount * input.fx_rate_to_ils).toFixed(2));
+  const householdId = await getMyHouseholdId();
+  const { data: auth } = await supabase.auth.getUser();
   return {
     type: input.type,
     amount: input.amount,
@@ -133,6 +138,8 @@ function rowFromInput(input: TransactionInput) {
     payment_method: input.payment_method ?? null,
     photo_url: input.photo_url ?? null,
     location: input.location ?? null,
+    household_id: householdId,
+    user_id: auth.user?.id ?? null,
   };
 }
 
@@ -150,13 +157,14 @@ export async function uploadTransactionPhoto(file: File): Promise<string> {
 }
 
 export async function createTransaction(input: TransactionInput) {
+  const row = await rowFromInput(input);
   const { data: tx, error } = await supabase
     .from("transactions")
-    .insert(rowFromInput(input))
+    .insert(row)
     .select("id")
     .single();
   if (error) throw error;
-  const tagIds = await ensureTags(input.tag_names);
+  const tagIds = await ensureTags(input.tag_names, row.household_id);
   if (tagIds.length) {
     const { error: linkErr } = await supabase
       .from("transaction_tags")
@@ -167,11 +175,13 @@ export async function createTransaction(input: TransactionInput) {
 }
 
 export async function updateTransaction(id: string, input: TransactionInput) {
+  const row = await rowFromInput(input);
   const { error } = await supabase
     .from("transactions")
-    .update(rowFromInput(input))
+    .update(row)
     .eq("id", id);
   if (error) throw error;
+
 
   const { error: delErr } = await supabase
     .from("transaction_tags")
