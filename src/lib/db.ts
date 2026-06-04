@@ -188,7 +188,7 @@ export async function updateTransaction(id: string, input: TransactionInput) {
     .delete()
     .eq("transaction_id", id);
   if (delErr) throw delErr;
-  const tagIds = await ensureTags(input.tag_names);
+  const tagIds = await ensureTags(input.tag_names, row.household_id);
   if (tagIds.length) {
     const { error: linkErr } = await supabase
       .from("transaction_tags")
