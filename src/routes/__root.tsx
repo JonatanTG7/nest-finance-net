@@ -133,13 +133,20 @@ function RealtimeSync() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useEffect(() => {
-    // Re-apply stored theme on client (SSR can't read localStorage)
     document.documentElement.classList.toggle("dark", getTheme() === "dark");
-  }, []);
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        queryClient.invalidateQueries();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [queryClient]);
   return (
     <QueryClientProvider client={queryClient}>
       <RealtimeSync />
-      <Outlet />
+      <AuthGate>
+        <Outlet />
+      </AuthGate>
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );
