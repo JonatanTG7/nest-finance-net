@@ -414,7 +414,7 @@ export function TransactionForm({
                     enteredBy === p ? "bg-primary text-primary-foreground" : "text-foreground",
                   )}
                 >
-                  {personLabel[p]}
+                  {memberLabels[p]}
                 </button>
               ))}
             </div>
