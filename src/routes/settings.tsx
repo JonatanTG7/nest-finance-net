@@ -134,8 +134,12 @@ function Settings() {
 function HouseholdSection() {
   const { data: profile } = useMyProfile();
   const { data: household } = useMyHousehold();
+  const invalidate = useInvalidateMe();
   const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   async function makeCode() {
     if (!profile?.household_id) return;
@@ -161,6 +165,23 @@ function HouseholdSection() {
     }
   }
 
+  async function saveName() {
+    if (!household) return;
+    const n = nameDraft.trim();
+    if (!n) return;
+    setSavingName(true);
+    try {
+      await updateHouseholdName(household.id, n);
+      invalidate();
+      setEditingName(false);
+    } catch (e) {
+      console.error(e);
+      toast.error("שגיאה בעדכון השם");
+    } finally {
+      setSavingName(false);
+    }
+  }
+
   return (
     <section className="px-5 mt-8">
       <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
@@ -170,7 +191,42 @@ function HouseholdSection() {
       <div className="rounded-2xl bg-card border p-4 space-y-3">
         <div className="text-sm">
           <div className="text-muted-foreground">שם משק הבית</div>
-          <div className="font-semibold">{household?.name ?? "—"}</div>
+          {editingName ? (
+            <div className="mt-1 flex gap-2">
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                className="flex-1 h-10 rounded-lg bg-background border px-3 outline-none"
+              />
+              <button
+                onClick={saveName}
+                disabled={savingName}
+                className="h-10 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
+              >
+                שמור
+              </button>
+              <button
+                onClick={() => setEditingName(false)}
+                className="h-10 px-3 rounded-lg border text-sm"
+              >
+                ביטול
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-semibold">{household?.name ?? "—"}</div>
+              <button
+                onClick={() => {
+                  setNameDraft(household?.name ?? "");
+                  setEditingName(true);
+                }}
+                className="text-xs text-primary"
+              >
+                ערוך
+              </button>
+            </div>
+          )}
         </div>
 
         {code ? (
@@ -198,11 +254,11 @@ function HouseholdSection() {
             className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Plus className="size-5" />
-            {busy ? "יוצר…" : "צור קוד הזמנה לשירי"}
+            {busy ? "יוצר…" : "צור קוד הזמנה"}
           </button>
         )}
         <p className="text-xs text-muted-foreground">
-          שתפו את הקוד עם בן/בת הזוג. הם נכנסים עם Google ומזינים אותו במסך הראשון.
+          שתפו את הקוד עם מי שתרצו להוסיף למשק הבית. הם נכנסים עם Google ומזינים אותו במסך הראשון.
         </p>
       </div>
     </section>
