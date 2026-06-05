@@ -1,0 +1,1 @@
+DELETE FROM public.household_invites WHERE code = 'YONSHI';
