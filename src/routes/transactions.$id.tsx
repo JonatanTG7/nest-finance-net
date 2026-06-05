@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { deleteTransaction, fetchTransaction } from "@/lib/db";
 import { formatILS, txTypeLabel } from "@/lib/finance";
-import { personLabel } from "@/lib/person";
+import { useMemberLabels } from "@/lib/person";
 
 const PAYMENT_METHOD_LABEL: Record<"cash" | "credit" | "standing_order", string> = {
   cash: "מזומן",
@@ -21,6 +21,7 @@ export const Route = createFileRoute("/transactions/$id")({
 function ViewTx() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const memberLabels = useMemberLabels();
   const { data: tx, isLoading } = useQuery({
     queryKey: ["transaction", id],
     queryFn: () => fetchTransaction(id),
@@ -138,7 +139,7 @@ function ViewTx() {
           <Detail label="אמצעי תשלום">
             {tx.payment_method ? PAYMENT_METHOD_LABEL[tx.payment_method] : <span className="text-muted-foreground">—</span>}
           </Detail>
-          <Detail label="הוזן ע״י">{personLabel[tx.entered_by]}</Detail>
+          <Detail label="הוזן ע״י">{memberLabels[tx.entered_by]}</Detail>
           <Detail label="תגיות">
             {tags.length === 0 ? (
               <span className="text-muted-foreground">—</span>

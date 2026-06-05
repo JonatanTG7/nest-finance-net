@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
 import { fetchTransactionsBetween, type Transaction } from "@/lib/db";
 import { currentMonthKey, formatILS, monthRangeFromKey, txTypeLabel } from "@/lib/finance";
-import { personLabel } from "@/lib/person";
+import { useMemberLabels } from "@/lib/person";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/transactions/")({
@@ -18,6 +18,7 @@ type Filter = "all" | "income" | "expense" | "fixed" | "savings" | "investment";
 function TransactionsList() {
   const [month, setMonth] = useState<string>(currentMonthKey());
   const { start, end } = useMemo(() => monthRangeFromKey(month), [month]);
+  const memberLabels = useMemberLabels();
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["transactions", "month", start],
     queryFn: () => fetchTransactionsBetween(start, end),
@@ -119,7 +120,7 @@ function TransactionsList() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{t.title}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {t.category?.name ?? txTypeLabel[t.type]} · {personLabel[t.entered_by]}
+                          {t.category?.name ?? txTypeLabel[t.type]} · {memberLabels[t.entered_by]}
                         </p>
                       </div>
                       <p className={cn("font-bold tabular-nums shrink-0", t.type === "income" ? "text-income" : "text-foreground")}>
