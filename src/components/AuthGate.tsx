@@ -155,9 +155,6 @@ function Onboarding() {
               <Home className="size-5" />
               צור משק בית חדש
             </button>
-            <p className="text-xs text-muted-foreground text-center mt-4">
-              רמז: אם זו ההתקנה הראשונה שלכם, השתמשו בקוד <b>YONSHI</b> כדי להתחבר לנתונים הקיימים.
-            </p>
           </div>
         )}
 
