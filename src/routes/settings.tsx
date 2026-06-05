@@ -60,7 +60,7 @@ function Settings() {
                   : "bg-card border-border",
               )}
             >
-              {personLabel[p]}
+              {memberLabels[p]}
             </button>
           ))}
         </div>
