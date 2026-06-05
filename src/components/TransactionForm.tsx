@@ -38,6 +38,7 @@ export function TransactionForm({
   onDone?: () => void;
 }) {
   const navigate = useNavigate();
+  const memberLabels = useMemberLabels();
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
   const { data: tags = [] } = useQuery({ queryKey: ["tags"], queryFn: fetchTags });
   const { data: accounts = [] } = useQuery({

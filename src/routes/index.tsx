@@ -31,7 +31,8 @@ import {
   shiftMonth,
   txTypeLabel,
 } from "@/lib/finance";
-import { personLabel } from "@/lib/person";
+import { useMemberLabels } from "@/lib/person";
+import { useMyProfile } from "@/lib/household";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -279,6 +280,7 @@ function StatCard({ label, value, className }: { label: string; value: number; c
 
 function TxRow({ tx }: { tx: Transaction }) {
   const isIn = tx.type === "income";
+  const memberLabels = useMemberLabels();
   return (
     <Link
       to="/transactions/$id"
@@ -294,7 +296,7 @@ function TxRow({ tx }: { tx: Transaction }) {
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{tx.title}</p>
         <p className="text-xs text-muted-foreground truncate">
-          {tx.category?.name ?? txTypeLabel[tx.type]} · {personLabel[tx.entered_by]}
+          {tx.category?.name ?? txTypeLabel[tx.type]} · {memberLabels[tx.entered_by]}
         </p>
       </div>
       <p className={cn("font-bold tabular-nums shrink-0", isIn ? "text-income" : "text-foreground")}>
