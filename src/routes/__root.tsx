@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { getTheme } from "@/lib/theme";
 import { supabase } from "@/integrations/supabase/client";
+import { AuthGate } from "@/components/AuthGate";
 
 import appCss from "../styles.css?url";
 
