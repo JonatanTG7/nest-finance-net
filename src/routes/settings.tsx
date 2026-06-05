@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Sun, Moon, Copy, LogOut, Users, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
-import { getDefaultPerson, personLabel, setDefaultPerson, type Person } from "@/lib/person";
+import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/settings")({
 function Settings() {
   const [person, setPerson] = useState<Person>("yonatan");
   const [theme, setThemeState] = useState<Theme>("light");
+  const memberLabels = useMemberLabels();
 
   useEffect(() => {
     setPerson(getDefaultPerson());
