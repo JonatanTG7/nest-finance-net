@@ -111,6 +111,98 @@ function Settings() {
           ✨ כל תנועה שתזינו תופיע מיד גם במכשיר השני, בזמן אמת.
         </div>
       </section>
+
+      <HouseholdSection />
+
+      <section className="px-5 mt-8 mb-8">
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut();
+          }}
+          className="w-full h-12 rounded-xl border border-destructive/40 text-destructive font-semibold flex items-center justify-center gap-2"
+        >
+          <LogOut className="size-5" />
+          התנתק
+        </button>
+      </section>
     </MobileLayout>
+  );
+}
+
+function HouseholdSection() {
+  const { data: profile } = useMyProfile();
+  const { data: household } = useMyHousehold();
+  const [code, setCode] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function makeCode() {
+    if (!profile?.household_id) return;
+    setBusy(true);
+    try {
+      const c = await generateInviteCode(profile.household_id);
+      setCode(c);
+    } catch (e) {
+      console.error(e);
+      toast.error("שגיאה ביצירת קוד");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copy() {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("הקוד הועתק");
+    } catch {
+      toast.error("לא הצלחתי להעתיק");
+    }
+  }
+
+  return (
+    <section className="px-5 mt-8">
+      <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <Users className="size-4" />
+        משק הבית
+      </h2>
+      <div className="rounded-2xl bg-card border p-4 space-y-3">
+        <div className="text-sm">
+          <div className="text-muted-foreground">שם משק הבית</div>
+          <div className="font-semibold">{household?.name ?? "—"}</div>
+        </div>
+
+        {code ? (
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">קוד הזמנה חדש (חד־פעמי, בתוקף לשבוע):</div>
+            <button
+              onClick={copy}
+              className="w-full h-14 rounded-xl bg-primary/10 border border-primary/30 text-primary font-bold tracking-widest text-xl flex items-center justify-center gap-2"
+            >
+              {code}
+              <Copy className="size-4" />
+            </button>
+            <button
+              onClick={makeCode}
+              disabled={busy}
+              className="mt-2 w-full h-10 text-xs text-muted-foreground"
+            >
+              צור קוד נוסף
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={makeCode}
+            disabled={busy || !profile?.household_id}
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            <Plus className="size-5" />
+            {busy ? "יוצר…" : "צור קוד הזמנה לשירי"}
+          </button>
+        )}
+        <p className="text-xs text-muted-foreground">
+          שתפו את הקוד עם בן/בת הזוג. הם נכנסים עם Google ומזינים אותו במסך הראשון.
+        </p>
+      </div>
+    </section>
   );
 }
