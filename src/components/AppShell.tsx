@@ -2,6 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { Home, ListIcon, Plus, Settings as SettingsIcon, TrendingUp } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { useMyHousehold } from "@/lib/household";
 
 type NavTo = "/" | "/transactions" | "/investments" | "/settings";
 type NavItem = { to: NavTo; label: string; icon: typeof Home; exact?: boolean };
@@ -16,6 +17,7 @@ const items: NavItem[] = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
+  const { data: household } = useMyHousehold();
 
   const isActive = (it: NavItem) =>
     it.exact ? pathname === it.to : pathname === it.to || pathname.startsWith(it.to + "/");
@@ -68,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="w-64 shrink-0 border-l bg-card/40 flex flex-col">
         <div className="px-6 py-6">
           <p className="text-xs text-muted-foreground">כסף משפחתי</p>
-          <h1 className="text-xl font-bold mt-1">יונתן ושירי</h1>
+          <h1 className="text-xl font-bold mt-1 truncate">{household?.name ?? "משק הבית שלי"}</h1>
         </div>
         <nav className="flex-1 px-3 space-y-1">
           {items.map((it) => {
