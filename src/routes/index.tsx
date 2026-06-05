@@ -43,6 +43,8 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const [month, setMonth] = useState<string>(currentMonthKey());
   const { start, end, startDate } = useMemo(() => monthRangeFromKey(month), [month]);
+  const { data: profile } = useMyProfile();
+  const firstName = (profile?.display_name ?? "").split(" ")[0];
 
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["dashboard", "month", start],
@@ -122,7 +124,7 @@ function Dashboard() {
     <AppShell>
       <header className="px-5 md:px-0 pt-6 pb-3 flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <p className="text-sm text-muted-foreground">שלום יונתן ושירי 👋</p>
+          <p className="text-sm text-muted-foreground">שלום{firstName ? ` ${firstName}` : ""} 👋</p>
           <h1 className="text-2xl font-bold mt-1">סיכום חודשי</h1>
         </div>
         <MonthPicker value={month} onChange={setMonth} />
