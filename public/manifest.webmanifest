@@ -1,7 +1,7 @@
 {
   "name": "כסף משפחתי",
   "short_name": "כסף",
-  "description": "ניהול תקציב משפחתי משותף ליונתן ושירי",
+  "description": "ניהול תקציב משפחתי משותף בזמן אמת.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fbfaf6",

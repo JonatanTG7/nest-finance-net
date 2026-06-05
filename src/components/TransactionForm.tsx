@@ -17,7 +17,7 @@ import {
   type TransactionInput,
 } from "@/lib/db";
 import { txTypeLabel } from "@/lib/finance";
-import { getDefaultPerson, personLabel, setDefaultPerson, type Person } from "@/lib/person";
+import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 import type { PaymentMethod } from "@/lib/db";
