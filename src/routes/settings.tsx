@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Copy, LogOut, Users, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
 import { getDefaultPerson, personLabel, setDefaultPerson, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  generateInviteCode,
+  useMyHousehold,
+  useMyProfile,
+} from "@/lib/household";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "הגדרות" }] }),
