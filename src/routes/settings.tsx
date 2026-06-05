@@ -9,8 +9,10 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
   generateInviteCode,
+  updateHouseholdName,
   useMyHousehold,
   useMyProfile,
+  useInvalidateMe,
 } from "@/lib/household";
 
 export const Route = createFileRoute("/settings")({
