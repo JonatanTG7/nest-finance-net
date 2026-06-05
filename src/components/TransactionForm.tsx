@@ -17,7 +17,7 @@ import {
   type TransactionInput,
 } from "@/lib/db";
 import { txTypeLabel } from "@/lib/finance";
-import { getDefaultPerson, personLabel, setDefaultPerson, type Person } from "@/lib/person";
+import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 import type { PaymentMethod } from "@/lib/db";
@@ -38,6 +38,7 @@ export function TransactionForm({
   onDone?: () => void;
 }) {
   const navigate = useNavigate();
+  const memberLabels = useMemberLabels();
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
   const { data: tags = [] } = useQuery({ queryKey: ["tags"], queryFn: fetchTags });
   const { data: accounts = [] } = useQuery({
@@ -414,7 +415,7 @@ export function TransactionForm({
                     enteredBy === p ? "bg-primary text-primary-foreground" : "text-foreground",
                   )}
                 >
-                  {personLabel[p]}
+                  {memberLabels[p]}
                 </button>
               ))}
             </div>

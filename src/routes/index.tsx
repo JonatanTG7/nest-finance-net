@@ -31,7 +31,8 @@ import {
   shiftMonth,
   txTypeLabel,
 } from "@/lib/finance";
-import { personLabel } from "@/lib/person";
+import { useMemberLabels } from "@/lib/person";
+import { useMyProfile } from "@/lib/household";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -42,6 +43,8 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const [month, setMonth] = useState<string>(currentMonthKey());
   const { start, end, startDate } = useMemo(() => monthRangeFromKey(month), [month]);
+  const { data: profile } = useMyProfile();
+  const firstName = (profile?.display_name ?? "").split(" ")[0];
 
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["dashboard", "month", start],
@@ -121,7 +124,7 @@ function Dashboard() {
     <AppShell>
       <header className="px-5 md:px-0 pt-6 pb-3 flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <p className="text-sm text-muted-foreground">שלום יונתן ושירי 👋</p>
+          <p className="text-sm text-muted-foreground">שלום{firstName ? ` ${firstName}` : ""} 👋</p>
           <h1 className="text-2xl font-bold mt-1">סיכום חודשי</h1>
         </div>
         <MonthPicker value={month} onChange={setMonth} />
@@ -279,6 +282,7 @@ function StatCard({ label, value, className }: { label: string; value: number; c
 
 function TxRow({ tx }: { tx: Transaction }) {
   const isIn = tx.type === "income";
+  const memberLabels = useMemberLabels();
   return (
     <Link
       to="/transactions/$id"
@@ -294,7 +298,7 @@ function TxRow({ tx }: { tx: Transaction }) {
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{tx.title}</p>
         <p className="text-xs text-muted-foreground truncate">
-          {tx.category?.name ?? txTypeLabel[tx.type]} · {personLabel[tx.entered_by]}
+          {tx.category?.name ?? txTypeLabel[tx.type]} · {memberLabels[tx.entered_by]}
         </p>
       </div>
       <p className={cn("font-bold tabular-nums shrink-0", isIn ? "text-income" : "text-foreground")}>
