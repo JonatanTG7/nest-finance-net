@@ -143,6 +143,8 @@ export type Database = {
           kind: string
           name: string
           sort_order: number
+          starting_balance: number
+          starting_balance_ils: number
           updated_at: string
         }
         Insert: {
@@ -154,6 +156,8 @@ export type Database = {
           kind?: string
           name: string
           sort_order?: number
+          starting_balance?: number
+          starting_balance_ils?: number
           updated_at?: string
         }
         Update: {
@@ -165,11 +169,48 @@ export type Database = {
           kind?: string
           name?: string
           sort_order?: number
+          starting_balance?: number
+          starting_balance_ils?: number
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "investment_accounts_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_methods: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
@@ -289,7 +330,7 @@ export type Database = {
           location: string | null
           note: string | null
           occurred_at: string
-          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          payment_method: string | null
           photo_url: string | null
           title: string
           type: Database["public"]["Enums"]["transaction_type"]
@@ -310,7 +351,7 @@ export type Database = {
           location?: string | null
           note?: string | null
           occurred_at?: string
-          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          payment_method?: string | null
           photo_url?: string | null
           title: string
           type: Database["public"]["Enums"]["transaction_type"]
@@ -331,7 +372,7 @@ export type Database = {
           location?: string | null
           note?: string | null
           occurred_at?: string
-          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          payment_method?: string | null
           photo_url?: string | null
           title?: string
           type?: Database["public"]["Enums"]["transaction_type"]
@@ -373,8 +414,7 @@ export type Database = {
       redeem_invite: { Args: { _code: string }; Returns: string }
     }
     Enums: {
-      payment_method: "cash" | "credit" | "standing_order"
-      person: "yonatan" | "shiri"
+      person: "yonatan" | "shiri" | "shared"
       transaction_type:
         | "income"
         | "expense"
@@ -508,8 +548,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      payment_method: ["cash", "credit", "standing_order"],
-      person: ["yonatan", "shiri"],
+      person: ["yonatan", "shiri", "shared"],
       transaction_type: ["income", "expense", "fixed", "savings", "investment"],
     },
   },

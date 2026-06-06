@@ -85,7 +85,8 @@ export async function fetchInvestmentTransactions() {
   return (data ?? []) as unknown as Transaction[];
 }
 
-export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
+/** Payment method is now a free-text key (looked up in the payment_methods table). */
+export type PaymentMethod = string;
 
 export interface TransactionInput {
   type: TxType;

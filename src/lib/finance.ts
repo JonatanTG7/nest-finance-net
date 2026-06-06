@@ -36,11 +36,24 @@ export function isCashflowOut(t: TxType) {
 }
 
 export function formatILS(n: number): string {
-  return new Intl.NumberFormat("he-IL", {
+  // Force the minus sign to lead the number (Hebrew/RTL preference).
+  const abs = Math.abs(n);
+  const formatted = new Intl.NumberFormat("he-IL", {
     style: "currency",
     currency: "ILS",
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(abs);
+  return n < 0 ? `-${formatted}` : formatted;
+}
+
+export function formatMoney(n: number, currency: string): string {
+  const abs = Math.abs(n);
+  const formatted = new Intl.NumberFormat("he-IL", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: currency === "ILS" ? 0 : 2,
+  }).format(abs);
+  return n < 0 ? `-${formatted}` : formatted;
 }
 
 export function formatMonthHebrew(d: Date): string {

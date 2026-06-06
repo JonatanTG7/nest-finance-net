@@ -7,11 +7,7 @@ import { deleteTransaction, fetchTransaction } from "@/lib/db";
 import { formatILS, txTypeLabel } from "@/lib/finance";
 import { useMemberLabels } from "@/lib/person";
 
-const PAYMENT_METHOD_LABEL: Record<"cash" | "credit" | "standing_order", string> = {
-  cash: "מזומן",
-  credit: "אשראי",
-  standing_order: "הוראת קבע",
-};
+import { usePaymentMethods } from "@/lib/payment_methods";
 
 export const Route = createFileRoute("/transactions/$id")({
   head: () => ({ meta: [{ title: "פרטי תנועה" }] }),
@@ -22,6 +18,7 @@ function ViewTx() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const memberLabels = useMemberLabels();
+  const { data: paymentMethods = [] } = usePaymentMethods();
   const { data: tx, isLoading } = useQuery({
     queryKey: ["transaction", id],
     queryFn: () => fetchTransaction(id),
@@ -137,7 +134,9 @@ function ViewTx() {
             {new Intl.DateTimeFormat("he-IL", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(tx.occurred_at))}
           </Detail>
           <Detail label="אמצעי תשלום">
-            {tx.payment_method ? PAYMENT_METHOD_LABEL[tx.payment_method] : <span className="text-muted-foreground">—</span>}
+            {tx.payment_method
+              ? (paymentMethods.find((m) => m.key === tx.payment_method)?.label ?? tx.payment_method)
+              : <span className="text-muted-foreground">—</span>}
           </Detail>
           <Detail label="הוזן ע״י">{memberLabels[tx.entered_by]}</Detail>
           <Detail label="תגיות">
