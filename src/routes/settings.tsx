@@ -278,3 +278,162 @@ function HouseholdSection() {
     </section>
   );
 }
+
+function InvestmentBalancesSection() {
+  const qc = useQueryClient();
+  const { data: accounts = [] } = useQuery({
+    queryKey: ["investment_accounts"],
+    queryFn: fetchInvestmentAccounts,
+  });
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [fxDrafts, setFxDrafts] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  async function save(id: string, currency: string) {
+    const native = parseFloat(drafts[id] ?? "");
+    if (isNaN(native)) return;
+    let ils = native;
+    if (currency !== "ILS") {
+      let rate = parseFloat(fxDrafts[id] ?? "");
+      if (!rate || rate <= 0) rate = await fetchUsdIlsRate();
+      ils = native * rate;
+    }
+    setSavingId(id);
+    try {
+      const { error } = await supabase
+        .from("investment_accounts")
+        .update({ starting_balance: native, starting_balance_ils: ils })
+        .eq("id", id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["investment_accounts"] });
+      toast.success("יתרת פתיחה עודכנה");
+    } catch (e) {
+      console.error(e);
+      toast.error("שגיאה בעדכון");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  return (
+    <section className="px-5 mt-8">
+      <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <Wallet className="size-4" />
+        יתרות פתיחה — השקעות
+      </h2>
+      <div className="rounded-2xl bg-card border divide-y">
+        {accounts.map((a) => (
+          <div key={a.id} className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="size-2.5 rounded-full" style={{ background: a.color }} />
+              <p className="text-sm font-semibold">{a.name}</p>
+              <span className="ms-auto text-xs text-muted-foreground">{a.currency}</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder={String(a.starting_balance ?? 0)}
+                value={drafts[a.id] ?? ""}
+                onChange={(e) => setDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
+                className="flex-1 h-10 rounded-lg bg-background border px-3 outline-none text-sm"
+                dir="ltr"
+              />
+              {a.currency !== "ILS" && (
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.0001"
+                  placeholder="שער"
+                  value={fxDrafts[a.id] ?? ""}
+                  onChange={(e) => setFxDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
+                  className="w-20 h-10 rounded-lg bg-background border px-2 outline-none text-sm"
+                  dir="ltr"
+                />
+              )}
+              <button
+                onClick={() => save(a.id, a.currency)}
+                disabled={savingId === a.id || drafts[a.id] === undefined}
+                className="h-10 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
+              >
+                שמור
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              נוכחי: {Number(a.starting_balance ?? 0).toLocaleString("he-IL")} {a.currency}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PaymentMethodsSection() {
+  const { data: methods = [] } = usePaymentMethods();
+  const invalidate = useInvalidatePaymentMethods();
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function add() {
+    if (!draft.trim()) return;
+    setBusy(true);
+    try {
+      await createPaymentMethod(draft);
+      invalidate();
+      setDraft("");
+    } catch (e) {
+      console.error(e);
+      toast.error("שגיאה");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    if (!confirm("למחוק אמצעי תשלום?")) return;
+    try {
+      await deletePaymentMethod(id);
+      invalidate();
+    } catch (e) {
+      console.error(e);
+      toast.error("שגיאה במחיקה");
+    }
+  }
+
+  return (
+    <section className="px-5 mt-8">
+      <h2 className="text-sm font-semibold mb-2">אמצעי תשלום</h2>
+      <div className="rounded-2xl bg-card border p-3 space-y-2">
+        {methods.map((m) => (
+          <div key={m.id} className="flex items-center gap-2">
+            <span className="flex-1 text-sm">{m.label}</span>
+            <button
+              onClick={() => remove(m.id)}
+              className="size-9 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center"
+              aria-label="מחק"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        ))}
+        <div className="flex gap-2 pt-2 border-t">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="צ׳ק, ביט…"
+            className="flex-1 h-10 rounded-lg bg-background border px-3 outline-none text-sm"
+          />
+          <button
+            onClick={add}
+            disabled={busy || !draft.trim()}
+            className="h-10 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1 disabled:opacity-60"
+          >
+            <Plus className="size-4" />
+            הוסף
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
