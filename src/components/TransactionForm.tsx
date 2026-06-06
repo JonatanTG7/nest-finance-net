@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2 } from "lucide-react";
+import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   createTransaction,
@@ -18,17 +18,19 @@ import {
 } from "@/lib/db";
 import { txTypeLabel } from "@/lib/finance";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
+import {
+  createPaymentMethod,
+  getLastPaymentMethod,
+  setLastPaymentMethod,
+  useInvalidatePaymentMethods,
+  usePaymentMethods,
+} from "@/lib/payment_methods";
+import { fetchUsdIlsRate } from "@/lib/fx";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
-import type { PaymentMethod } from "@/lib/db";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "savings", "investment"];
 const CURRENCIES = ["ILS", "USD", "EUR", "GBP"];
-const PAYMENT_METHODS: { value: PaymentMethod; label: string; emoji: string }[] = [
-  { value: "cash", label: "מזומן", emoji: "💵" },
-  { value: "credit", label: "אשראי", emoji: "💳" },
-  { value: "standing_order", label: "הוראת קבע", emoji: "🔁" },
-];
 
 export function TransactionForm({
   existing,
@@ -45,6 +47,8 @@ export function TransactionForm({
     queryKey: ["investment_accounts"],
     queryFn: fetchInvestmentAccounts,
   });
+  const { data: paymentMethods = [] } = usePaymentMethods();
+  const invalidatePm = useInvalidatePaymentMethods();
 
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
   const [amount, setAmount] = useState<string>(existing ? String(existing.amount) : "");
@@ -57,9 +61,15 @@ export function TransactionForm({
   const [showNote, setShowNote] = useState(!!existing?.note);
   const [date, setDate] = useState(existing?.occurred_at ?? new Date().toISOString().slice(0, 10));
   const [enteredBy, setEnteredBy] = useState<Person>(existing?.entered_by ?? getDefaultPerson());
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
-    existing?.payment_method ?? "credit",
+  const [paymentMethod, setPaymentMethod] = useState<string | null>(
+    existing?.payment_method ?? getLastPaymentMethod() ?? "credit",
   );
+  const [addingPm, setAddingPm] = useState(false);
+  const [pmDraft, setPmDraft] = useState("");
+  const [savingPm, setSavingPm] = useState(false);
+  const [installments, setInstallments] = useState<number>(1);
+  const [showInstallments, setShowInstallments] = useState(false);
+  const [fetchingFx, setFetchingFx] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const [uploading, setUploading] = useState(false);
   const [location, setLocation] = useState<string | null>(existing?.location ?? null);
@@ -71,7 +81,6 @@ export function TransactionForm({
   const [showTags, setShowTags] = useState((existing?.transaction_tags?.length ?? 0) > 0);
   const [submitting, setSubmitting] = useState(false);
 
-  // Two-step flow: pick category, then details. Edit mode skips step 1.
   const [step, setStep] = useState<1 | 2>(existing ? 2 : 1);
 
   const filteredCats = useMemo(
@@ -84,12 +93,39 @@ export function TransactionForm({
     [categories, categoryId],
   );
 
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === accountId) ?? null,
+    [accounts, accountId],
+  );
+
   // Auto-link investment category → account
   useEffect(() => {
     if (type !== "investment" || !categoryId) return;
     const cat = categories.find((c) => c.id === categoryId);
     if (cat?.investment_account_id) setAccountId(cat.investment_account_id);
   }, [type, categoryId, categories]);
+
+  // When investment account uses a non-ILS currency (e.g. Interactive Brokers USD), pre-fill FX.
+  useEffect(() => {
+    if (!selectedAccount) return;
+    if (selectedAccount.currency === "ILS") return;
+    setCurrency(selectedAccount.currency);
+    if (fx === "1" || !fx) {
+      void refreshUsdRate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccount?.id]);
+
+  async function refreshUsdRate() {
+    if (currency === "ILS" && selectedAccount?.currency !== "USD") return;
+    setFetchingFx(true);
+    try {
+      const r = await fetchUsdIlsRate();
+      setFx(r.toFixed(4));
+    } finally {
+      setFetchingFx(false);
+    }
+  }
 
   function chooseCategory(c: Category) {
     setCategoryId(c.id);
@@ -157,6 +193,30 @@ export function TransactionForm({
       .slice(0, 4);
   }, [tagInput, tags, tagList]);
 
+  async function savePmDraft() {
+    const label = pmDraft.trim();
+    if (!label) return;
+    setSavingPm(true);
+    try {
+      const row = await createPaymentMethod(label);
+      invalidatePm();
+      setPaymentMethod(row.key);
+      setPmDraft("");
+      setAddingPm(false);
+    } catch (e) {
+      console.error(e);
+      toast.error("שגיאה ביצירת אמצעי תשלום");
+    } finally {
+      setSavingPm(false);
+    }
+  }
+
+  function shiftMonthIso(iso: string, months: number) {
+    const d = new Date(iso);
+    d.setMonth(d.getMonth() + months);
+    return d.toISOString().slice(0, 10);
+  }
+
   async function handleSubmit() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) {
@@ -169,7 +229,9 @@ export function TransactionForm({
       return;
     }
     setDefaultPerson(enteredBy);
-    const input: TransactionInput = {
+    if (paymentMethod) setLastPaymentMethod(paymentMethod);
+
+    const baseInput: TransactionInput = {
       type,
       amount: amt,
       currency,
@@ -185,14 +247,30 @@ export function TransactionForm({
       photo_url: photoUrl,
       location,
     };
+
+    const canSplit = installments > 1 && (type === "expense" || type === "fixed");
+
     setSubmitting(true);
     try {
       if (existing) {
-        await updateTransaction(existing.id, input);
+        await updateTransaction(existing.id, baseInput);
         toast.success("התנועה עודכנה");
         navigate({ to: "/transactions/$id", params: { id: existing.id } });
+      } else if (canSplit) {
+        const per = Number((amt / installments).toFixed(2));
+        for (let i = 0; i < installments; i++) {
+          const inp: TransactionInput = {
+            ...baseInput,
+            amount: per,
+            occurred_at: shiftMonthIso(date, i),
+            note: `${baseInput.note ? baseInput.note + " · " : ""}תשלום ${i + 1}/${installments}`,
+          };
+          await createTransaction(inp);
+        }
+        toast.success(`נוספו ${installments} תשלומים`);
+        navigate({ to: "/" });
       } else {
-        await createTransaction(input);
+        await createTransaction(baseInput);
         toast.success("התנועה נוספה");
         navigate({ to: "/" });
       }
@@ -263,7 +341,7 @@ export function TransactionForm({
             ))}
           </div>
 
-          <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {filteredCats.map((c) => (
               <button
                 key={c.id}
@@ -291,6 +369,9 @@ export function TransactionForm({
 
   // ===================== STEP 2: details =====================
   const headerBg = selectedCat?.color ?? "#10b981";
+  const PAYERS: Person[] = ["yonatan", "shiri", "shared"];
+  const canShowInstallments = type === "expense" || type === "fixed";
+
   return (
     <AppShell>
       <div className="max-w-2xl mx-auto pb-6">
@@ -392,20 +473,23 @@ export function TransactionForm({
             />
           )}
 
-          {/* Date + person */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-card border px-3 h-12 flex items-center gap-2">
-              <CalIcon className="size-4 text-muted-foreground shrink-0" />
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-sm"
-                dir="ltr"
-              />
-            </div>
-            <div className="grid grid-cols-2 rounded-2xl bg-card border h-12 overflow-hidden">
-              {(["yonatan", "shiri"] as Person[]).map((p) => (
+          {/* Date */}
+          <div className="rounded-2xl bg-card border px-3 h-12 flex items-center gap-2">
+            <CalIcon className="size-4 text-muted-foreground shrink-0" />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="flex-1 bg-transparent outline-none text-sm"
+              dir="ltr"
+            />
+          </div>
+
+          {/* Payer (3 options including Shared) */}
+          <div>
+            <p className="text-xs text-muted-foreground mb-1.5">משלם / משלמת</p>
+            <div className="grid grid-cols-3 rounded-2xl bg-card border h-12 overflow-hidden">
+              {PAYERS.map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -422,24 +506,114 @@ export function TransactionForm({
           </div>
 
           {/* Payment method */}
-          <div className="grid grid-cols-3 gap-2">
-            {PAYMENT_METHODS.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => setPaymentMethod(paymentMethod === m.value ? null : m.value)}
-                className={cn(
-                  "h-12 rounded-2xl border text-sm font-semibold transition flex items-center justify-center gap-1.5",
-                  paymentMethod === m.value
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card border-border",
-                )}
-              >
-                <span>{m.emoji}</span>
-                <span>{m.label}</span>
-              </button>
-            ))}
+          <div>
+            <p className="text-xs text-muted-foreground mb-1.5">אמצעי תשלום</p>
+            <div className="flex flex-wrap gap-2">
+              {paymentMethods.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setPaymentMethod(paymentMethod === m.key ? null : m.key)}
+                  className={cn(
+                    "h-11 px-4 rounded-2xl border text-sm font-semibold transition",
+                    paymentMethod === m.key
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card border-border",
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+              {addingPm ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={pmDraft}
+                    onChange={(e) => setPmDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void savePmDraft();
+                      } else if (e.key === "Escape") {
+                        setAddingPm(false);
+                        setPmDraft("");
+                      }
+                    }}
+                    placeholder="צ׳ק…"
+                    className="h-11 px-3 rounded-2xl border bg-card text-sm w-28 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={savePmDraft}
+                    disabled={savingPm || !pmDraft.trim()}
+                    className="h-11 px-3 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
+                  >
+                    שמור
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingPm(true)}
+                  className="h-11 px-3 rounded-2xl border border-dashed border-border bg-card text-sm flex items-center gap-1.5 text-muted-foreground"
+                >
+                  <Plus className="size-4" />
+                  הוסף
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Installments */}
+          {canShowInstallments && (
+            <div>
+              {!showInstallments ? (
+                <button
+                  type="button"
+                  onClick={() => setShowInstallments(true)}
+                  className="text-xs text-muted-foreground"
+                >
+                  + פריסה לתשלומים
+                </button>
+              ) : (
+                <div className="rounded-2xl bg-card border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">מספר תשלומים</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowInstallments(false);
+                        setInstallments(1);
+                      }}
+                      className="text-xs text-muted-foreground"
+                    >
+                      ביטול
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={36}
+                      value={installments}
+                      onChange={(e) => setInstallments(Math.max(1, Math.min(36, Number(e.target.value) || 1)))}
+                      className="w-20 h-11 rounded-xl border bg-background px-3 text-base outline-none"
+                      dir="ltr"
+                    />
+                    {installments > 1 && amount && (
+                      <p className="text-xs text-muted-foreground">
+                        {installments} ×{" "}
+                        <span className="font-semibold tabular-nums">
+                          {(parseFloat(amount) / installments).toFixed(2)} {currency}
+                        </span>{" "}
+                        החל מתאריך הבחירה
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Photo + location */}
           <div className="grid grid-cols-2 gap-2">
@@ -501,19 +675,22 @@ export function TransactionForm({
 
           {/* Investment account */}
           {type === "investment" && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {accounts.map((a) => (
                 <button
                   key={a.id}
                   type="button"
                   onClick={() => setAccountId(a.id)}
                   className={cn(
-                    "h-11 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5",
+                    "h-12 rounded-xl border text-sm font-semibold flex items-center justify-center gap-1.5 px-2",
                     accountId === a.id ? "border-2 border-primary" : "border-border bg-card",
                   )}
                 >
                   <span className="size-2 rounded-full" style={{ background: a.color }} />
-                  <span className="truncate">{a.name}</span>
+                  <span className="truncate">
+                    {a.name}{" "}
+                    <span className="text-xs text-muted-foreground">{a.currency}</span>
+                  </span>
                 </button>
               ))}
             </div>
@@ -583,6 +760,17 @@ export function TransactionForm({
                 className="flex-1 bg-transparent outline-none text-sm"
                 dir="ltr"
               />
+              {currency === "USD" && (
+                <button
+                  type="button"
+                  onClick={refreshUsdRate}
+                  className="text-xs text-primary flex items-center gap-1"
+                  disabled={fetchingFx}
+                >
+                  {fetchingFx ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                  שער יומי
+                </button>
+              )}
             </div>
           )}
 
