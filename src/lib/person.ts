@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMyProfile } from "@/lib/household";
 
-export type Person = "yonatan" | "shiri";
+export type Person = "yonatan" | "shiri" | "shared";
 
 const KEY = "default_person";
 
@@ -10,12 +10,14 @@ const KEY = "default_person";
 export const personLabel: Record<Person, string> = {
   yonatan: "חבר א׳",
   shiri: "חבר ב׳",
+  shared: "Shared",
 };
 
 export function getDefaultPerson(): Person {
   if (typeof window === "undefined") return "yonatan";
   const v = window.localStorage.getItem(KEY);
-  return v === "shiri" ? "shiri" : "yonatan";
+  if (v === "shiri" || v === "shared" || v === "yonatan") return v;
+  return "yonatan";
 }
 
 export function setDefaultPerson(p: Person) {
@@ -25,22 +27,22 @@ export function setDefaultPerson(p: Person) {
 }
 
 /**
- * Returns labels for the two "person" slots, based on the actual household
- * members' display names. Falls back to generic labels.
+ * Returns labels for the person slots, based on household members' display names.
+ * "shared" always shows the English word "Shared" (per user requirement).
  */
 export function useMemberLabels(): Record<Person, string> {
   const { data } = useQuery({
     queryKey: ["me", "memberLabels"],
     queryFn: async (): Promise<Record<Person, string>> => {
       const me = await fetchMyProfile();
-      if (!me?.household_id) return { ...personLabel };
+      const out: Record<Person, string> = { ...personLabel };
+      if (!me?.household_id) return out;
       const { data: members } = await supabase
         .from("profiles")
         .select("person, display_name")
         .eq("household_id", me.household_id);
-      const out: Record<Person, string> = { ...personLabel };
       for (const m of members ?? []) {
-        if (m.person && m.display_name) {
+        if (m.person && m.display_name && (m.person === "yonatan" || m.person === "shiri")) {
           out[m.person as Person] = m.display_name;
         }
       }
