@@ -35,25 +35,29 @@ export function isCashflowOut(t: TxType) {
   return t === "expense" || t === "fixed" || t === "savings" || t === "investment";
 }
 
+const CURRENCY_SYMBOL: Record<string, string> = {
+  ILS: "₪",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+};
+
+/** Always renders the minus sign BEFORE the digits (e.g. "-20 ₪"). */
 export function formatILS(n: number): string {
-  // Force the minus sign to lead the number (Hebrew/RTL preference).
-  const abs = Math.abs(n);
-  const formatted = new Intl.NumberFormat("he-IL", {
-    style: "currency",
-    currency: "ILS",
-    maximumFractionDigits: 0,
-  }).format(abs);
-  return n < 0 ? `-${formatted}` : formatted;
+  return formatMoney(n, "ILS");
 }
 
 export function formatMoney(n: number, currency: string): string {
   const abs = Math.abs(n);
-  const formatted = new Intl.NumberFormat("he-IL", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: currency === "ILS" ? 0 : 2,
-  }).format(abs);
-  return n < 0 ? `-${formatted}` : formatted;
+  const digits = currency === "ILS" ? 0 : 2;
+  const num = abs.toLocaleString("he-IL", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  const sym = CURRENCY_SYMBOL[currency] ?? currency;
+  const sign = n < 0 ? "-" : "";
+  // Wrap with LRM so the minus and digits stay left-to-right inside RTL text.
+  return `\u200E${sign}${num} ${sym}`;
 }
 
 export function formatMonthHebrew(d: Date): string {

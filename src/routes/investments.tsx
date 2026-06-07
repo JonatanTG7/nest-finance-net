@@ -116,7 +116,7 @@ function Investments() {
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                יתרת פתיחה: {formatMoney(Number(a.starting_balance ?? 0), a.currency)} · {txCount} תנועות
+                {txCount} תנועות
               </p>
             </div>
           );
@@ -128,7 +128,7 @@ function Investments() {
           <h2 className="text-sm font-semibold mb-3">מצטבר לאורך זמן (ש"ח)</h2>
           {trend.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-10">
-              עוד אין תנועות. הוסף תנועה מסוג "השקעה" או הגדר יתרת פתיחה בהגדרות.
+              עוד אין תנועות. הוסף תנועה מסוג "השקעה" או עדכן סכום בהגדרות.
             </p>
           ) : (
             <div className="h-72">
