@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Sun, Moon, Copy, LogOut, Users, Plus, Wallet, Trash2 } from "lucide-react";
+import { Sun, Moon, Copy, LogOut, Users, Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
@@ -10,12 +10,6 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchInvestmentAccounts } from "@/lib/db";
 import { fetchUsdIlsRate } from "@/lib/fx";
-import {
-  createPaymentMethod,
-  deletePaymentMethod,
-  useInvalidatePaymentMethods,
-  usePaymentMethods,
-} from "@/lib/payment_methods";
 import {
   generateInviteCode,
   updateHouseholdName,
@@ -127,8 +121,6 @@ function Settings() {
       <HouseholdSection />
 
       <InvestmentBalancesSection />
-
-      <PaymentMethodsSection />
 
       <section className="px-5 mt-8 mb-8">
         <button
