@@ -282,7 +282,6 @@ function InvestmentBalancesSection() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   async function save(id: string, currency: string) {
-  async function save(id: string, currency: string) {
     // Input is ALWAYS in ILS; for non-ILS accounts we divide by FX to get native.
     const ils = parseFloat(drafts[id] ?? "");
     if (isNaN(ils)) return;
