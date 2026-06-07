@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Sun, Moon, Copy, LogOut, Users, Plus, Wallet, Trash2 } from "lucide-react";
+import { Sun, Moon, Copy, LogOut, Users, Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
@@ -10,12 +10,6 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchInvestmentAccounts } from "@/lib/db";
 import { fetchUsdIlsRate } from "@/lib/fx";
-import {
-  createPaymentMethod,
-  deletePaymentMethod,
-  useInvalidatePaymentMethods,
-  usePaymentMethods,
-} from "@/lib/payment_methods";
 import {
   generateInviteCode,
   updateHouseholdName,
@@ -127,8 +121,6 @@ function Settings() {
       <HouseholdSection />
 
       <InvestmentBalancesSection />
-
-      <PaymentMethodsSection />
 
       <section className="px-5 mt-8 mb-8">
         <button
@@ -290,13 +282,14 @@ function InvestmentBalancesSection() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   async function save(id: string, currency: string) {
-    const native = parseFloat(drafts[id] ?? "");
-    if (isNaN(native)) return;
-    let ils = native;
+    // Input is ALWAYS in ILS; for non-ILS accounts we divide by FX to get native.
+    const ils = parseFloat(drafts[id] ?? "");
+    if (isNaN(ils)) return;
+    let native = ils;
     if (currency !== "ILS") {
       let rate = parseFloat(fxDrafts[id] ?? "");
       if (!rate || rate <= 0) rate = await fetchUsdIlsRate();
-      ils = native * rate;
+      native = ils / rate;
     }
     setSavingId(id);
     try {
@@ -305,8 +298,17 @@ function InvestmentBalancesSection() {
         .update({ starting_balance: native, starting_balance_ils: ils })
         .eq("id", id);
       if (error) throw error;
+      // Zero out historical transactions so they keep their count but stop
+      // adding to the displayed balance (the new balance IS the source of truth).
+      const { error: zeroErr } = await supabase
+        .from("transactions")
+        .update({ amount: 0, amount_ils: 0 })
+        .eq("investment_account_id", id);
+      if (zeroErr) throw zeroErr;
       qc.invalidateQueries({ queryKey: ["investment_accounts"] });
-      toast.success("יתרת פתיחה עודכנה");
+      qc.invalidateQueries({ queryKey: ["investments", "txs"] });
+      toast.success("הסכום עודכן");
+      setDrafts((d) => ({ ...d, [id]: "" }));
     } catch (e) {
       console.error(e);
       toast.error("שגיאה בעדכון");
@@ -319,7 +321,7 @@ function InvestmentBalancesSection() {
     <section className="px-5 mt-8">
       <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
         <Wallet className="size-4" />
-        יתרות פתיחה — השקעות
+        סכומים — השקעות וחיסכון
       </h2>
       <div className="rounded-2xl bg-card border divide-y">
         {accounts.map((a) => (
@@ -327,13 +329,15 @@ function InvestmentBalancesSection() {
             <div className="flex items-center gap-2 mb-2">
               <span className="size-2.5 rounded-full" style={{ background: a.color }} />
               <p className="text-sm font-semibold">{a.name}</p>
-              <span className="ms-auto text-xs text-muted-foreground">{a.currency}</span>
+              <span className="ms-auto text-xs text-muted-foreground">
+                {a.currency === "ILS" ? "₪" : a.currency}
+              </span>
             </div>
             <div className="flex gap-2">
               <input
                 type="number"
                 inputMode="decimal"
-                placeholder={String(a.starting_balance ?? 0)}
+                placeholder="סכום בש״ח"
                 value={drafts[a.id] ?? ""}
                 onChange={(e) => setDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
                 className="flex-1 h-10 rounded-lg bg-background border px-3 outline-none text-sm"
@@ -344,7 +348,7 @@ function InvestmentBalancesSection() {
                   type="number"
                   inputMode="decimal"
                   step="0.0001"
-                  placeholder="שער"
+                  placeholder="שער $"
                   value={fxDrafts[a.id] ?? ""}
                   onChange={(e) => setFxDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
                   className="w-20 h-10 rounded-lg bg-background border px-2 outline-none text-sm"
@@ -353,87 +357,24 @@ function InvestmentBalancesSection() {
               )}
               <button
                 onClick={() => save(a.id, a.currency)}
-                disabled={savingId === a.id || drafts[a.id] === undefined}
+                disabled={savingId === a.id || !drafts[a.id]?.trim()}
                 className="h-10 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
               >
                 שמור
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              נוכחי: {Number(a.starting_balance ?? 0).toLocaleString("he-IL")} {a.currency}
+              סכום נוכחי: {Number(a.starting_balance_ils ?? 0).toLocaleString("he-IL")} ₪
+              {a.currency !== "ILS" && (
+                <> · {Number(a.starting_balance ?? 0).toLocaleString("he-IL", { maximumFractionDigits: 2 })} {a.currency}</>
+              )}
             </p>
           </div>
         ))}
       </div>
-    </section>
-  );
-}
-
-function PaymentMethodsSection() {
-  const { data: methods = [] } = usePaymentMethods();
-  const invalidate = useInvalidatePaymentMethods();
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function add() {
-    if (!draft.trim()) return;
-    setBusy(true);
-    try {
-      await createPaymentMethod(draft);
-      invalidate();
-      setDraft("");
-    } catch (e) {
-      console.error(e);
-      toast.error("שגיאה");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function remove(id: string) {
-    if (!confirm("למחוק אמצעי תשלום?")) return;
-    try {
-      await deletePaymentMethod(id);
-      invalidate();
-    } catch (e) {
-      console.error(e);
-      toast.error("שגיאה במחיקה");
-    }
-  }
-
-  return (
-    <section className="px-5 mt-8">
-      <h2 className="text-sm font-semibold mb-2">אמצעי תשלום</h2>
-      <div className="rounded-2xl bg-card border p-3 space-y-2">
-        {methods.map((m) => (
-          <div key={m.id} className="flex items-center gap-2">
-            <span className="flex-1 text-sm">{m.label}</span>
-            <button
-              onClick={() => remove(m.id)}
-              className="size-9 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center"
-              aria-label="מחק"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </div>
-        ))}
-        <div className="flex gap-2 pt-2 border-t">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="צ׳ק, ביט…"
-            className="flex-1 h-10 rounded-lg bg-background border px-3 outline-none text-sm"
-          />
-          <button
-            onClick={add}
-            disabled={busy || !draft.trim()}
-            className="h-10 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1 disabled:opacity-60"
-          >
-            <Plus className="size-4" />
-            הוסף
-          </button>
-        </div>
-      </div>
+      <p className="text-xs text-muted-foreground mt-2 px-1">
+        מזינים תמיד בש״ח. בחשבון דולרי המערכת מחלקת בשער היומי. כל עדכון מאפס תנועות קודמות אבל שומר על המספר שלהן.
+      </p>
     </section>
   );
 }

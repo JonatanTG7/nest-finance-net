@@ -30,6 +30,11 @@ export function setDefaultPerson(p: Person) {
  * Returns labels for the person slots, based on household members' display names.
  * "shared" always shows the English word "Shared" (per user requirement).
  */
+/** Returns the first word of a display name ("Jonatan Cohen" → "Jonatan"). */
+function firstName(s: string): string {
+  return s.trim().split(/\s+/)[0] ?? s;
+}
+
 export function useMemberLabels(): Record<Person, string> {
   const { data } = useQuery({
     queryKey: ["me", "memberLabels"],
@@ -43,7 +48,7 @@ export function useMemberLabels(): Record<Person, string> {
         .eq("household_id", me.household_id);
       for (const m of members ?? []) {
         if (m.person && m.display_name && (m.person === "yonatan" || m.person === "shiri")) {
-          out[m.person as Person] = m.display_name;
+          out[m.person as Person] = firstName(m.display_name);
         }
       }
       return out;
