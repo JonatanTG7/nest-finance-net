@@ -29,7 +29,7 @@ import { fetchUsdIlsRate } from "@/lib/fx";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
-const TYPES: TxType[] = ["expense", "income", "fixed", "savings", "investment"];
+const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
 const CURRENCIES = ["ILS", "USD", "EUR", "GBP"];
 
 export function TransactionForm({
@@ -64,7 +64,7 @@ export function TransactionForm({
   const [paymentMethod, setPaymentMethod] = useState<string | null>(
     existing?.payment_method ?? getLastPaymentMethod() ?? "credit",
   );
-  const [addingPm, setAddingPm] = useState(false);
+  const [pmSheetOpen, setPmSheetOpen] = useState(false);
   const [pmDraft, setPmDraft] = useState("");
   const [savingPm, setSavingPm] = useState(false);
   const [installments, setInstallments] = useState<number>(1);
@@ -202,7 +202,6 @@ export function TransactionForm({
       invalidatePm();
       setPaymentMethod(row.key);
       setPmDraft("");
-      setAddingPm(false);
     } catch (e) {
       console.error(e);
       toast.error("שגיאה ביצירת אמצעי תשלום");
@@ -210,6 +209,8 @@ export function TransactionForm({
       setSavingPm(false);
     }
   }
+
+  const selectedPm = paymentMethods.find((m) => m.key === paymentMethod) ?? null;
 
   function shiftMonthIso(iso: string, months: number) {
     const d = new Date(iso);
@@ -505,64 +506,86 @@ export function TransactionForm({
             </div>
           </div>
 
-          {/* Payment method */}
+          {/* Payment method — single button opens a sheet */}
           <div>
             <p className="text-xs text-muted-foreground mb-1.5">אמצעי תשלום</p>
-            <div className="flex flex-wrap gap-2">
-              {paymentMethods.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setPaymentMethod(paymentMethod === m.key ? null : m.key)}
-                  className={cn(
-                    "h-11 px-4 rounded-2xl border text-sm font-semibold transition",
-                    paymentMethod === m.key
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-card border-border",
-                  )}
-                >
-                  {m.label}
-                </button>
-              ))}
-              {addingPm ? (
-                <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPmSheetOpen(true)}
+              className="w-full h-12 rounded-2xl bg-card border px-4 text-sm font-semibold flex items-center justify-between"
+            >
+              <span className={selectedPm ? "text-foreground" : "text-muted-foreground"}>
+                {selectedPm?.label ?? "בחר אמצעי תשלום"}
+              </span>
+              <span className="text-xs text-muted-foreground">החלף</span>
+            </button>
+          </div>
+
+          {pmSheetOpen && (
+            <div
+              className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
+              onClick={() => setPmSheetOpen(false)}
+            >
+              <div
+                className="w-full sm:max-w-md bg-card rounded-t-3xl sm:rounded-3xl border p-5 space-y-2 max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-base font-bold">אמצעי תשלום</h3>
+                  <button
+                    type="button"
+                    onClick={() => setPmSheetOpen(false)}
+                    className="size-9 rounded-full bg-background border flex items-center justify-center"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {paymentMethods.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setPaymentMethod(m.key);
+                        setPmSheetOpen(false);
+                      }}
+                      className={cn(
+                        "h-12 px-3 rounded-2xl border text-sm font-semibold transition",
+                        paymentMethod === m.key
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border",
+                      )}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="pt-3 mt-2 border-t flex gap-2">
                   <input
-                    autoFocus
                     value={pmDraft}
                     onChange={(e) => setPmDraft(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
                         void savePmDraft();
-                      } else if (e.key === "Escape") {
-                        setAddingPm(false);
-                        setPmDraft("");
                       }
                     }}
-                    placeholder="צ׳ק…"
-                    className="h-11 px-3 rounded-2xl border bg-card text-sm w-28 outline-none"
+                    placeholder="הוסף חדש (צ׳ק, ביט…)"
+                    className="flex-1 h-11 rounded-2xl border bg-background px-3 outline-none text-sm"
                   />
                   <button
                     type="button"
                     onClick={savePmDraft}
                     disabled={savingPm || !pmDraft.trim()}
-                    className="h-11 px-3 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
+                    className="h-11 px-3 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1 disabled:opacity-60"
                   >
-                    שמור
+                    <Plus className="size-4" />
+                    הוסף
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAddingPm(true)}
-                  className="h-11 px-3 rounded-2xl border border-dashed border-border bg-card text-sm flex items-center gap-1.5 text-muted-foreground"
-                >
-                  <Plus className="size-4" />
-                  הוסף
-                </button>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Installments */}
           {canShowInstallments && (
