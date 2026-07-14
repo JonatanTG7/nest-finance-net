@@ -68,7 +68,6 @@ export function TransactionForm({
   const [pmDraft, setPmDraft] = useState("");
   const [savingPm, setSavingPm] = useState(false);
   const [installments, setInstallments] = useState<number>(1);
-  const [showInstallments, setShowInstallments] = useState(false);
   const [fetchingFx, setFetchingFx] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const [uploading, setUploading] = useState(false);
@@ -258,13 +257,19 @@ export function TransactionForm({
         toast.success("התנועה עודכנה");
         navigate({ to: "/transactions/$id", params: { id: existing.id } });
       } else if (canSplit) {
-        const per = Number((amt / installments).toFixed(2));
+        // Split evenly to 2 decimals; give the rounding remainder to the first payment
+        // so the sum of installments equals the original total exactly.
+        const totalCents = Math.round(amt * 100);
+        const baseCents = Math.floor(totalCents / installments);
+        const remainderCents = totalCents - baseCents * installments;
+        const baseTitle = baseInput.title;
         for (let i = 0; i < installments; i++) {
+          const cents = baseCents + (i === 0 ? remainderCents : 0);
           const inp: TransactionInput = {
             ...baseInput,
-            amount: per,
+            amount: cents / 100,
             occurred_at: shiftMonthIso(date, i),
-            note: `${baseInput.note ? baseInput.note + " · " : ""}תשלום ${i + 1}/${installments}`,
+            title: `${baseTitle} (${i + 1}/${installments})`,
           };
           await createTransaction(inp);
         }
@@ -589,52 +594,36 @@ export function TransactionForm({
 
           {/* Installments */}
           {canShowInstallments && (
-            <div>
-              {!showInstallments ? (
-                <button
-                  type="button"
-                  onClick={() => setShowInstallments(true)}
-                  className="text-xs text-muted-foreground"
-                >
-                  + פריסה לתשלומים
-                </button>
-              ) : (
-                <div className="rounded-2xl bg-card border p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">מספר תשלומים</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowInstallments(false);
-                        setInstallments(1);
-                      }}
-                      className="text-xs text-muted-foreground"
-                    >
-                      ביטול
-                    </button>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      max={36}
-                      value={installments}
-                      onChange={(e) => setInstallments(Math.max(1, Math.min(36, Number(e.target.value) || 1)))}
-                      className="w-20 h-11 rounded-xl border bg-background px-3 text-base outline-none"
-                      dir="ltr"
-                    />
-                    {installments > 1 && amount && (
-                      <p className="text-xs text-muted-foreground">
-                        {installments} ×{" "}
-                        <span className="font-semibold tabular-nums">
-                          {(parseFloat(amount) / installments).toFixed(2)} {currency}
-                        </span>{" "}
-                        החל מתאריך הבחירה
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
+            <div className="rounded-2xl bg-card border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">מספר תשלומים</p>
+                {installments > 1 && amount && (
+                  <p className="text-xs text-muted-foreground">
+                    {installments} ×{" "}
+                    <span className="font-semibold tabular-nums">
+                      {(parseFloat(amount) / installments).toFixed(2)} {currency}
+                    </span>
+                  </p>
+                )}
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={36}
+                  value={installments}
+                  onChange={(e) =>
+                    setInstallments(Math.max(1, Math.min(36, Number(e.target.value) || 1)))
+                  }
+                  className="w-20 h-11 rounded-xl border bg-background px-3 text-base outline-none"
+                  dir="ltr"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {installments > 1
+                    ? "יווצרו תנועות נפרדות לחודשים עוקבים"
+                    : "תנועה בודדת (ברירת מחדל)"}
+                </p>
+              </div>
             </div>
           )}
 
