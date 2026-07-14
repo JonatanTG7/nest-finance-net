@@ -103,20 +103,24 @@ function Dashboard() {
   const trendData = useMemo(() => {
     const buckets = new Map<
       string,
-      { month: string; income: number; expense: number; fixed: number; savings: number; investment: number }
+      { month: string; income: number; expense: number; fixed: number; investment: number }
     >();
     for (let i = 5; i >= 0; i--) {
       const k = shiftMonth(month, -i);
       buckets.set(k, {
         month: new Intl.DateTimeFormat("he-IL", { month: "short" }).format(parseMonthKey(k)),
-        income: 0, expense: 0, fixed: 0, savings: 0, investment: 0,
+        income: 0, expense: 0, fixed: 0, investment: 0,
       });
     }
     for (const t of trendTxs) {
       const k = t.occurred_at.slice(0, 7);
       const b = buckets.get(k);
       if (!b) continue;
-      b[t.type] += Number(t.amount_ils);
+      // Fold legacy "savings" transactions into investment.
+      const bucketKey = t.type === "savings" ? "investment" : t.type;
+      if (bucketKey === "income" || bucketKey === "expense" || bucketKey === "fixed" || bucketKey === "investment") {
+        b[bucketKey] += Number(t.amount_ils);
+      }
     }
     return Array.from(buckets.values());
   }, [trendTxs, month]);
