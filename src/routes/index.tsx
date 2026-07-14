@@ -233,7 +233,6 @@ function Dashboard() {
                 <Bar dataKey="income" name="הכנסות" fill="var(--income)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="expense" name="הוצאות" fill="var(--expense)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="fixed" name="קבועות" fill="var(--fixed)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="savings" name="חיסכון" fill="var(--savings)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="investment" name="השקעה" fill="#6366f1" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
