@@ -63,19 +63,20 @@ function Dashboard() {
   });
 
   const totals = useMemo(() => {
-    let income = 0, expense = 0, fixed = 0, savings = 0, investment = 0;
+    let income = 0, expense = 0, fixed = 0, investment = 0;
     for (const t of txs) {
       const v = Number(t.amount_ils);
       switch (t.type) {
         case "income": income += v; break;
         case "expense": expense += v; break;
         case "fixed": fixed += v; break;
-        case "savings": savings += v; break;
+        // legacy "savings" transactions are treated as investments
+        case "savings": investment += v; break;
         case "investment": investment += v; break;
       }
     }
-    const remaining = income - expense - fixed - savings - investment;
-    return { income, expense, fixed, savings, investment, remaining };
+    const remaining = income - expense - fixed - investment;
+    return { income, expense, fixed, investment, remaining };
   }, [txs]);
 
   // Pie: outflow per category, each slice in its own colour
