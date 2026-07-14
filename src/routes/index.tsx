@@ -63,19 +63,20 @@ function Dashboard() {
   });
 
   const totals = useMemo(() => {
-    let income = 0, expense = 0, fixed = 0, savings = 0, investment = 0;
+    let income = 0, expense = 0, fixed = 0, investment = 0;
     for (const t of txs) {
       const v = Number(t.amount_ils);
       switch (t.type) {
         case "income": income += v; break;
         case "expense": expense += v; break;
         case "fixed": fixed += v; break;
-        case "savings": savings += v; break;
+        // legacy "savings" transactions are treated as investments
+        case "savings": investment += v; break;
         case "investment": investment += v; break;
       }
     }
-    const remaining = income - expense - fixed - savings - investment;
-    return { income, expense, fixed, savings, investment, remaining };
+    const remaining = income - expense - fixed - investment;
+    return { income, expense, fixed, investment, remaining };
   }, [txs]);
 
   // Pie: outflow per category, each slice in its own colour
@@ -102,20 +103,24 @@ function Dashboard() {
   const trendData = useMemo(() => {
     const buckets = new Map<
       string,
-      { month: string; income: number; expense: number; fixed: number; savings: number; investment: number }
+      { month: string; income: number; expense: number; fixed: number; investment: number }
     >();
     for (let i = 5; i >= 0; i--) {
       const k = shiftMonth(month, -i);
       buckets.set(k, {
         month: new Intl.DateTimeFormat("he-IL", { month: "short" }).format(parseMonthKey(k)),
-        income: 0, expense: 0, fixed: 0, savings: 0, investment: 0,
+        income: 0, expense: 0, fixed: 0, investment: 0,
       });
     }
     for (const t of trendTxs) {
       const k = t.occurred_at.slice(0, 7);
       const b = buckets.get(k);
       if (!b) continue;
-      b[t.type] += Number(t.amount_ils);
+      // Fold legacy "savings" transactions into investment.
+      const bucketKey = t.type === "savings" ? "investment" : t.type;
+      if (bucketKey === "income" || bucketKey === "expense" || bucketKey === "fixed" || bucketKey === "investment") {
+        b[bucketKey] += Number(t.amount_ils);
+      }
     }
     return Array.from(buckets.values());
   }, [trendTxs, month]);
@@ -132,7 +137,7 @@ function Dashboard() {
 
       <section className="px-5 md:px-0">
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground p-6 shadow-lg shadow-primary/20">
-          <p className="text-sm opacity-90">פנוי לחודש (אחרי הוצאות, קבועות, חיסכון והשקעה)</p>
+          <p className="text-sm opacity-90">פנוי לחודש (אחרי הוצאות, קבועות והשקעה)</p>
           <p className="text-4xl font-bold mt-2 tabular-nums">{formatILS(totals.remaining)}</p>
           <div className="mt-4 flex gap-4 text-sm flex-wrap">
             <div>
@@ -142,18 +147,17 @@ function Dashboard() {
             <div>
               <p className="opacity-80">סך יוצא</p>
               <p className="font-semibold tabular-nums">
-                {formatILS(totals.expense + totals.fixed + totals.savings + totals.investment)}
+                {formatILS(totals.expense + totals.fixed + totals.investment)}
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="px-5 md:px-0 mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+      <section className="px-5 md:px-0 mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="הכנסות" value={totals.income} className="bg-income/15 text-income" />
         <StatCard label="הוצאות" value={totals.expense} className="bg-expense/15 text-expense" />
         <StatCard label="קבועות" value={totals.fixed} className="bg-fixed/15 text-fixed" />
-        <StatCard label="חיסכון" value={totals.savings} className="bg-savings/25 text-foreground" />
         <StatCard label="השקעה" value={totals.investment} className="bg-savings/25 text-foreground" />
       </section>
 
@@ -229,7 +233,6 @@ function Dashboard() {
                 <Bar dataKey="income" name="הכנסות" fill="var(--income)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="expense" name="הוצאות" fill="var(--expense)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="fixed" name="קבועות" fill="var(--fixed)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="savings" name="חיסכון" fill="var(--savings)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="investment" name="השקעה" fill="#6366f1" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
