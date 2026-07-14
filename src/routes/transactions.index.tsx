@@ -71,7 +71,6 @@ function TransactionsList() {
               ["income", "הכנסות"],
               ["expense", "הוצאות"],
               ["fixed", "קבועות"],
-              ["savings", "חיסכון"],
               ["investment", "השקעה"],
             ] as const
           ).map(([k, label]) => (
