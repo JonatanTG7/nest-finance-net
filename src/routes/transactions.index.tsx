@@ -13,7 +13,7 @@ export const Route = createFileRoute("/transactions/")({
   component: TransactionsList,
 });
 
-type Filter = "all" | "income" | "expense" | "fixed" | "savings" | "investment";
+type Filter = "all" | "income" | "expense" | "fixed" | "investment";
 
 function TransactionsList() {
   const [month, setMonth] = useState<string>(currentMonthKey());
