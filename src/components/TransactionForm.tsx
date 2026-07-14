@@ -258,13 +258,19 @@ export function TransactionForm({
         toast.success("התנועה עודכנה");
         navigate({ to: "/transactions/$id", params: { id: existing.id } });
       } else if (canSplit) {
-        const per = Number((amt / installments).toFixed(2));
+        // Split evenly to 2 decimals; give the rounding remainder to the first payment
+        // so the sum of installments equals the original total exactly.
+        const totalCents = Math.round(amt * 100);
+        const baseCents = Math.floor(totalCents / installments);
+        const remainderCents = totalCents - baseCents * installments;
+        const baseTitle = baseInput.title;
         for (let i = 0; i < installments; i++) {
+          const cents = baseCents + (i === 0 ? remainderCents : 0);
           const inp: TransactionInput = {
             ...baseInput,
-            amount: per,
+            amount: cents / 100,
             occurred_at: shiftMonthIso(date, i),
-            note: `${baseInput.note ? baseInput.note + " · " : ""}תשלום ${i + 1}/${installments}`,
+            title: `${baseTitle} (${i + 1}/${installments})`,
           };
           await createTransaction(inp);
         }
