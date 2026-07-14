@@ -68,7 +68,6 @@ export function TransactionForm({
   const [pmDraft, setPmDraft] = useState("");
   const [savingPm, setSavingPm] = useState(false);
   const [installments, setInstallments] = useState<number>(1);
-  const [showInstallments, setShowInstallments] = useState(false);
   const [fetchingFx, setFetchingFx] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const [uploading, setUploading] = useState(false);
