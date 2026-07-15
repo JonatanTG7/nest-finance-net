@@ -133,6 +133,76 @@ export type Database = {
         }
         Relationships: []
       }
+      ib_holdings: {
+        Row: {
+          cash_usd: number
+          created_at: string
+          household_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          cash_usd?: number
+          created_at?: string
+          household_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          cash_usd?: number
+          created_at?: string
+          household_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ib_holdings_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ib_positions: {
+        Row: {
+          avg_price: number
+          created_at: string
+          household_id: string
+          id: string
+          quantity: number
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          avg_price?: number
+          created_at?: string
+          household_id: string
+          id?: string
+          quantity?: number
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          avg_price?: number
+          created_at?: string
+          household_id?: string
+          id?: string
+          quantity?: number
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ib_positions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       investment_accounts: {
         Row: {
           color: string
