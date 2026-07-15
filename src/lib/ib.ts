@@ -18,29 +18,34 @@ export interface IbPosition {
 }
 
 export async function fetchIbHoldings(): Promise<IbHoldings | null> {
-  const { data, error } = await supabase
-    .from("ib_holdings" as never)
-    .select("*")
-    .maybeSingle();
+  const { data, error } = await supabase.from("ib_holdings").select("*").maybeSingle();
   if (error) throw error;
-  return (data as IbHoldings | null) ?? null;
+  if (!data) return null;
+  return {
+    id: data.id,
+    household_id: data.household_id,
+    cash_usd: Number(data.cash_usd ?? 0),
+  };
 }
 
 export async function setIbCash(usd: number): Promise<void> {
   const household_id = await getMyHouseholdId();
   const { error } = await supabase
-    .from("ib_holdings" as never)
+    .from("ib_holdings")
     .upsert({ household_id, cash_usd: usd }, { onConflict: "household_id" });
   if (error) throw error;
 }
 
 export async function fetchIbPositions(): Promise<IbPosition[]> {
-  const { data, error } = await supabase
-    .from("ib_positions" as never)
-    .select("*")
-    .order("symbol");
+  const { data, error } = await supabase.from("ib_positions").select("*").order("symbol");
   if (error) throw error;
-  return (data as IbPosition[] | null) ?? [];
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    household_id: r.household_id,
+    symbol: r.symbol,
+    quantity: Number(r.quantity ?? 0),
+    avg_price: Number(r.avg_price ?? 0),
+  }));
 }
 
 export async function upsertIbPosition(input: {
@@ -53,13 +58,13 @@ export async function upsertIbPosition(input: {
   const symbol = input.symbol.trim().toUpperCase();
   if (input.id) {
     const { error } = await supabase
-      .from("ib_positions" as never)
+      .from("ib_positions")
       .update({ symbol, quantity: input.quantity, avg_price: input.avg_price })
       .eq("id", input.id);
     if (error) throw error;
   } else {
     const { error } = await supabase
-      .from("ib_positions" as never)
+      .from("ib_positions")
       .upsert(
         { household_id, symbol, quantity: input.quantity, avg_price: input.avg_price },
         { onConflict: "household_id,symbol" },
@@ -69,6 +74,6 @@ export async function upsertIbPosition(input: {
 }
 
 export async function deleteIbPosition(id: string): Promise<void> {
-  const { error } = await supabase.from("ib_positions" as never).delete().eq("id", id);
+  const { error } = await supabase.from("ib_positions").delete().eq("id", id);
   if (error) throw error;
 }
