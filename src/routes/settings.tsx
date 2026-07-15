@@ -273,10 +273,12 @@ function HouseholdSection() {
 
 function InvestmentBalancesSection() {
   const qc = useQueryClient();
-  const { data: accounts = [] } = useQuery({
+  const { data: allAccounts = [] } = useQuery({
     queryKey: ["investment_accounts"],
     queryFn: fetchInvestmentAccounts,
   });
+  // Interactive Brokers is managed on its dedicated portfolio page — hide it here.
+  const accounts = allAccounts.filter((a) => a.id !== "8456b768-3747-4685-96d1-db66e2b7c432");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [fxDrafts, setFxDrafts] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
