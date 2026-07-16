@@ -1,0 +1,217 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+} from "recharts";
+import { ChevronLeft } from "lucide-react";
+import { AppShell } from "@/components/AppShell";
+import { fetchInvestmentAccounts, fetchInvestmentTransactions } from "@/lib/db";
+import { formatILS, formatMoney } from "@/lib/finance";
+import { fetchIbHoldings, fetchIbPositions, IB_ACCOUNT_ID } from "@/lib/ib";
+import { getQuotes } from "@/lib/ib.functions";
+import { fetchUsdIlsRate } from "@/lib/fx";
+
+export const Route = createFileRoute("/investments/")({
+  head: () => ({ meta: [{ title: "השקעות" }] }),
+  component: Investments,
+});
+
+function Investments() {
+  const getQuotesFn = useServerFn(getQuotes);
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ["investment_accounts"],
+    queryFn: fetchInvestmentAccounts,
+  });
+  const { data: txs = [] } = useQuery({
+    queryKey: ["investments", "txs"],
+    queryFn: fetchInvestmentTransactions,
+  });
+  const { data: ibHoldings } = useQuery({
+    queryKey: ["ib", "holdings"],
+    queryFn: fetchIbHoldings,
+  });
+  const { data: ibPositions = [] } = useQuery({
+    queryKey: ["ib", "positions"],
+    queryFn: fetchIbPositions,
+  });
+  const { data: fxRate = 3.7 } = useQuery({
+    queryKey: ["fx", "usdils"],
+    queryFn: fetchUsdIlsRate,
+    staleTime: 60 * 60 * 1000,
+  });
+  const ibSymbols = useMemo(() => ibPositions.map((p) => p.symbol), [ibPositions]);
+  const { data: ibQuotes = [] } = useQuery({
+    queryKey: ["ib", "quotes", ibSymbols],
+    queryFn: () => getQuotesFn({ data: { symbols: ibSymbols } }),
+    enabled: ibSymbols.length > 0,
+    staleTime: 60_000,
+  });
+
+  const ibTotals = useMemo(() => {
+    const priceBy = new Map<string, number | null>();
+    for (const q of ibQuotes) priceBy.set(q.symbol, q.last);
+    const cash = Number(ibHoldings?.cash_usd ?? 0);
+    let market = 0;
+    for (const p of ibPositions) {
+      const last = priceBy.get(p.symbol);
+      if (last != null) market += last * Number(p.quantity);
+      else market += Number(p.avg_price) * Number(p.quantity);
+    }
+    const native = cash + market;
+    return { native, ils: native * fxRate };
+  }, [ibHoldings, ibPositions, ibQuotes, fxRate]);
+
+  const totals = useMemo(() => {
+    const m = new Map<string, { native: number; ils: number }>();
+    for (const a of accounts) {
+      if (a.id === IB_ACCOUNT_ID) {
+        m.set(a.id, ibTotals);
+        continue;
+      }
+      m.set(a.id, {
+        native: Number(a.starting_balance ?? 0),
+        ils: Number(a.starting_balance_ils ?? a.starting_balance ?? 0),
+      });
+    }
+    for (const t of txs) {
+      if (!t.investment_account_id) continue;
+      if (t.investment_account_id === IB_ACCOUNT_ID) continue;
+      const cur = m.get(t.investment_account_id);
+      if (!cur) continue;
+      cur.native += Number(t.amount);
+      cur.ils += Number(t.amount_ils);
+    }
+    return m;
+  }, [txs, accounts, ibTotals]);
+
+  const grandIls = useMemo(
+    () => Array.from(totals.values()).reduce((a, b) => a + b.ils, 0),
+    [totals],
+  );
+
+  const trend = useMemo(() => {
+    if (txs.length === 0 && accounts.every((a) => !a.starting_balance_ils && !a.starting_balance)) {
+      return [];
+    }
+    const months = new Set<string>();
+    for (const t of txs) months.add(t.occurred_at.slice(0, 7));
+    const sortedMonths = Array.from(months).sort();
+    const running: Record<string, number> = {};
+    for (const a of accounts) {
+      running[a.id] = Number(a.starting_balance_ils ?? a.starting_balance ?? 0);
+    }
+    return sortedMonths.map((mk) => {
+      for (const t of txs.filter((t) => t.occurred_at.slice(0, 7) === mk)) {
+        if (!t.investment_account_id) continue;
+        running[t.investment_account_id] =
+          (running[t.investment_account_id] ?? 0) + Number(t.amount_ils);
+      }
+      const row: Record<string, number | string> = { month: mk };
+      for (const a of accounts) row[a.name] = running[a.id] ?? 0;
+      return row;
+    });
+  }, [txs, accounts]);
+
+  return (
+    <AppShell>
+      <header className="px-5 md:px-0 pt-6 pb-3">
+        <h1 className="text-2xl font-bold">השקעות וחיסכון</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          לחץ על חשבון Interactive Brokers כדי לנהל את התיק ולראות שווי חי.
+        </p>
+      </header>
+
+      <section className="px-5 md:px-0">
+        <div className="rounded-3xl bg-gradient-to-br from-savings to-savings/70 text-foreground p-6">
+          <p className="text-sm opacity-80">סך נכסים (ש"ח)</p>
+          <p className="text-4xl font-bold mt-2 tabular-nums">{formatILS(grandIls)}</p>
+        </div>
+      </section>
+
+      <section className="px-5 md:px-0 mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {accounts.map((a) => {
+          const t = totals.get(a.id) ?? { native: 0, ils: 0 };
+          const isIb = a.id === IB_ACCOUNT_ID;
+          const card = (
+            <div className="rounded-2xl border bg-card p-4 h-full">
+              <div className="flex items-center gap-2">
+                <span className="size-3 rounded-full" style={{ background: a.color }} />
+                <p className="text-sm font-semibold">{a.name}</p>
+                <span className="ms-auto text-xs text-muted-foreground">{a.currency}</span>
+                {isIb && <ChevronLeft className="size-4 text-muted-foreground" />}
+              </div>
+              <p className="text-2xl font-bold mt-2 tabular-nums" dir={a.currency !== "ILS" ? "ltr" : undefined}>
+                {formatMoney(t.native, a.currency)}
+              </p>
+              {a.currency !== "ILS" && (
+                <p className="text-xs text-muted-foreground tabular-nums">≈ {formatILS(t.ils)}</p>
+              )}
+              {isIb && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {ibPositions.length} החזקות · מחירים חיים
+                </p>
+              )}
+            </div>
+          );
+          return isIb ? (
+            <Link
+              key={a.id}
+              to="/investments/ib"
+              className="block active:scale-[0.99] transition-transform"
+            >
+              {card}
+            </Link>
+          ) : (
+            <div key={a.id}>{card}</div>
+          );
+        })}
+      </section>
+
+      <section className="px-5 md:px-0 mt-6">
+        <div className="rounded-2xl border bg-card p-4">
+          <h2 className="text-sm font-semibold mb-3">מצטבר לאורך זמן (ש"ח)</h2>
+          {trend.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">
+              עוד אין תנועות. הוסף תנועה מסוג "השקעה" או עדכן סכום בהגדרות.
+            </p>
+          ) : (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trend} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    formatter={(v: number) => formatILS(Number(v))}
+                    contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  {accounts.map((a) => (
+                    <Line
+                      key={a.id}
+                      type="monotone"
+                      dataKey={a.name}
+                      stroke={a.color}
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      </section>
+    </AppShell>
+  );
+}
