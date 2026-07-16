@@ -158,7 +158,9 @@ function Dashboard() {
         <StatCard label="הכנסות" value={totals.income} className="bg-income/15 text-income" />
         <StatCard label="הוצאות" value={totals.expense} className="bg-expense/15 text-expense" />
         <StatCard label="קבועות" value={totals.fixed} className="bg-fixed/15 text-fixed" />
-        <StatCard label="השקעה" value={totals.investment} className="bg-savings/25 text-foreground" />
+        <Link to="/investments/ib" className="block active:scale-[0.98] transition-transform">
+          <StatCard label="השקעה" value={totals.investment} className="bg-savings/25 text-foreground" />
+        </Link>
       </section>
 
       <div className="grid md:grid-cols-2 gap-4 mt-6 px-5 md:px-0">
