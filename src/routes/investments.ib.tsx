@@ -34,6 +34,15 @@ export const Route = createFileRoute("/investments/ib")({
 
 type SortKey = "symbol" | "marketValue" | "unrealized";
 type CachedQuote = { last: number | null; prevClose: number | null; at: number };
+type PositionRow = IbPosition & {
+  last: number | null;
+  prevClose: number | null;
+  stale: boolean;
+  marketValue: number | null;
+  unrealized: number | null;
+  dailyChangeAbs: number | null;
+  dailyChangePct: number | null;
+};
 const QUOTE_CACHE_KEY = "ib.quoteCache.v1";
 
 function loadQuoteCache(): Record<string, CachedQuote> {
@@ -109,7 +118,7 @@ function IbPortfolio() {
     });
   }, [liveQuotes]);
 
-  const rows = useMemo(() => {
+  const rows = useMemo<PositionRow[]>(() => {
     return positions.map((p) => {
       const cached = quoteCache[p.symbol];
       const last = cached?.last ?? null;
@@ -265,7 +274,45 @@ function IbPortfolio() {
       </section>
 
       <section className="px-5 md:px-0 mt-4" dir="ltr">
-        <div className="rounded-2xl border bg-card overflow-x-auto">
+        <div className="md:hidden mb-3 flex gap-2 overflow-x-auto pb-1" dir="rtl" aria-label="מיון החזקות">
+          <SortChip active={sortKey === "symbol"} dir={sortDir} onClick={() => toggleSort("symbol")}>
+            Ticker
+          </SortChip>
+          <SortChip active={sortKey === "marketValue"} dir={sortDir} onClick={() => toggleSort("marketValue")}>
+            Market Value
+          </SortChip>
+          <SortChip active={sortKey === "unrealized"} dir={sortDir} onClick={() => toggleSort("unrealized")}>
+            P&amp;L
+          </SortChip>
+        </div>
+
+        <div className="md:hidden space-y-3">
+          {sortedRows.length === 0 ? (
+            <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground" dir="rtl">
+              אין החזקות עדיין. לחץ על "הוספת החזקה" כדי להתחיל.
+            </div>
+          ) : (
+            sortedRows.map((r) => {
+              const weight = portfolioUsd > 0 && r.marketValue != null
+                ? (r.marketValue / portfolioUsd) * 100
+                : null;
+              return (
+                <PositionMobileCard
+                  key={r.id}
+                  row={r}
+                  weight={weight}
+                  onEdit={() => {
+                    setEditing(r);
+                    setPosOpen(true);
+                  }}
+                  onDelete={() => removePos.mutate(r.id)}
+                />
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden md:block rounded-2xl border bg-card overflow-x-auto">
           <table className="w-full text-sm min-w-[780px]">
             <thead>
               <tr className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30 border-b">
@@ -452,6 +499,137 @@ function Th({
         {active && <span className="text-[9px]">{dir === "asc" ? "▲" : "▼"}</span>}
       </span>
     </th>
+  );
+}
+
+function SortChip({
+  children,
+  active,
+  dir,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active: boolean;
+  dir: "asc" | "desc";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "shrink-0 rounded-full border px-3 py-2 text-xs font-medium transition-colors",
+        active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground",
+      )}
+    >
+      <span className="inline-flex items-center gap-1" dir="ltr">
+        {children}
+        {active && <span className="text-[9px]">{dir === "asc" ? "▲" : "▼"}</span>}
+      </span>
+    </button>
+  );
+}
+
+function PositionMobileCard({
+  row,
+  weight,
+  onEdit,
+  onDelete,
+}: {
+  row: PositionRow;
+  weight: number | null;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <article className="rounded-2xl border bg-card p-4" dir="ltr">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-lg font-bold leading-none">{row.symbol}</h2>
+            {row.stale && row.last != null && (
+              <WifiOff className="size-3 text-muted-foreground" aria-label="offline price" />
+            )}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+            {row.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })} shares · Avg {row.avg_price.toFixed(2)}
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="rounded-lg p-2 text-muted-foreground hover:bg-accent" aria-label={`פעולות ${row.symbol}`}>
+              <MoreVertical className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={onEdit}>עריכה</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive" onClick={onDelete}>מחיקה</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <MobileMetric label="Last" value={row.last != null ? row.last.toFixed(2) : "—"} />
+        <MobileMetric label="Market Value" value={row.marketValue != null ? row.marketValue.toFixed(2) : "—"} strong />
+        <MobileMetric
+          label="Daily"
+          value={
+            row.dailyChangeAbs == null
+              ? "—"
+              : `${row.dailyChangeAbs >= 0 ? "+" : ""}${row.dailyChangeAbs.toFixed(2)}`
+          }
+          subValue={
+            row.dailyChangePct == null
+              ? undefined
+              : `${row.dailyChangePct >= 0 ? "+" : ""}${row.dailyChangePct.toFixed(2)}%`
+          }
+          tone={row.dailyChangeAbs == null ? "muted" : row.dailyChangeAbs >= 0 ? "up" : "down"}
+        />
+        <MobileMetric
+          label="Unreal. P&L"
+          value={
+            row.unrealized == null
+              ? "—"
+              : `${row.unrealized >= 0 ? "+" : ""}${row.unrealized.toFixed(2)}`
+          }
+          subValue={weight != null ? `${weight.toFixed(1)}% weight` : undefined}
+          tone={row.unrealized == null ? "muted" : row.unrealized >= 0 ? "up" : "down"}
+          strong
+        />
+      </div>
+    </article>
+  );
+}
+
+function MobileMetric({
+  label,
+  value,
+  subValue,
+  tone = "default",
+  strong,
+}: {
+  label: string;
+  value: React.ReactNode;
+  subValue?: React.ReactNode;
+  tone?: "default" | "muted" | "up" | "down";
+  strong?: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl bg-muted/30 p-3">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "mt-1 truncate tabular-nums text-sm",
+          strong && "font-semibold",
+          tone === "muted" && "text-muted-foreground",
+          tone === "up" && "text-income",
+          tone === "down" && "text-expense",
+        )}
+      >
+        {value}
+      </p>
+      {subValue && <p className="mt-0.5 truncate text-[10px] text-muted-foreground tabular-nums">{subValue}</p>}
+    </div>
   );
 }
 
