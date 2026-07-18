@@ -802,8 +802,10 @@ export function TransactionForm({
                 {fetchingFx ? (
                   <>
                     <Loader2 className="size-3 animate-spin text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">טוען שער…</span>
+                    <span className="text-sm text-muted-foreground">טוען שער חי…</span>
                   </>
+                ) : fxError ? (
+                  <span className="text-sm text-destructive">שגיאה בשליפת שער</span>
                 ) : (
                   <span className="text-sm font-semibold tabular-nums">
                     1 {currency} = {parseFloat(fx || "0").toFixed(4)} ₪
@@ -814,8 +816,10 @@ export function TransactionForm({
                 type="button"
                 onClick={() => {
                   setFetchingFx(true);
+                  setFxError(null);
                   fetchRateToIls(currency)
                     .then((r) => setFx(r.toFixed(4)))
+                    .catch((e) => setFxError(e?.message ?? "שגיאה"))
                     .finally(() => setFetchingFx(false));
                 }}
                 className="text-xs text-primary flex items-center gap-1"
@@ -827,6 +831,7 @@ export function TransactionForm({
               </button>
             </div>
           )}
+
 
 
           {existing && (
