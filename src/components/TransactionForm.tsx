@@ -104,27 +104,33 @@ export function TransactionForm({
     if (cat?.investment_account_id) setAccountId(cat.investment_account_id);
   }, [type, categoryId, categories]);
 
-  // When investment account uses a non-ILS currency (e.g. Interactive Brokers USD), pre-fill FX.
+  // When investment account uses a non-ILS currency (e.g. Interactive Brokers USD), switch currency.
   useEffect(() => {
     if (!selectedAccount) return;
     if (selectedAccount.currency === "ILS") return;
     setCurrency(selectedAccount.currency);
-    if (fx === "1" || !fx) {
-      void refreshUsdRate();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount?.id]);
 
-  async function refreshUsdRate() {
-    if (currency === "ILS" && selectedAccount?.currency !== "USD") return;
-    setFetchingFx(true);
-    try {
-      const r = await fetchUsdIlsRate();
-      setFx(r.toFixed(4));
-    } finally {
-      setFetchingFx(false);
+  // Auto-fetch live rate whenever currency changes to a non-ILS currency.
+  useEffect(() => {
+    if (currency === "ILS") {
+      setFx("1");
+      return;
     }
-  }
+    let cancelled = false;
+    setFetchingFx(true);
+    fetchRateToIls(currency)
+      .then((r) => {
+        if (!cancelled) setFx(r.toFixed(4));
+      })
+      .finally(() => {
+        if (!cancelled) setFetchingFx(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
 
   function chooseCategory(c: Category) {
     setCategoryId(c.id);
