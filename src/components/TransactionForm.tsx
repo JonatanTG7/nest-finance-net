@@ -25,12 +25,12 @@ import {
   useInvalidatePaymentMethods,
   usePaymentMethods,
 } from "@/lib/payment_methods";
-import { fetchUsdIlsRate } from "@/lib/fx";
+import { fetchRateToIls } from "@/lib/fx";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
-const CURRENCIES = ["ILS", "USD", "EUR", "GBP"];
+const CURRENCIES = ["ILS", "USD", "EUR"] as const;
 
 export function TransactionForm({
   existing,
@@ -104,27 +104,33 @@ export function TransactionForm({
     if (cat?.investment_account_id) setAccountId(cat.investment_account_id);
   }, [type, categoryId, categories]);
 
-  // When investment account uses a non-ILS currency (e.g. Interactive Brokers USD), pre-fill FX.
+  // When investment account uses a non-ILS currency (e.g. Interactive Brokers USD), switch currency.
   useEffect(() => {
     if (!selectedAccount) return;
     if (selectedAccount.currency === "ILS") return;
     setCurrency(selectedAccount.currency);
-    if (fx === "1" || !fx) {
-      void refreshUsdRate();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount?.id]);
 
-  async function refreshUsdRate() {
-    if (currency === "ILS" && selectedAccount?.currency !== "USD") return;
-    setFetchingFx(true);
-    try {
-      const r = await fetchUsdIlsRate();
-      setFx(r.toFixed(4));
-    } finally {
-      setFetchingFx(false);
+  // Auto-fetch live rate whenever currency changes to a non-ILS currency.
+  useEffect(() => {
+    if (currency === "ILS") {
+      setFx("1");
+      return;
     }
-  }
+    let cancelled = false;
+    setFetchingFx(true);
+    fetchRateToIls(currency)
+      .then((r) => {
+        if (!cancelled) setFx(r.toFixed(4));
+      })
+      .finally(() => {
+        if (!cancelled) setFetchingFx(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
 
   function chooseCategory(c: Category) {
     setCategoryId(c.id);
@@ -409,7 +415,7 @@ export function TransactionForm({
             </button>
           </div>
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => !existing && setStep(1)}
@@ -428,27 +434,36 @@ export function TransactionForm({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="flex-1 bg-transparent text-4xl font-extrabold tabular-nums outline-none text-center"
+              className="flex-1 min-w-0 bg-transparent text-4xl font-extrabold tabular-nums outline-none text-center"
               style={{ color: headerBg }}
               dir="ltr"
             />
 
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="h-11 rounded-xl text-white px-2 text-sm font-bold shrink-0"
-              style={{ background: headerBg }}
-            >
+            <div className="shrink-0 flex flex-col gap-1" dir="ltr">
               {CURRENCIES.map((c) => (
-                <option key={c}>{c}</option>
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCurrency(c)}
+                  className={cn(
+                    "h-7 w-12 rounded-md text-xs font-bold transition",
+                    currency === c
+                      ? "text-white"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                  style={currency === c ? { background: headerBg } : undefined}
+                >
+                  {c}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <p className="mt-1 text-xs text-center text-muted-foreground">
             {selectedCat?.name} · {txTypeLabel[type]}
           </p>
         </div>
+
 
         {/* Compact details */}
         <div className="px-5 mt-4 space-y-3">
@@ -762,29 +777,37 @@ export function TransactionForm({
 
           {currency !== "ILS" && (
             <div className="rounded-2xl bg-card border px-3 h-12 flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">שער ל-ש"ח</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.0001"
-                value={fx}
-                onChange={(e) => setFx(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-sm"
-                dir="ltr"
-              />
-              {currency === "USD" && (
-                <button
-                  type="button"
-                  onClick={refreshUsdRate}
-                  className="text-xs text-primary flex items-center gap-1"
-                  disabled={fetchingFx}
-                >
-                  {fetchingFx ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-                  שער יומי
-                </button>
-              )}
+              <span className="text-xs text-muted-foreground">שער ל-ש״ח</span>
+              <div className="flex-1 flex items-center gap-2" dir="ltr">
+                {fetchingFx ? (
+                  <>
+                    <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">טוען שער…</span>
+                  </>
+                ) : (
+                  <span className="text-sm font-semibold tabular-nums">
+                    1 {currency} = {parseFloat(fx || "0").toFixed(4)} ₪
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFetchingFx(true);
+                  fetchRateToIls(currency)
+                    .then((r) => setFx(r.toFixed(4)))
+                    .finally(() => setFetchingFx(false));
+                }}
+                className="text-xs text-primary flex items-center gap-1"
+                disabled={fetchingFx}
+                aria-label="רענן שער"
+              >
+                <RefreshCw className={cn("size-3", fetchingFx && "animate-spin")} />
+                Live
+              </button>
             </div>
           )}
+
 
           {existing && (
             <button
