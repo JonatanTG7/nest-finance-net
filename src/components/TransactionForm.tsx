@@ -25,12 +25,12 @@ import {
   useInvalidatePaymentMethods,
   usePaymentMethods,
 } from "@/lib/payment_methods";
-import { fetchUsdIlsRate } from "@/lib/fx";
+import { fetchRateToIls } from "@/lib/fx";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
-const CURRENCIES = ["ILS", "USD", "EUR", "GBP"];
+const CURRENCIES = ["ILS", "USD", "EUR"] as const;
 
 export function TransactionForm({
   existing,
