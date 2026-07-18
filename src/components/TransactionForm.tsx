@@ -452,24 +452,31 @@ export function TransactionForm({
               dir="ltr"
             />
 
-            <div className="shrink-0 flex flex-col gap-1" dir="ltr">
-              {CURRENCIES.map((c) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <button
-                  key={c}
                   type="button"
-                  onClick={() => setCurrency(c)}
-                  className={cn(
-                    "h-7 w-12 rounded-md text-xs font-bold transition",
-                    currency === c
-                      ? "text-white"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                  style={currency === c ? { background: headerBg } : undefined}
+                  className="shrink-0 h-10 px-3 rounded-xl text-sm font-bold flex items-center gap-1 text-white shadow-sm"
+                  style={{ background: headerBg }}
+                  aria-label="בחר מטבע"
                 >
-                  {c}
+                  {currency}
+                  <ChevronDown className="size-3.5 opacity-80" />
                 </button>
-              ))}
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[8rem]">
+                {CURRENCIES.map((c) => (
+                  <DropdownMenuItem
+                    key={c}
+                    onClick={() => setCurrency(c)}
+                    className={cn("font-semibold justify-between", currency === c && "bg-accent")}
+                  >
+                    <span>{c}</span>
+                    {currency === c && <Check className="size-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <p className="mt-1 text-xs text-center text-muted-foreground">
