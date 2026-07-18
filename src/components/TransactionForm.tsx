@@ -415,7 +415,7 @@ export function TransactionForm({
             </button>
           </div>
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => !existing && setStep(1)}
@@ -434,27 +434,36 @@ export function TransactionForm({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="flex-1 bg-transparent text-4xl font-extrabold tabular-nums outline-none text-center"
+              className="flex-1 min-w-0 bg-transparent text-4xl font-extrabold tabular-nums outline-none text-center"
               style={{ color: headerBg }}
               dir="ltr"
             />
 
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="h-11 rounded-xl text-white px-2 text-sm font-bold shrink-0"
-              style={{ background: headerBg }}
-            >
+            <div className="shrink-0 flex flex-col gap-1" dir="ltr">
               {CURRENCIES.map((c) => (
-                <option key={c}>{c}</option>
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCurrency(c)}
+                  className={cn(
+                    "h-7 w-12 rounded-md text-xs font-bold transition",
+                    currency === c
+                      ? "text-white"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                  style={currency === c ? { background: headerBg } : undefined}
+                >
+                  {c}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <p className="mt-1 text-xs text-center text-muted-foreground">
             {selectedCat?.name} · {txTypeLabel[type]}
           </p>
         </div>
+
 
         {/* Compact details */}
         <div className="px-5 mt-4 space-y-3">
