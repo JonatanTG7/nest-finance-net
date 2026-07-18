@@ -2,7 +2,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw } from "lucide-react";
+import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AppShell } from "@/components/AppShell";
 import {
   createTransaction,
@@ -112,17 +118,24 @@ export function TransactionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount?.id]);
 
+  const [fxError, setFxError] = useState<string | null>(null);
+
   // Auto-fetch live rate whenever currency changes to a non-ILS currency.
   useEffect(() => {
     if (currency === "ILS") {
       setFx("1");
+      setFxError(null);
       return;
     }
     let cancelled = false;
     setFetchingFx(true);
+    setFxError(null);
     fetchRateToIls(currency)
       .then((r) => {
         if (!cancelled) setFx(r.toFixed(4));
+      })
+      .catch((e) => {
+        if (!cancelled) setFxError(e?.message ?? "שגיאה בשליפת שער");
       })
       .finally(() => {
         if (!cancelled) setFetchingFx(false);
@@ -439,24 +452,31 @@ export function TransactionForm({
               dir="ltr"
             />
 
-            <div className="shrink-0 flex flex-col gap-1" dir="ltr">
-              {CURRENCIES.map((c) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <button
-                  key={c}
                   type="button"
-                  onClick={() => setCurrency(c)}
-                  className={cn(
-                    "h-7 w-12 rounded-md text-xs font-bold transition",
-                    currency === c
-                      ? "text-white"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                  style={currency === c ? { background: headerBg } : undefined}
+                  className="shrink-0 h-10 px-3 rounded-xl text-sm font-bold flex items-center gap-1 text-white shadow-sm"
+                  style={{ background: headerBg }}
+                  aria-label="בחר מטבע"
                 >
-                  {c}
+                  {currency}
+                  <ChevronDown className="size-3.5 opacity-80" />
                 </button>
-              ))}
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[8rem]">
+                {CURRENCIES.map((c) => (
+                  <DropdownMenuItem
+                    key={c}
+                    onClick={() => setCurrency(c)}
+                    className={cn("font-semibold justify-between", currency === c && "bg-accent")}
+                  >
+                    <span>{c}</span>
+                    {currency === c && <Check className="size-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <p className="mt-1 text-xs text-center text-muted-foreground">
@@ -782,8 +802,10 @@ export function TransactionForm({
                 {fetchingFx ? (
                   <>
                     <Loader2 className="size-3 animate-spin text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">טוען שער…</span>
+                    <span className="text-sm text-muted-foreground">טוען שער חי…</span>
                   </>
+                ) : fxError ? (
+                  <span className="text-sm text-destructive">שגיאה בשליפת שער</span>
                 ) : (
                   <span className="text-sm font-semibold tabular-nums">
                     1 {currency} = {parseFloat(fx || "0").toFixed(4)} ₪
@@ -794,8 +816,10 @@ export function TransactionForm({
                 type="button"
                 onClick={() => {
                   setFetchingFx(true);
+                  setFxError(null);
                   fetchRateToIls(currency)
                     .then((r) => setFx(r.toFixed(4)))
+                    .catch((e) => setFxError(e?.message ?? "שגיאה"))
                     .finally(() => setFetchingFx(false));
                 }}
                 className="text-xs text-primary flex items-center gap-1"
@@ -807,6 +831,7 @@ export function TransactionForm({
               </button>
             </div>
           )}
+
 
 
           {existing && (

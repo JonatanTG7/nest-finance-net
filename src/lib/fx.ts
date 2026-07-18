@@ -1,32 +1,50 @@
 /**
- * Fetch live exchange rates to ILS from Frankfurter (free, no auth, CORS-friendly).
- * Falls back to sensible defaults if the network fails.
+ * Live exchange rates to ILS. Uses open.er-api.com (free, no auth, CORS-friendly)
+ * with Frankfurter as a secondary source. Throws when both fail so callers can
+ * surface the error instead of displaying stale/mock numbers.
  */
-
-const FALLBACK: Record<string, number> = { USD: 3.7, EUR: 4.0, GBP: 4.7, ILS: 1 };
 
 export async function fetchRateToIls(currency: string): Promise<number> {
   const cur = currency.toUpperCase();
   if (cur === "ILS") return 1;
-  // Frankfurter: rate of 1 <cur> → ILS
+
+  // Primary: open.er-api.com — updates daily, CORS-enabled, no key.
+  try {
+    const r = await fetch(`https://open.er-api.com/v6/latest/${cur}`);
+    if (r.ok) {
+      const j = (await r.json()) as { result?: string; rates?: { ILS?: number } };
+      const rate = j?.rates?.ILS;
+      if (j?.result === "success" && typeof rate === "number" && rate > 0) return rate;
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Secondary: exchangerate-api.com public endpoint
+  try {
+    const r = await fetch(`https://api.exchangerate-api.com/v4/latest/${cur}`);
+    if (r.ok) {
+      const j = (await r.json()) as { rates?: { ILS?: number } };
+      const rate = j?.rates?.ILS;
+      if (typeof rate === "number" && rate > 0) return rate;
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Tertiary: Frankfurter (ECB reference rates)
   try {
     const r = await fetch(`https://api.frankfurter.app/latest?from=${cur}&to=ILS`);
-    const j = (await r.json()) as { rates?: { ILS?: number } };
-    const rate = j?.rates?.ILS;
-    if (typeof rate === "number" && rate > 0) return rate;
+    if (r.ok) {
+      const j = (await r.json()) as { rates?: { ILS?: number } };
+      const rate = j?.rates?.ILS;
+      if (typeof rate === "number" && rate > 0) return rate;
+    }
   } catch {
-    // ignore
+    /* fall through */
   }
-  // Fallback: exchangerate.host
-  try {
-    const r = await fetch(`https://api.exchangerate.host/latest?base=${cur}&symbols=ILS`);
-    const j = (await r.json()) as { rates?: { ILS?: number } };
-    const rate = j?.rates?.ILS;
-    if (typeof rate === "number" && rate > 0) return rate;
-  } catch {
-    // ignore
-  }
-  return FALLBACK[cur] ?? 1;
+
+  throw new Error(`Failed to fetch live ${cur}→ILS exchange rate`);
 }
 
 /** Back-compat alias: USD → ILS. */
