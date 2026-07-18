@@ -777,29 +777,37 @@ export function TransactionForm({
 
           {currency !== "ILS" && (
             <div className="rounded-2xl bg-card border px-3 h-12 flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">שער ל-ש"ח</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.0001"
-                value={fx}
-                onChange={(e) => setFx(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-sm"
-                dir="ltr"
-              />
-              {currency === "USD" && (
-                <button
-                  type="button"
-                  onClick={refreshUsdRate}
-                  className="text-xs text-primary flex items-center gap-1"
-                  disabled={fetchingFx}
-                >
-                  {fetchingFx ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-                  שער יומי
-                </button>
-              )}
+              <span className="text-xs text-muted-foreground">שער ל-ש״ח</span>
+              <div className="flex-1 flex items-center gap-2" dir="ltr">
+                {fetchingFx ? (
+                  <>
+                    <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">טוען שער…</span>
+                  </>
+                ) : (
+                  <span className="text-sm font-semibold tabular-nums">
+                    1 {currency} = {parseFloat(fx || "0").toFixed(4)} ₪
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFetchingFx(true);
+                  fetchRateToIls(currency)
+                    .then((r) => setFx(r.toFixed(4)))
+                    .finally(() => setFetchingFx(false));
+                }}
+                className="text-xs text-primary flex items-center gap-1"
+                disabled={fetchingFx}
+                aria-label="רענן שער"
+              >
+                <RefreshCw className={cn("size-3", fetchingFx && "animate-spin")} />
+                Live
+              </button>
             </div>
           )}
+
 
           {existing && (
             <button
