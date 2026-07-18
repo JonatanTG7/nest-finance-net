@@ -274,45 +274,8 @@ function IbPortfolio() {
       </section>
 
       <section className="px-5 md:px-0 mt-4" dir="ltr">
-        <div className="md:hidden mb-3 flex gap-2 overflow-x-auto pb-1" dir="rtl" aria-label="מיון החזקות">
-          <SortChip active={sortKey === "symbol"} dir={sortDir} onClick={() => toggleSort("symbol")}>
-            Ticker
-          </SortChip>
-          <SortChip active={sortKey === "marketValue"} dir={sortDir} onClick={() => toggleSort("marketValue")}>
-            Market Value
-          </SortChip>
-          <SortChip active={sortKey === "unrealized"} dir={sortDir} onClick={() => toggleSort("unrealized")}>
-            P&amp;L
-          </SortChip>
-        </div>
+        <div className="rounded-2xl border bg-card overflow-x-auto">
 
-        <div className="md:hidden space-y-3">
-          {sortedRows.length === 0 ? (
-            <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground" dir="rtl">
-              אין החזקות עדיין. לחץ על "הוספת החזקה" כדי להתחיל.
-            </div>
-          ) : (
-            sortedRows.map((r) => {
-              const weight = portfolioUsd > 0 && r.marketValue != null
-                ? (r.marketValue / portfolioUsd) * 100
-                : null;
-              return (
-                <PositionMobileCard
-                  key={r.id}
-                  row={r}
-                  weight={weight}
-                  onEdit={() => {
-                    setEditing(r);
-                    setPosOpen(true);
-                  }}
-                  onDelete={() => removePos.mutate(r.id)}
-                />
-              );
-            })
-          )}
-        </div>
-
-        <div className="hidden md:block rounded-2xl border bg-card overflow-x-auto">
           <table className="w-full text-sm min-w-[780px]">
             <thead>
               <tr className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30 border-b">
