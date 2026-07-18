@@ -118,17 +118,24 @@ export function TransactionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount?.id]);
 
+  const [fxError, setFxError] = useState<string | null>(null);
+
   // Auto-fetch live rate whenever currency changes to a non-ILS currency.
   useEffect(() => {
     if (currency === "ILS") {
       setFx("1");
+      setFxError(null);
       return;
     }
     let cancelled = false;
     setFetchingFx(true);
+    setFxError(null);
     fetchRateToIls(currency)
       .then((r) => {
         if (!cancelled) setFx(r.toFixed(4));
+      })
+      .catch((e) => {
+        if (!cancelled) setFxError(e?.message ?? "שגיאה בשליפת שער");
       })
       .finally(() => {
         if (!cancelled) setFetchingFx(false);
