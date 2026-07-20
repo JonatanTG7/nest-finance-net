@@ -152,11 +152,13 @@ function IbPortfolio() {
       const prevClose = cached?.prevClose ?? null;
       const phase: MarketPhase = cached?.phase ?? "CLOSED";
       const stale = cached ? Date.now() - cached.at > 5 * 60_000 : true;
-      const marketValue = last != null ? last * p.quantity : null;
-      const unrealized = last != null ? (last - p.avg_price) * p.quantity : null;
+      // Failsafe: no live/cached price → fall back to cost basis so
+      // Market Value & the Total Portfolio never crash to 0.
+      const priceForCalc = last ?? p.avg_price;
+      const marketValue = priceForCalc * p.quantity;
+      const unrealized = last != null ? (last - p.avg_price) * p.quantity : 0;
       const unrealizedPct =
         last != null && p.avg_price > 0 ? ((last - p.avg_price) / p.avg_price) * 100 : null;
-      // Prefer per-share daily change from the API; scale to position size.
       const perShareChange = cached?.dailyChange ?? (last != null && prevClose != null ? last - prevClose : null);
       const dailyChangeAbs = perShareChange != null ? perShareChange * p.quantity : null;
       const dailyChangePct =
