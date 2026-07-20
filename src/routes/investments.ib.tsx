@@ -47,8 +47,8 @@ type PositionRow = IbPosition & {
   prevClose: number | null;
   phase: MarketPhase;
   stale: boolean;
-  marketValue: number | null;
-  unrealized: number | null;
+  marketValue: number;
+  unrealized: number;
   unrealizedPct: number | null;
   dailyChangeAbs: number | null;
   dailyChangePct: number | null;
