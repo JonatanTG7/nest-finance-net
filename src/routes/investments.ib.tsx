@@ -33,17 +33,34 @@ export const Route = createFileRoute("/investments/ib")({
 });
 
 type SortKey = "symbol" | "marketValue" | "unrealized";
-type CachedQuote = { last: number | null; prevClose: number | null; at: number };
+type MarketPhase = "REGULAR" | "PRE" | "POST" | "CLOSED";
+type CachedQuote = {
+  last: number | null;
+  prevClose: number | null;
+  phase: MarketPhase;
+  dailyChange: number | null;
+  dailyChangePct: number | null;
+  at: number;
+};
 type PositionRow = IbPosition & {
   last: number | null;
   prevClose: number | null;
+  phase: MarketPhase;
   stale: boolean;
   marketValue: number | null;
   unrealized: number | null;
+  unrealizedPct: number | null;
   dailyChangeAbs: number | null;
   dailyChangePct: number | null;
 };
-const QUOTE_CACHE_KEY = "ib.quoteCache.v1";
+const QUOTE_CACHE_KEY = "ib.quoteCache.v2";
+
+const PHASE_LABEL: Record<MarketPhase, string> = {
+  REGULAR: "Regular",
+  PRE: "Pre",
+  POST: "After",
+  CLOSED: "Closed",
+};
 
 function loadQuoteCache(): Record<string, CachedQuote> {
   try {
