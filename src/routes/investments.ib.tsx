@@ -318,73 +318,131 @@ function IbPortfolio() {
 
       <section className="px-5 md:px-0 mt-4" dir="ltr">
         <div className="rounded-2xl border bg-card overflow-x-auto">
-
-          <table className="w-full text-sm min-w-[780px]">
+          <table className="w-full text-sm min-w-[880px] border-separate border-spacing-0">
             <thead>
-              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30 border-b">
-                <Th onClick={() => toggleSort("symbol")} active={sortKey === "symbol"} dir={sortDir} align="left">
+              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/40">
+                <Th
+                  onClick={() => toggleSort("symbol")}
+                  active={sortKey === "symbol"}
+                  dir={sortDir}
+                  align="left"
+                  sticky
+                >
                   Instrument
                 </Th>
-                <Th align="right">Position</Th>
-                <Th align="right">Avg</Th>
                 <Th align="right">Last</Th>
-                <Th align="right">Daily</Th>
-                <Th onClick={() => toggleSort("unrealized")} active={sortKey === "unrealized"} dir={sortDir} align="right">
+                <Th align="right">Avg</Th>
+                <Th
+                  onClick={() => toggleSort("unrealized")}
+                  active={sortKey === "unrealized"}
+                  dir={sortDir}
+                  align="right"
+                >
                   Unreal. P&amp;L
                 </Th>
-                <Th onClick={() => toggleSort("marketValue")} active={sortKey === "marketValue"} dir={sortDir} align="right">
+                <Th align="right">Daily</Th>
+                <Th
+                  onClick={() => toggleSort("marketValue")}
+                  active={sortKey === "marketValue"}
+                  dir={sortDir}
+                  align="right"
+                >
                   Market Value
                 </Th>
+                <Th align="right">Position</Th>
                 <Th align="right">Weight</Th>
-                <th className="w-8" />
+                <th className="w-8 border-b" />
               </tr>
             </thead>
             <tbody>
               {sortedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-sm text-muted-foreground" dir="rtl">
+                  <td
+                    colSpan={9}
+                    className="p-8 text-center text-sm text-muted-foreground border-b"
+                    dir="rtl"
+                  >
                     אין החזקות עדיין. לחץ על "הוספת החזקה" כדי להתחיל.
                   </td>
                 </tr>
               ) : (
-                sortedRows.map((r) => {
-                  const weight = portfolioUsd > 0 && r.marketValue != null
-                    ? (r.marketValue / portfolioUsd) * 100
-                    : null;
+                sortedRows.map((r, idx) => {
+                  const weight =
+                    portfolioUsd > 0 && r.marketValue != null
+                      ? (r.marketValue / portfolioUsd) * 100
+                      : null;
+                  const rowBg = idx % 2 === 0 ? "bg-card" : "bg-muted/10";
                   return (
-                    <tr key={r.id} className="border-b last:border-b-0 hover:bg-muted/20">
-                      <td className="px-3 py-3 font-semibold">
+                    <tr key={r.id} className={cn("hover:bg-muted/30", rowBg)}>
+                      <td
+                        className={cn(
+                          "px-3 py-3 font-semibold border-b sticky left-0 z-10",
+                          rowBg,
+                        )}
+                      >
                         <div className="flex items-center gap-1.5">
                           <span>{r.symbol}</span>
                           {r.stale && r.last != null && (
-                            <WifiOff className="size-3 text-muted-foreground" aria-label="offline price" />
+                            <WifiOff
+                              className="size-3 text-muted-foreground"
+                              aria-label="offline price"
+                            />
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        {r.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })}
+                      <td className="px-3 py-3 text-right tabular-nums border-b">
+                        <div className="leading-tight">
+                          <div>{r.last != null ? fmtUsd(r.last) : "—"}</div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                            {PHASE_LABEL[r.phase]}
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
-                        {r.avg_price.toFixed(2)}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        {r.last != null ? r.last.toFixed(2) : "—"}
+                      <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-b">
+                        {fmtUsd(r.avg_price)}
                       </td>
                       <td
                         className={cn(
-                          "px-3 py-3 text-right tabular-nums",
+                          "px-3 py-3 text-right tabular-nums font-medium border-b",
+                          r.unrealized == null
+                            ? "text-muted-foreground"
+                            : r.unrealized >= 0
+                              ? "text-emerald-500"
+                              : "text-rose-400",
+                        )}
+                      >
+                        {r.unrealized == null ? (
+                          "—"
+                        ) : (
+                          <div className="leading-tight">
+                            <div>
+                              {`${r.unrealized >= 0 ? "+" : "-"}${fmtUsd(Math.abs(r.unrealized))}`}
+                            </div>
+                            {r.unrealizedPct != null && (
+                              <div className="text-[10px] opacity-80">
+                                {`${r.unrealizedPct >= 0 ? "+" : ""}${r.unrealizedPct.toFixed(2)}%`}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-3 py-3 text-right tabular-nums border-b",
                           r.dailyChangeAbs == null
                             ? "text-muted-foreground"
                             : r.dailyChangeAbs >= 0
-                            ? "text-green-500"
-                            : "text-red-500",
+                              ? "text-emerald-500"
+                              : "text-rose-400",
                         )}
                       >
                         {r.dailyChangeAbs == null ? (
                           "—"
                         ) : (
                           <div className="leading-tight">
-                            <div>{`${r.dailyChangeAbs >= 0 ? "+" : ""}${r.dailyChangeAbs.toFixed(2)}`}</div>
+                            <div>
+                              {`${r.dailyChangeAbs >= 0 ? "+" : "-"}${fmtUsd(Math.abs(r.dailyChangeAbs))}`}
+                            </div>
                             {r.dailyChangePct != null && (
                               <div className="text-[10px] opacity-80">
                                 {`${r.dailyChangePct >= 0 ? "+" : ""}${r.dailyChangePct.toFixed(2)}%`}
@@ -393,24 +451,13 @@ function IbPortfolio() {
                           </div>
                         )}
                       </td>
-                      <td
-                        className={cn(
-                          "px-3 py-3 text-right tabular-nums font-medium",
-                          r.unrealized == null
-                            ? "text-muted-foreground"
-                            : r.unrealized >= 0
-                            ? "text-green-500"
-                            : "text-red-500",
-                        )}
-                      >
-                        {r.unrealized == null
-                          ? "—"
-                          : `${r.unrealized >= 0 ? "+" : ""}${r.unrealized.toFixed(2)}`}
+                      <td className="px-3 py-3 text-right tabular-nums font-semibold border-b">
+                        {r.marketValue != null ? fmtUsd(r.marketValue) : "—"}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums font-semibold">
-                        {r.marketValue != null ? r.marketValue.toFixed(2) : "—"}
+                      <td className="px-3 py-3 text-right tabular-nums border-b">
+                        {r.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
+                      <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-b">
                         {weight != null ? `${weight.toFixed(1)}%` : "—"}
                       </td>
                       <td className="px-1 py-3">
