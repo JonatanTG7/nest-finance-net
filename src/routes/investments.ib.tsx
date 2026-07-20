@@ -126,8 +126,18 @@ function IbPortfolio() {
         const existing = next[q.symbol];
         const last = q.last ?? existing?.last ?? null;
         const prevClose = q.prevClose ?? existing?.prevClose ?? null;
+        const phase = (q.phase ?? existing?.phase ?? "CLOSED") as MarketPhase;
+        const dailyChange = q.dailyChange ?? existing?.dailyChange ?? null;
+        const dailyChangePct = q.dailyChangePct ?? existing?.dailyChangePct ?? null;
         if (q.last != null || q.prevClose != null || !existing) {
-          next[q.symbol] = { last, prevClose, at: q.last != null ? now : existing?.at ?? 0 };
+          next[q.symbol] = {
+            last,
+            prevClose,
+            phase,
+            dailyChange,
+            dailyChangePct,
+            at: q.last != null ? now : existing?.at ?? 0,
+          };
         }
       }
       saveQuoteCache(next);
@@ -140,16 +150,32 @@ function IbPortfolio() {
       const cached = quoteCache[p.symbol];
       const last = cached?.last ?? null;
       const prevClose = cached?.prevClose ?? null;
+      const phase: MarketPhase = cached?.phase ?? "CLOSED";
       const stale = cached ? Date.now() - cached.at > 5 * 60_000 : true;
       const marketValue = last != null ? last * p.quantity : null;
       const unrealized = last != null ? (last - p.avg_price) * p.quantity : null;
-      const dailyChangeAbs =
-        last != null && prevClose != null ? (last - prevClose) * p.quantity : null;
+      const unrealizedPct =
+        last != null && p.avg_price > 0 ? ((last - p.avg_price) / p.avg_price) * 100 : null;
+      // Prefer per-share daily change from the API; scale to position size.
+      const perShareChange = cached?.dailyChange ?? (last != null && prevClose != null ? last - prevClose : null);
+      const dailyChangeAbs = perShareChange != null ? perShareChange * p.quantity : null;
       const dailyChangePct =
-        last != null && prevClose != null && prevClose !== 0
+        cached?.dailyChangePct ??
+        (last != null && prevClose != null && prevClose !== 0
           ? ((last - prevClose) / prevClose) * 100
-          : null;
-      return { ...p, last, prevClose, stale, marketValue, unrealized, dailyChangeAbs, dailyChangePct };
+          : null);
+      return {
+        ...p,
+        last,
+        prevClose,
+        phase,
+        stale,
+        marketValue,
+        unrealized,
+        unrealizedPct,
+        dailyChangeAbs,
+        dailyChangePct,
+      };
     });
   }, [positions, quoteCache]);
 
