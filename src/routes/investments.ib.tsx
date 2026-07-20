@@ -522,27 +522,40 @@ function IbPortfolio() {
   );
 }
 
+const usdFmt = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+function fmtUsd(n: number): string {
+  return usdFmt.format(n);
+}
+
 function Th({
   children,
   align = "left",
   onClick,
   active,
   dir,
+  sticky,
 }: {
   children: React.ReactNode;
   align?: "left" | "right";
   onClick?: () => void;
   active?: boolean;
   dir?: "asc" | "desc";
+  sticky?: boolean;
 }) {
   const clickable = !!onClick;
   return (
     <th
       className={cn(
-        "px-3 py-2 font-medium",
+        "px-3 py-2 font-medium border-b bg-muted/40",
         align === "right" ? "text-right" : "text-left",
         clickable && "cursor-pointer select-none hover:text-foreground",
         active && "text-foreground",
+        sticky && "sticky left-0 z-20",
       )}
       onClick={onClick}
     >
