@@ -69,7 +69,7 @@ const FLAGS: Record<string, string> = {
   פורטוגל: "🇵🇹", portugal: "🇵🇹",
   שווייץ: "🇨🇭", switzerland: "🇨🇭",
   אוסטריה: "🇦🇹", austria: "🇦🇹",
-  צ׳כיה: "🇨🇿", "צכיה": "🇨🇿", czechia: "🇨🇿",
+  "צ׳כיה": "🇨🇿", "צכיה": "🇨🇿", czechia: "🇨🇿",
   ישראל: "🇮🇱", israel: "🇮🇱",
   קפריסין: "🇨🇾", cyprus: "🇨🇾",
   טורקיה: "🇹🇷", turkey: "🇹🇷",
