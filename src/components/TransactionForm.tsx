@@ -268,6 +268,7 @@ export function TransactionForm({
       payment_method: paymentMethod,
       photo_url: photoUrl,
       location,
+      trip_id: tripId,
     };
 
     const canSplit = installments > 1 && (type === "expense" || type === "fixed");
