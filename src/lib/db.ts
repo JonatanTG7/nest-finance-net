@@ -116,6 +116,7 @@ export interface TransactionInput {
   payment_method?: PaymentMethod | null;
   photo_url?: string | null;
   location?: string | null;
+  trip_id?: string | null;
 }
 
 async function ensureTags(names: string[], householdId: string): Promise<string[]> {
