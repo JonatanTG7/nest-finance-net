@@ -55,6 +55,7 @@ export function TransactionForm({
     queryFn: fetchInvestmentAccounts,
   });
   const { data: paymentMethods = [] } = usePaymentMethods();
+  const { data: trips = [] } = useTrips();
   const invalidatePm = useInvalidatePaymentMethods();
 
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
