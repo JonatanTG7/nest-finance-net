@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TravelIndexRouteImport } from './routes/travel.index'
 import { Route as TransactionsIndexRouteImport } from './routes/transactions.index'
 import { Route as InvestmentsIndexRouteImport } from './routes/investments.index'
+import { Route as TravelIdRouteImport } from './routes/travel.$id'
 import { Route as TransactionsNewRouteImport } from './routes/transactions.new'
 import { Route as TransactionsIdRouteImport } from './routes/transactions.$id'
 import { Route as InvestmentsIbRouteImport } from './routes/investments.ib'
@@ -56,6 +57,11 @@ const InvestmentsIndexRoute = InvestmentsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => InvestmentsRoute,
 } as any)
+const TravelIdRoute = TravelIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TravelRoute,
+} as any)
 const TransactionsNewRoute = TransactionsNewRouteImport.update({
   id: '/transactions/new',
   path: '/transactions/new',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/investments/ib': typeof InvestmentsIbRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
+  '/travel/$id': typeof TravelIdRoute
   '/investments/': typeof InvestmentsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
   '/travel/': typeof TravelIndexRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/investments/ib': typeof InvestmentsIbRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
+  '/travel/$id': typeof TravelIdRoute
   '/investments': typeof InvestmentsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
   '/travel': typeof TravelIndexRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/investments/ib': typeof InvestmentsIbRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
+  '/travel/$id': typeof TravelIdRoute
   '/investments/': typeof InvestmentsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
   '/travel/': typeof TravelIndexRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/investments/ib'
     | '/transactions/$id'
     | '/transactions/new'
+    | '/travel/$id'
     | '/investments/'
     | '/transactions/'
     | '/travel/'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/investments/ib'
     | '/transactions/$id'
     | '/transactions/new'
+    | '/travel/$id'
     | '/investments'
     | '/transactions'
     | '/travel'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/investments/ib'
     | '/transactions/$id'
     | '/transactions/new'
+    | '/travel/$id'
     | '/investments/'
     | '/transactions/'
     | '/travel/'
@@ -217,6 +229,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvestmentsIndexRouteImport
       parentRoute: typeof InvestmentsRoute
     }
+    '/travel/$id': {
+      id: '/travel/$id'
+      path: '/$id'
+      fullPath: '/travel/$id'
+      preLoaderRoute: typeof TravelIdRouteImport
+      parentRoute: typeof TravelRoute
+    }
     '/transactions/new': {
       id: '/transactions/new'
       path: '/transactions/new'
@@ -263,10 +282,12 @@ const InvestmentsRouteWithChildren = InvestmentsRoute._addFileChildren(
 )
 
 interface TravelRouteChildren {
+  TravelIdRoute: typeof TravelIdRoute
   TravelIndexRoute: typeof TravelIndexRoute
 }
 
 const TravelRouteChildren: TravelRouteChildren = {
+  TravelIdRoute: TravelIdRoute,
   TravelIndexRoute: TravelIndexRoute,
 }
 
