@@ -153,6 +153,7 @@ async function rowFromInput(input: TransactionInput) {
     payment_method: input.payment_method ?? null,
     photo_url: input.photo_url ?? null,
     location: input.location ?? null,
+    trip_id: input.trip_id ?? null,
     household_id: householdId,
     user_id: auth.user?.id ?? null,
   };
