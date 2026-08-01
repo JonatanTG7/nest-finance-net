@@ -9,16 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TravelRouteImport } from './routes/travel'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TravelIndexRouteImport } from './routes/travel.index'
 import { Route as TransactionsIndexRouteImport } from './routes/transactions.index'
 import { Route as InvestmentsIndexRouteImport } from './routes/investments.index'
+import { Route as TravelIdRouteImport } from './routes/travel.$id'
 import { Route as TransactionsNewRouteImport } from './routes/transactions.new'
 import { Route as TransactionsIdRouteImport } from './routes/transactions.$id'
 import { Route as InvestmentsIbRouteImport } from './routes/investments.ib'
 import { Route as TransactionsEditIdRouteImport } from './routes/transactions.edit.$id'
 
+const TravelRoute = TravelRouteImport.update({
+  id: '/travel',
+  path: '/travel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -34,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TravelIndexRoute = TravelIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TravelRoute,
+} as any)
 const TransactionsIndexRoute = TransactionsIndexRouteImport.update({
   id: '/transactions/',
   path: '/transactions/',
@@ -43,6 +56,11 @@ const InvestmentsIndexRoute = InvestmentsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => InvestmentsRoute,
+} as any)
+const TravelIdRoute = TravelIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TravelRoute,
 } as any)
 const TransactionsNewRoute = TransactionsNewRouteImport.update({
   id: '/transactions/new',
@@ -69,11 +87,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/investments': typeof InvestmentsRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/travel': typeof TravelRouteWithChildren
   '/investments/ib': typeof InvestmentsIbRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
+  '/travel/$id': typeof TravelIdRoute
   '/investments/': typeof InvestmentsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
+  '/travel/': typeof TravelIndexRoute
   '/transactions/edit/$id': typeof TransactionsEditIdRoute
 }
 export interface FileRoutesByTo {
@@ -82,8 +103,10 @@ export interface FileRoutesByTo {
   '/investments/ib': typeof InvestmentsIbRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
+  '/travel/$id': typeof TravelIdRoute
   '/investments': typeof InvestmentsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
+  '/travel': typeof TravelIndexRoute
   '/transactions/edit/$id': typeof TransactionsEditIdRoute
 }
 export interface FileRoutesById {
@@ -91,11 +114,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/investments': typeof InvestmentsRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/travel': typeof TravelRouteWithChildren
   '/investments/ib': typeof InvestmentsIbRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
+  '/travel/$id': typeof TravelIdRoute
   '/investments/': typeof InvestmentsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
+  '/travel/': typeof TravelIndexRoute
   '/transactions/edit/$id': typeof TransactionsEditIdRoute
 }
 export interface FileRouteTypes {
@@ -104,11 +130,14 @@ export interface FileRouteTypes {
     | '/'
     | '/investments'
     | '/settings'
+    | '/travel'
     | '/investments/ib'
     | '/transactions/$id'
     | '/transactions/new'
+    | '/travel/$id'
     | '/investments/'
     | '/transactions/'
+    | '/travel/'
     | '/transactions/edit/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -117,19 +146,24 @@ export interface FileRouteTypes {
     | '/investments/ib'
     | '/transactions/$id'
     | '/transactions/new'
+    | '/travel/$id'
     | '/investments'
     | '/transactions'
+    | '/travel'
     | '/transactions/edit/$id'
   id:
     | '__root__'
     | '/'
     | '/investments'
     | '/settings'
+    | '/travel'
     | '/investments/ib'
     | '/transactions/$id'
     | '/transactions/new'
+    | '/travel/$id'
     | '/investments/'
     | '/transactions/'
+    | '/travel/'
     | '/transactions/edit/$id'
   fileRoutesById: FileRoutesById
 }
@@ -137,6 +171,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InvestmentsRoute: typeof InvestmentsRouteWithChildren
   SettingsRoute: typeof SettingsRoute
+  TravelRoute: typeof TravelRouteWithChildren
   TransactionsIdRoute: typeof TransactionsIdRoute
   TransactionsNewRoute: typeof TransactionsNewRoute
   TransactionsIndexRoute: typeof TransactionsIndexRoute
@@ -145,6 +180,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/travel': {
+      id: '/travel'
+      path: '/travel'
+      fullPath: '/travel'
+      preLoaderRoute: typeof TravelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -166,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/travel/': {
+      id: '/travel/'
+      path: '/'
+      fullPath: '/travel/'
+      preLoaderRoute: typeof TravelIndexRouteImport
+      parentRoute: typeof TravelRoute
+    }
     '/transactions/': {
       id: '/transactions/'
       path: '/transactions'
@@ -179,6 +228,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/investments/'
       preLoaderRoute: typeof InvestmentsIndexRouteImport
       parentRoute: typeof InvestmentsRoute
+    }
+    '/travel/$id': {
+      id: '/travel/$id'
+      path: '/$id'
+      fullPath: '/travel/$id'
+      preLoaderRoute: typeof TravelIdRouteImport
+      parentRoute: typeof TravelRoute
     }
     '/transactions/new': {
       id: '/transactions/new'
@@ -225,10 +281,24 @@ const InvestmentsRouteWithChildren = InvestmentsRoute._addFileChildren(
   InvestmentsRouteChildren,
 )
 
+interface TravelRouteChildren {
+  TravelIdRoute: typeof TravelIdRoute
+  TravelIndexRoute: typeof TravelIndexRoute
+}
+
+const TravelRouteChildren: TravelRouteChildren = {
+  TravelIdRoute: TravelIdRoute,
+  TravelIndexRoute: TravelIndexRoute,
+}
+
+const TravelRouteWithChildren =
+  TravelRoute._addFileChildren(TravelRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InvestmentsRoute: InvestmentsRouteWithChildren,
   SettingsRoute: SettingsRoute,
+  TravelRoute: TravelRouteWithChildren,
   TransactionsIdRoute: TransactionsIdRoute,
   TransactionsNewRoute: TransactionsNewRoute,
   TransactionsIndexRoute: TransactionsIndexRoute,
