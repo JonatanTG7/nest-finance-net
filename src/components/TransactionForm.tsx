@@ -631,6 +631,25 @@ export function TransactionForm({
             </div>
           )}
 
+          {/* Trip link (optional) — the transaction still lives in the monthly cash flow */}
+          {trips.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">טיול (אופציונלי)</p>
+              <select
+                value={tripId ?? ""}
+                onChange={(e) => setTripId(e.target.value || null)}
+                className="w-full h-12 rounded-2xl bg-card border px-4 text-sm font-semibold outline-none"
+              >
+                <option value="">בלי טיול</option>
+                {trips.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {countryFlag(t.country)} {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Installments */}
           {canShowInstallments && (
             <div className="rounded-2xl bg-card border p-3">
