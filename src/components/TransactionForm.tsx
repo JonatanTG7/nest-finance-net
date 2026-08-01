@@ -81,6 +81,7 @@ export function TransactionForm({
   const [uploading, setUploading] = useState(false);
   const [location, setLocation] = useState<string | null>(existing?.location ?? null);
   const [loadingLoc, setLoadingLoc] = useState(false);
+  const [tripId, setTripId] = useState<string | null>(existing?.trip_id ?? null);
   const [tagInput, setTagInput] = useState("");
   const [tagList, setTagList] = useState<string[]>(
     existing?.transaction_tags?.map((tt) => tt.tag.name) ?? [],
