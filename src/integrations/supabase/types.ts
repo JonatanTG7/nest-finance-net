@@ -403,7 +403,6 @@ export type Database = {
           payment_method: string | null
           photo_url: string | null
           title: string
-          trip_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string
           user_id: string | null
@@ -425,7 +424,6 @@ export type Database = {
           payment_method?: string | null
           photo_url?: string | null
           title: string
-          trip_id?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
           user_id?: string | null
@@ -447,7 +445,6 @@ export type Database = {
           payment_method?: string | null
           photo_url?: string | null
           title?: string
-          trip_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
           user_id?: string | null
@@ -472,66 +469,6 @@ export type Database = {
             columns: ["investment_account_id"]
             isOneToOne: false
             referencedRelation: "investment_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      trips: {
-        Row: {
-          budget: number
-          cities: string | null
-          country: string
-          cover_image: string | null
-          created_at: string
-          currency: string
-          end_date: string
-          household_id: string
-          id: string
-          name: string
-          start_date: string
-          updated_at: string
-        }
-        Insert: {
-          budget?: number
-          cities?: string | null
-          country?: string
-          cover_image?: string | null
-          created_at?: string
-          currency?: string
-          end_date?: string
-          household_id: string
-          id?: string
-          name: string
-          start_date?: string
-          updated_at?: string
-        }
-        Update: {
-          budget?: number
-          cities?: string | null
-          country?: string
-          cover_image?: string | null
-          created_at?: string
-          currency?: string
-          end_date?: string
-          household_id?: string
-          id?: string
-          name?: string
-          start_date?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "trips_household_id_fkey"
-            columns: ["household_id"]
-            isOneToOne: false
-            referencedRelation: "households"
             referencedColumns: ["id"]
           },
         ]

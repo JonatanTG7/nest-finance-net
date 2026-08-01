@@ -32,7 +32,6 @@ import {
   usePaymentMethods,
 } from "@/lib/payment_methods";
 import { fetchRateToIls } from "@/lib/fx";
-import { countryFlag, useTrips } from "@/lib/trips";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
@@ -55,7 +54,6 @@ export function TransactionForm({
     queryFn: fetchInvestmentAccounts,
   });
   const { data: paymentMethods = [] } = usePaymentMethods();
-  const { data: trips = [] } = useTrips();
   const invalidatePm = useInvalidatePaymentMethods();
 
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
@@ -81,7 +79,6 @@ export function TransactionForm({
   const [uploading, setUploading] = useState(false);
   const [location, setLocation] = useState<string | null>(existing?.location ?? null);
   const [loadingLoc, setLoadingLoc] = useState(false);
-  const [tripId, setTripId] = useState<string | null>(existing?.trip_id ?? null);
   const [tagInput, setTagInput] = useState("");
   const [tagList, setTagList] = useState<string[]>(
     existing?.transaction_tags?.map((tt) => tt.tag.name) ?? [],
@@ -268,7 +265,6 @@ export function TransactionForm({
       payment_method: paymentMethod,
       photo_url: photoUrl,
       location,
-      trip_id: tripId,
     };
 
     const canSplit = installments > 1 && (type === "expense" || type === "fixed");
@@ -628,25 +624,6 @@ export function TransactionForm({
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Trip link (optional) — the transaction still lives in the monthly cash flow */}
-          {trips.length > 0 && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-1.5">טיול (אופציונלי)</p>
-              <select
-                value={tripId ?? ""}
-                onChange={(e) => setTripId(e.target.value || null)}
-                className="w-full h-12 rounded-2xl bg-card border px-4 text-sm font-semibold outline-none"
-              >
-                <option value="">בלי טיול</option>
-                {trips.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {countryFlag(t.country)} {t.name}
-                  </option>
-                ))}
-              </select>
             </div>
           )}
 
