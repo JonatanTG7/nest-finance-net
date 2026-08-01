@@ -85,6 +85,19 @@ export async function fetchInvestmentTransactions() {
   return (data ?? []) as unknown as Transaction[];
 }
 
+/** Transactions linked to a trip — the same rows that also appear in Cash Flow. */
+export async function fetchTransactionsByTrip(tripId: string) {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(TX_SELECT)
+    .eq("trip_id", tripId)
+    .order("occurred_at", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as Transaction[];
+}
+
+
 /** Payment method is now a free-text key (looked up in the payment_methods table). */
 export type PaymentMethod = string;
 
