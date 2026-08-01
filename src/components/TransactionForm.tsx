@@ -32,6 +32,7 @@ import {
   usePaymentMethods,
 } from "@/lib/payment_methods";
 import { fetchRateToIls } from "@/lib/fx";
+import { countryFlag, useTrips } from "@/lib/trips";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
