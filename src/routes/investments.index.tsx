@@ -2,16 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  Legend,
-} from "recharts";
 import { ChevronLeft } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { fetchInvestmentAccounts, fetchInvestmentTransactions } from "@/lib/db";
@@ -99,28 +89,6 @@ function Investments() {
     [totals],
   );
 
-  const trend = useMemo(() => {
-    if (txs.length === 0 && accounts.every((a) => !a.starting_balance_ils && !a.starting_balance)) {
-      return [];
-    }
-    const months = new Set<string>();
-    for (const t of txs) months.add(t.occurred_at.slice(0, 7));
-    const sortedMonths = Array.from(months).sort();
-    const running: Record<string, number> = {};
-    for (const a of accounts) {
-      running[a.id] = Number(a.starting_balance_ils ?? a.starting_balance ?? 0);
-    }
-    return sortedMonths.map((mk) => {
-      for (const t of txs.filter((t) => t.occurred_at.slice(0, 7) === mk)) {
-        if (!t.investment_account_id) continue;
-        running[t.investment_account_id] =
-          (running[t.investment_account_id] ?? 0) + Number(t.amount_ils);
-      }
-      const row: Record<string, number | string> = { month: mk };
-      for (const a of accounts) row[a.name] = running[a.id] ?? 0;
-      return row;
-    });
-  }, [txs, accounts]);
 
   return (
     <AppShell>
@@ -177,41 +145,6 @@ function Investments() {
         })}
       </section>
 
-      <section className="px-5 md:px-0 mt-6">
-        <div className="rounded-2xl border bg-card p-4">
-          <h2 className="text-sm font-semibold mb-3">מצטבר לאורך זמן (ש"ח)</h2>
-          {trend.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">
-              עוד אין תנועות. הוסף תנועה מסוג "השקעה" או עדכן סכום בהגדרות.
-            </p>
-          ) : (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trend} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(v: number) => formatILS(Number(v))}
-                    contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  {accounts.map((a) => (
-                    <Line
-                      key={a.id}
-                      type="monotone"
-                      dataKey={a.name}
-                      stroke={a.color}
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </section>
     </AppShell>
   );
 }

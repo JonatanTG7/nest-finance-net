@@ -74,6 +74,11 @@ export function TransactionForm({
   const [pmDraft, setPmDraft] = useState("");
   const [savingPm, setSavingPm] = useState(false);
   const [installments, setInstallments] = useState<number>(1);
+  const [repeatMode, setRepeatMode] = useState<"single" | "installments" | "recurring">("single");
+  const [recurringUntil, setRecurringUntil] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear() + 1}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [fetchingFx, setFetchingFx] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const [uploading, setUploading] = useState(false);
@@ -236,6 +241,17 @@ export function TransactionForm({
     return d.toISOString().slice(0, 10);
   }
 
+  // How many monthly occurrences from `date` through the chosen end month (inclusive).
+  const recurringMonths = useMemo(() => {
+    const [ey, em] = recurringUntil.split("-").map(Number);
+    if (!ey || !em) return 1;
+    const sy = Number(date.slice(0, 4));
+    const sm = Number(date.slice(5, 7));
+    const diff = (ey - sy) * 12 + (em - sm) + 1;
+    return Math.max(1, Math.min(120, diff));
+  }, [recurringUntil, date]);
+
+
   async function handleSubmit() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) {
@@ -267,7 +283,9 @@ export function TransactionForm({
       location,
     };
 
-    const canSplit = installments > 1 && (type === "expense" || type === "fixed");
+    const repeatable = type === "expense" || type === "fixed";
+    const canSplit = repeatable && repeatMode === "installments" && installments > 1;
+    const canRecur = repeatable && repeatMode === "recurring" && recurringMonths > 1;
 
     setSubmitting(true);
     try {
@@ -293,6 +311,13 @@ export function TransactionForm({
           await createTransaction(inp);
         }
         toast.success(`נוספו ${installments} תשלומים`);
+        navigate({ to: "/" });
+      } else if (canRecur) {
+        // Full amount, same day of month, every month until the chosen end month.
+        for (let i = 0; i < recurringMonths; i++) {
+          await createTransaction({ ...baseInput, occurred_at: shiftMonthIso(date, i) });
+        }
+        toast.success(`נוספה הוצאה קבועה ל-${recurringMonths} חודשים`);
         navigate({ to: "/" });
       } else {
         await createTransaction(baseInput);
@@ -641,38 +666,74 @@ export function TransactionForm({
             </div>
           )}
 
-          {/* Installments */}
-          {canShowInstallments && (
+          {/* Repeat: single / installments / recurring fixed */}
+          {canShowInstallments && !existing && (
             <div className="rounded-2xl bg-card border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">מספר תשלומים</p>
-                {installments > 1 && amount && (
+              <p className="text-xs text-muted-foreground">תשלומים / חזרתיות</p>
+              <div className="mt-2 grid grid-cols-3 gap-1 rounded-2xl bg-muted p-1">
+                {(
+                  [
+                    ["single", "חד פעמי"],
+                    ["installments", "מספר תשלומים"],
+                    ["recurring", "הוצאה קבועה"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setRepeatMode(key)}
+                    className={cn(
+                      "h-10 rounded-xl text-xs font-semibold transition-colors",
+                      repeatMode === key
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {repeatMode === "installments" && (
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={2}
+                    max={36}
+                    value={installments}
+                    onChange={(e) =>
+                      setInstallments(Math.max(1, Math.min(36, Number(e.target.value) || 1)))
+                    }
+                    className="w-20 h-11 rounded-xl border bg-background px-3 text-base outline-none"
+                    dir="ltr"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    {installments} ×{" "}
-                    <span className="font-semibold tabular-nums">
-                      {(parseFloat(amount) / installments).toFixed(2)} {currency}
-                    </span>
+                    {installments > 1 && amount
+                      ? `${installments} × ${(parseFloat(amount) / installments).toFixed(2)} ${currency} — תנועות נפרדות לחודשים עוקבים`
+                      : "פיצול הסכום לחודשים עוקבים"}
                   </p>
-                )}
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={36}
-                  value={installments}
-                  onChange={(e) =>
-                    setInstallments(Math.max(1, Math.min(36, Number(e.target.value) || 1)))
-                  }
-                  className="w-20 h-11 rounded-xl border bg-background px-3 text-base outline-none"
-                  dir="ltr"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {installments > 1
-                    ? "יווצרו תנועות נפרדות לחודשים עוקבים"
-                    : "תנועה בודדת (ברירת מחדל)"}
-                </p>
-              </div>
+                </div>
+              )}
+
+              {repeatMode === "recurring" && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">עד חודש</span>
+                    <input
+                      type="month"
+                      value={recurringUntil}
+                      onChange={(e) => setRecurringUntil(e.target.value)}
+                      className="h-11 flex-1 rounded-xl border bg-background px-3 text-base outline-none"
+                      dir="ltr"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {amount
+                      ? `${recurringMonths} חודשים × ${parseFloat(amount || "0").toFixed(2)} ${currency} — בכל ${Number(date.slice(8, 10))} בחודש`
+                      : `יווצרו ${recurringMonths} תנועות, אחת בכל חודש באותו תאריך`}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
