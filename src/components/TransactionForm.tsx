@@ -259,10 +259,10 @@ export function TransactionForm({
       title: title.trim() || (selectedCat?.name ?? ""),
       note: note.trim() || null,
       occurred_at: date,
-      entered_by: enteredBy,
+      entered_by: type === "income" && enteredBy === "shared" ? "yonatan" : enteredBy,
       tag_names: tagList,
       investment_account_id: type === "investment" ? accountId : null,
-      payment_method: paymentMethod,
+      payment_method: type === "income" ? null : paymentMethod,
       photo_url: photoUrl,
       location,
     };
@@ -394,7 +394,11 @@ export function TransactionForm({
 
   // ===================== STEP 2: details =====================
   const headerBg = selectedCat?.color ?? "#10b981";
-  const PAYERS: Person[] = ["yonatan", "shiri", "shared"];
+  const isIncome = type === "income";
+  const PAYERS: Person[] = isIncome
+    ? ["yonatan", "shiri"]
+    : ["yonatan", "shiri", "shared"];
+  const activePayer: Person = isIncome && enteredBy === "shared" ? "yonatan" : enteredBy;
   const canShowInstallments = type === "expense" || type === "fixed";
 
   return (
@@ -526,10 +530,17 @@ export function TransactionForm({
             />
           </div>
 
-          {/* Payer (3 options including Shared) */}
+          {/* Payer / receiver */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">משלם / משלמת</p>
-            <div className="grid grid-cols-3 rounded-2xl bg-card border h-12 overflow-hidden">
+            <p className="text-xs text-muted-foreground mb-1.5">
+              {isIncome ? "של מי ההכנסה" : "משלם / משלמת"}
+            </p>
+            <div
+              className={cn(
+                "grid rounded-2xl bg-card border h-12 overflow-hidden",
+                PAYERS.length === 2 ? "grid-cols-2" : "grid-cols-3",
+              )}
+            >
               {PAYERS.map((p) => (
                 <button
                   key={p}
@@ -537,7 +548,7 @@ export function TransactionForm({
                   onClick={() => setEnteredBy(p)}
                   className={cn(
                     "text-sm font-semibold transition",
-                    enteredBy === p ? "bg-primary text-primary-foreground" : "text-foreground",
+                    activePayer === p ? "bg-primary text-primary-foreground" : "text-foreground",
                   )}
                 >
                   {memberLabels[p]}
@@ -546,7 +557,8 @@ export function TransactionForm({
             </div>
           </div>
 
-          {/* Payment method — single button opens a sheet */}
+          {/* Payment method — single button opens a sheet (not relevant for income) */}
+          {!isIncome && (
           <div>
             <p className="text-xs text-muted-foreground mb-1.5">אמצעי תשלום</p>
             <button
@@ -560,6 +572,8 @@ export function TransactionForm({
               <span className="text-xs text-muted-foreground">החלף</span>
             </button>
           </div>
+          )}
+
 
           {pmSheetOpen && (
             <div
