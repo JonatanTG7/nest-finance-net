@@ -394,7 +394,10 @@ export function TransactionForm({
 
   // ===================== STEP 2: details =====================
   const headerBg = selectedCat?.color ?? "#10b981";
-  const PAYERS: Person[] = ["yonatan", "shiri", "shared"];
+  const isIncome = type === "income";
+  const PAYERS: Person[] = isIncome
+    ? ["yonatan", "shiri"]
+    : ["yonatan", "shiri", "shared"];
   const canShowInstallments = type === "expense" || type === "fixed";
 
   return (
