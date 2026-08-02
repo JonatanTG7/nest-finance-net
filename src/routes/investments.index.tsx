@@ -177,41 +177,6 @@ function Investments() {
         })}
       </section>
 
-      <section className="px-5 md:px-0 mt-6">
-        <div className="rounded-2xl border bg-card p-4">
-          <h2 className="text-sm font-semibold mb-3">מצטבר לאורך זמן (ש"ח)</h2>
-          {trend.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">
-              עוד אין תנועות. הוסף תנועה מסוג "השקעה" או עדכן סכום בהגדרות.
-            </p>
-          ) : (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trend} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(v: number) => formatILS(Number(v))}
-                    contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  {accounts.map((a) => (
-                    <Line
-                      key={a.id}
-                      type="monotone"
-                      dataKey={a.name}
-                      stroke={a.color}
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </section>
     </AppShell>
   );
 }
