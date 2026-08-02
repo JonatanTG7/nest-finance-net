@@ -272,7 +272,9 @@ export function TransactionForm({
       location,
     };
 
-    const canSplit = installments > 1 && (type === "expense" || type === "fixed");
+    const repeatable = type === "expense" || type === "fixed";
+    const canSplit = repeatable && repeatMode === "installments" && installments > 1;
+    const canRecur = repeatable && repeatMode === "recurring" && recurringMonths > 1;
 
     setSubmitting(true);
     try {
@@ -299,6 +301,14 @@ export function TransactionForm({
         }
         toast.success(`נוספו ${installments} תשלומים`);
         navigate({ to: "/" });
+      } else if (canRecur) {
+        // Full amount, same day of month, every month until the chosen end month.
+        for (let i = 0; i < recurringMonths; i++) {
+          await createTransaction({ ...baseInput, occurred_at: shiftMonthIso(date, i) });
+        }
+        toast.success(`נוספה הוצאה קבועה ל-${recurringMonths} חודשים`);
+        navigate({ to: "/" });
+      } else {
       } else {
         await createTransaction(baseInput);
         toast.success("התנועה נוספה");
