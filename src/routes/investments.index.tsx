@@ -89,28 +89,6 @@ function Investments() {
     [totals],
   );
 
-  const trend = useMemo(() => {
-    if (txs.length === 0 && accounts.every((a) => !a.starting_balance_ils && !a.starting_balance)) {
-      return [];
-    }
-    const months = new Set<string>();
-    for (const t of txs) months.add(t.occurred_at.slice(0, 7));
-    const sortedMonths = Array.from(months).sort();
-    const running: Record<string, number> = {};
-    for (const a of accounts) {
-      running[a.id] = Number(a.starting_balance_ils ?? a.starting_balance ?? 0);
-    }
-    return sortedMonths.map((mk) => {
-      for (const t of txs.filter((t) => t.occurred_at.slice(0, 7) === mk)) {
-        if (!t.investment_account_id) continue;
-        running[t.investment_account_id] =
-          (running[t.investment_account_id] ?? 0) + Number(t.amount_ils);
-      }
-      const row: Record<string, number | string> = { month: mk };
-      for (const a of accounts) row[a.name] = running[a.id] ?? 0;
-      return row;
-    });
-  }, [txs, accounts]);
 
   return (
     <AppShell>
