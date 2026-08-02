@@ -241,6 +241,17 @@ export function TransactionForm({
     return d.toISOString().slice(0, 10);
   }
 
+  // How many monthly occurrences from `date` through the chosen end month (inclusive).
+  const recurringMonths = useMemo(() => {
+    const [ey, em] = recurringUntil.split("-").map(Number);
+    if (!ey || !em) return 1;
+    const sy = Number(date.slice(0, 4));
+    const sm = Number(date.slice(5, 7));
+    const diff = (ey - sy) * 12 + (em - sm) + 1;
+    return Math.max(1, Math.min(120, diff));
+  }, [recurringUntil, date]);
+
+
   async function handleSubmit() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) {
