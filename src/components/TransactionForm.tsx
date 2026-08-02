@@ -74,6 +74,11 @@ export function TransactionForm({
   const [pmDraft, setPmDraft] = useState("");
   const [savingPm, setSavingPm] = useState(false);
   const [installments, setInstallments] = useState<number>(1);
+  const [repeatMode, setRepeatMode] = useState<"single" | "installments" | "recurring">("single");
+  const [recurringUntil, setRecurringUntil] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear() + 1}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [fetchingFx, setFetchingFx] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const [uploading, setUploading] = useState(false);
