@@ -259,10 +259,10 @@ export function TransactionForm({
       title: title.trim() || (selectedCat?.name ?? ""),
       note: note.trim() || null,
       occurred_at: date,
-      entered_by: enteredBy,
+      entered_by: type === "income" && enteredBy === "shared" ? "yonatan" : enteredBy,
       tag_names: tagList,
       investment_account_id: type === "investment" ? accountId : null,
-      payment_method: paymentMethod,
+      payment_method: type === "income" ? null : paymentMethod,
       photo_url: photoUrl,
       location,
     };
