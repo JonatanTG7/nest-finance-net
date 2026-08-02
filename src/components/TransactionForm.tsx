@@ -548,7 +548,7 @@ export function TransactionForm({
                   onClick={() => setEnteredBy(p)}
                   className={cn(
                     "text-sm font-semibold transition",
-                    enteredBy === p ? "bg-primary text-primary-foreground" : "text-foreground",
+                    activePayer === p ? "bg-primary text-primary-foreground" : "text-foreground",
                   )}
                 >
                   {memberLabels[p]}
