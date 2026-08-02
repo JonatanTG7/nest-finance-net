@@ -309,7 +309,6 @@ export function TransactionForm({
         toast.success(`נוספה הוצאה קבועה ל-${recurringMonths} חודשים`);
         navigate({ to: "/" });
       } else {
-      } else {
         await createTransaction(baseInput);
         toast.success("התנועה נוספה");
         navigate({ to: "/" });
