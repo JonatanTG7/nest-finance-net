@@ -398,6 +398,7 @@ export function TransactionForm({
   const PAYERS: Person[] = isIncome
     ? ["yonatan", "shiri"]
     : ["yonatan", "shiri", "shared"];
+  const activePayer: Person = isIncome && enteredBy === "shared" ? "yonatan" : enteredBy;
   const canShowInstallments = type === "expense" || type === "fixed";
 
   return (
