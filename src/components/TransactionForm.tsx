@@ -526,10 +526,17 @@ export function TransactionForm({
             />
           </div>
 
-          {/* Payer (3 options including Shared) */}
+          {/* Payer / receiver */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">משלם / משלמת</p>
-            <div className="grid grid-cols-3 rounded-2xl bg-card border h-12 overflow-hidden">
+            <p className="text-xs text-muted-foreground mb-1.5">
+              {isIncome ? "של מי ההכנסה" : "משלם / משלמת"}
+            </p>
+            <div
+              className={cn(
+                "grid rounded-2xl bg-card border h-12 overflow-hidden",
+                PAYERS.length === 2 ? "grid-cols-2" : "grid-cols-3",
+              )}
+            >
               {PAYERS.map((p) => (
                 <button
                   key={p}
@@ -546,7 +553,8 @@ export function TransactionForm({
             </div>
           </div>
 
-          {/* Payment method — single button opens a sheet */}
+          {/* Payment method — single button opens a sheet (not relevant for income) */}
+          {!isIncome && (
           <div>
             <p className="text-xs text-muted-foreground mb-1.5">אמצעי תשלום</p>
             <button
@@ -560,6 +568,8 @@ export function TransactionForm({
               <span className="text-xs text-muted-foreground">החלף</span>
             </button>
           </div>
+          )}
+
 
           {pmSheetOpen && (
             <div
