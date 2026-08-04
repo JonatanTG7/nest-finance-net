@@ -29,10 +29,12 @@ function Investments() {
   const { data: ibHoldings } = useQuery({
     queryKey: ["ib", "holdings"],
     queryFn: fetchIbHoldings,
+    refetchInterval: 10_000,
   });
   const { data: ibPositions = [] } = useQuery({
     queryKey: ["ib", "positions"],
     queryFn: fetchIbPositions,
+    refetchInterval: 15_000,
   });
   const { data: fxRate = 3.7 } = useQuery({
     queryKey: ["fx", "usdils"],
@@ -44,8 +46,11 @@ function Investments() {
     queryKey: ["ib", "quotes", ibSymbols],
     queryFn: () => getQuotesFn({ data: { symbols: ibSymbols } }),
     enabled: ibSymbols.length > 0,
-    staleTime: 60_000,
+    staleTime: 5_000,
+    refetchInterval: 8_000,
+    refetchIntervalInBackground: false,
   });
+
 
   const ibTotals = useMemo(() => {
     const priceBy = new Map<string, number | null>();
@@ -95,8 +100,9 @@ function Investments() {
       <header className="px-5 md:px-0 pt-6 pb-3">
         <h1 className="text-2xl font-bold">השקעות וחיסכון</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          לחץ על חשבון Interactive Brokers כדי לנהל את התיק ולראות שווי חי.
+          לחץ על כל חשבון כדי לעדכן את הסכום ולראות את היסטוריית השינויים.
         </p>
+
       </header>
 
       <section className="px-5 md:px-0">
@@ -116,7 +122,7 @@ function Investments() {
                 <span className="size-3 rounded-full" style={{ background: a.color }} />
                 <p className="text-sm font-semibold">{a.name}</p>
                 <span className="ms-auto text-xs text-muted-foreground">{a.currency}</span>
-                {isIb && <ChevronLeft className="size-4 text-muted-foreground" />}
+                <ChevronLeft className="size-4 text-muted-foreground" />
               </div>
               <p className="text-2xl font-bold mt-2 tabular-nums" dir={a.currency !== "ILS" ? "ltr" : undefined}>
                 {formatMoney(t.native, a.currency)}
@@ -124,11 +130,9 @@ function Investments() {
               {a.currency !== "ILS" && (
                 <p className="text-xs text-muted-foreground tabular-nums">≈ {formatILS(t.ils)}</p>
               )}
-              {isIb && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {ibPositions.length} החזקות · מחירים חיים
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {isIb ? `${ibPositions.length} החזקות · מחירים חיים` : "עדכון סכום והיסטוריה"}
+              </p>
             </div>
           );
           return isIb ? (
@@ -140,9 +144,17 @@ function Investments() {
               {card}
             </Link>
           ) : (
-            <div key={a.id}>{card}</div>
+            <Link
+              key={a.id}
+              to="/investments/$accountId"
+              params={{ accountId: a.id }}
+              className="block active:scale-[0.99] transition-transform"
+            >
+              {card}
+            </Link>
           );
         })}
+
       </section>
 
     </AppShell>

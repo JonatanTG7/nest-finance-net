@@ -1,15 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Sun, Moon, Copy, LogOut, Users, Plus, Wallet } from "lucide-react";
+import { Sun, Moon, Copy, LogOut, Users, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchInvestmentAccounts } from "@/lib/db";
-import { fetchUsdIlsRate } from "@/lib/fx";
 import {
   generateInviteCode,
   updateHouseholdName,
@@ -120,7 +117,7 @@ function Settings() {
 
       <HouseholdSection />
 
-      <InvestmentBalancesSection />
+
 
       <section className="px-5 mt-8 mb-8">
         <button
@@ -267,116 +264,6 @@ function HouseholdSection() {
           שתפו את הקוד עם מי שתרצו להוסיף למשק הבית. הם נכנסים עם Google ומזינים אותו במסך הראשון.
         </p>
       </div>
-    </section>
-  );
-}
-
-function InvestmentBalancesSection() {
-  const qc = useQueryClient();
-  const { data: allAccounts = [] } = useQuery({
-    queryKey: ["investment_accounts"],
-    queryFn: fetchInvestmentAccounts,
-  });
-  // Interactive Brokers is managed on its dedicated portfolio page — hide it here.
-  const accounts = allAccounts.filter((a) => a.id !== "8456b768-3747-4685-96d1-db66e2b7c432");
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [fxDrafts, setFxDrafts] = useState<Record<string, string>>({});
-  const [savingId, setSavingId] = useState<string | null>(null);
-
-  async function save(id: string, currency: string) {
-    // Input is ALWAYS in ILS; for non-ILS accounts we divide by FX to get native.
-    const ils = parseFloat(drafts[id] ?? "");
-    if (isNaN(ils)) return;
-    let native = ils;
-    if (currency !== "ILS") {
-      let rate = parseFloat(fxDrafts[id] ?? "");
-      if (!rate || rate <= 0) rate = await fetchUsdIlsRate();
-      native = ils / rate;
-    }
-    setSavingId(id);
-    try {
-      const { error } = await supabase
-        .from("investment_accounts")
-        .update({ starting_balance: native, starting_balance_ils: ils })
-        .eq("id", id);
-      if (error) throw error;
-      // Zero out historical transactions so they keep their count but stop
-      // adding to the displayed balance (the new balance IS the source of truth).
-      const { error: zeroErr } = await supabase
-        .from("transactions")
-        .update({ amount: 0, amount_ils: 0 })
-        .eq("investment_account_id", id);
-      if (zeroErr) throw zeroErr;
-      qc.invalidateQueries({ queryKey: ["investment_accounts"] });
-      qc.invalidateQueries({ queryKey: ["investments", "txs"] });
-      toast.success("הסכום עודכן");
-      setDrafts((d) => ({ ...d, [id]: "" }));
-    } catch (e) {
-      console.error(e);
-      toast.error("שגיאה בעדכון");
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  return (
-    <section className="px-5 mt-8">
-      <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
-        <Wallet className="size-4" />
-        סכומים — השקעות וחיסכון
-      </h2>
-      <div className="rounded-2xl bg-card border divide-y">
-        {accounts.map((a) => (
-          <div key={a.id} className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="size-2.5 rounded-full" style={{ background: a.color }} />
-              <p className="text-sm font-semibold">{a.name}</p>
-              <span className="ms-auto text-xs text-muted-foreground">
-                {a.currency === "ILS" ? "₪" : a.currency}
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                inputMode="decimal"
-                placeholder="סכום בש״ח"
-                value={drafts[a.id] ?? ""}
-                onChange={(e) => setDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
-                className="flex-1 h-10 rounded-lg bg-background border px-3 outline-none text-sm"
-                dir="ltr"
-              />
-              {a.currency !== "ILS" && (
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.0001"
-                  placeholder="שער $"
-                  value={fxDrafts[a.id] ?? ""}
-                  onChange={(e) => setFxDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
-                  className="w-20 h-10 rounded-lg bg-background border px-2 outline-none text-sm"
-                  dir="ltr"
-                />
-              )}
-              <button
-                onClick={() => save(a.id, a.currency)}
-                disabled={savingId === a.id || !drafts[a.id]?.trim()}
-                className="h-10 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
-              >
-                שמור
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              סכום נוכחי: {Number(a.starting_balance_ils ?? 0).toLocaleString("he-IL")} ₪
-              {a.currency !== "ILS" && (
-                <> · {Number(a.starting_balance ?? 0).toLocaleString("he-IL", { maximumFractionDigits: 2 })} {a.currency}</>
-              )}
-            </p>
-          </div>
-        ))}
-      </div>
-      <p className="text-xs text-muted-foreground mt-2 px-1">
-        מזינים תמיד בש״ח. בחשבון דולרי המערכת מחלקת בשער היומי. כל עדכון מאפס תנועות קודמות אבל שומר על המספר שלהן.
-      </p>
     </section>
   );
 }
