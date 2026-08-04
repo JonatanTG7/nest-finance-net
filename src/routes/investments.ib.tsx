@@ -95,10 +95,12 @@ function IbPortfolio() {
   const { data: holdings } = useQuery({
     queryKey: ["ib", "holdings"],
     queryFn: fetchIbHoldings,
+    refetchInterval: 10_000,
   });
   const { data: positions = [] } = useQuery({
     queryKey: ["ib", "positions"],
     queryFn: fetchIbPositions,
+    refetchInterval: 15_000,
   });
   const { data: fxRate = 3.7 } = useQuery({
     queryKey: ["fx", "usdils"],
@@ -112,9 +114,12 @@ function IbPortfolio() {
     queryKey: ["ib", "quotes", symbols],
     queryFn: () => getQuotesFn({ data: { symbols } }),
     enabled: symbols.length > 0,
-    staleTime: 60_000,
+    staleTime: 5_000,
+    refetchInterval: 8_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
+
 
   // Merge live quotes into cache; never overwrite a good value with null.
   useEffect(() => {
