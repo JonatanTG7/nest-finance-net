@@ -124,6 +124,12 @@ function IbPortfolio() {
     refetchOnWindowFocus: true,
   });
 
+  const { data: history = [] } = useQuery({
+    queryKey: ["balance_history", IB_ACCOUNT_ID],
+    queryFn: () => fetchBalanceHistory(IB_ACCOUNT_ID),
+  });
+
+
 
   // Merge live quotes into cache; never overwrite a good value with null.
   useEffect(() => {
