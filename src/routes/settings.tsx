@@ -120,7 +120,7 @@ function Settings() {
 
       <HouseholdSection />
 
-      <InvestmentBalancesSection />
+
 
       <section className="px-5 mt-8 mb-8">
         <button
