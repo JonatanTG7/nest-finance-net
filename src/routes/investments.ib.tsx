@@ -14,18 +14,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CashDialog } from "@/components/ib/CashDialog";
 import { PositionDialog } from "@/components/ib/PositionDialog";
+import { BalanceHistoryList } from "@/components/investments/BalanceHistoryList";
+import { fetchBalanceHistory, logBalanceChange } from "@/lib/balance_history";
 import {
   fetchIbHoldings,
   fetchIbPositions,
   setIbCash,
   upsertIbPosition,
   deleteIbPosition,
+  IB_ACCOUNT_ID,
   type IbPosition,
 } from "@/lib/ib";
 import { getQuotes, type Quote } from "@/lib/ib.functions";
 import { fetchUsdIlsRate } from "@/lib/fx";
 import { formatMoney, formatILS } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/investments/ib")({
   head: () => ({ meta: [{ title: "Interactive Brokers" }] }),
@@ -223,9 +227,19 @@ function IbPortfolio() {
   };
 
   const saveCash = useMutation({
-    mutationFn: (usd: number) => setIbCash(usd),
+    mutationFn: async (usd: number) => {
+      await setIbCash(usd);
+      await logBalanceChange({
+        investment_account_id: IB_ACCOUNT_ID,
+        kind: "מזומן",
+        old_amount: cash,
+        new_amount: usd,
+        currency: "USD",
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ib", "holdings"] });
+      qc.invalidateQueries({ queryKey: ["balance_history", IB_ACCOUNT_ID] });
       toast.success("היתרה עודכנה");
     },
     onError: (e) => {
@@ -233,6 +247,7 @@ function IbPortfolio() {
       toast.error("שגיאה בעדכון היתרה");
     },
   });
+
 
   const savePos = useMutation({
     mutationFn: upsertIbPosition,
