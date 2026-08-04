@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_balance_history: {
+        Row: {
+          changed_by: Database["public"]["Enums"]["person"] | null
+          changed_by_user_id: string | null
+          created_at: string
+          currency: string
+          household_id: string
+          id: string
+          investment_account_id: string | null
+          kind: string
+          new_amount: number
+          note: string | null
+          old_amount: number
+        }
+        Insert: {
+          changed_by?: Database["public"]["Enums"]["person"] | null
+          changed_by_user_id?: string | null
+          created_at?: string
+          currency?: string
+          household_id: string
+          id?: string
+          investment_account_id?: string | null
+          kind?: string
+          new_amount?: number
+          note?: string | null
+          old_amount?: number
+        }
+        Update: {
+          changed_by?: Database["public"]["Enums"]["person"] | null
+          changed_by_user_id?: string | null
+          created_at?: string
+          currency?: string
+          household_id?: string
+          id?: string
+          investment_account_id?: string | null
+          kind?: string
+          new_amount?: number
+          note?: string | null
+          old_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_balance_history_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_balance_history_investment_account_id_fkey"
+            columns: ["investment_account_id"]
+            isOneToOne: false
+            referencedRelation: "investment_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string
