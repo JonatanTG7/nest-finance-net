@@ -521,11 +521,16 @@ function IbPortfolio() {
           </table>
         </div>
         <p className="text-xs text-muted-foreground mt-2 px-1" dir="rtl">
-          מחירים חיים דרך Yahoo Finance עם קאש מקומי. אם ה-API לא זמין נציג את המחיר האחרון שנשמר (
+          המחירים מתעדכנים אוטומטית כל כמה שניות עם קאש מקומי. אם ה-API לא זמין נציג את המחיר האחרון
+          שנשמר (
           <WifiOff className="inline size-3" />
           ). הנתונים שהזנת (כמות ומחיר ממוצע) לא נמחקים אף פעם.
         </p>
       </section>
+
+      <BalanceHistoryList rows={history} />
+
+
 
       <CashDialog
         open={cashOpen}
