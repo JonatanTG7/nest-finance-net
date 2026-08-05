@@ -202,3 +202,28 @@ export async function deleteTransaction(id: string) {
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw error;
 }
+
+export async function createCategory(input: {
+  name: string;
+  type: TxType;
+  emoji: string;
+  color: string;
+}): Promise<Category> {
+  const householdId = await getMyHouseholdId();
+  const { data, error } = await supabase
+    .from("categories")
+    .insert({
+      name: input.name.trim(),
+      type: input.type,
+      emoji: input.emoji,
+      color: input.color,
+      icon: "circle",
+      is_system: false,
+      sort_order: 900,
+      household_id: householdId,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Category;
+}
