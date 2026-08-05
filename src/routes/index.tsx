@@ -36,7 +36,7 @@ import { useMyProfile } from "@/lib/household";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "כסף משפחתי — דاשבורד" }] }),
+  head: () => ({ meta: [{ title: "ControlFlow-Finance" }] }),
   component: Dashboard,
 });
 
