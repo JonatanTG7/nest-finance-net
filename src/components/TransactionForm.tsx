@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown } from "lucide-react";
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AppShell } from "@/components/AppShell";
+import { CategoryDialog } from "@/components/CategoryDialog";
 import {
   createTransaction,
   deleteTransaction,
@@ -46,6 +47,7 @@ export function TransactionForm({
   onDone?: () => void;
 }) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const memberLabels = useMemberLabels();
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
   const { data: tags = [] } = useQuery({ queryKey: ["tags"], queryFn: fetchTags });
@@ -57,6 +59,7 @@ export function TransactionForm({
   const invalidatePm = useInvalidatePaymentMethods();
 
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
+  const [showNewCat, setShowNewCat] = useState(false);
   const [amount, setAmount] = useState<string>(existing ? String(existing.amount) : "");
   const [currency, setCurrency] = useState(existing?.currency ?? "ILS");
   const [fx, setFx] = useState<string>(existing ? String(existing.fx_rate_to_ils) : "1");
@@ -411,7 +414,31 @@ export function TransactionForm({
                 </span>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setShowNewCat(true)}
+              className="aspect-square rounded-2xl bg-card border border-dashed border-border flex flex-col items-center justify-center gap-2 p-2 active:scale-95 transition"
+            >
+              <span className="size-14 rounded-2xl flex items-center justify-center bg-accent">
+                <Plus className="size-6" />
+              </span>
+              <span className="text-xs font-semibold text-center leading-tight text-muted-foreground">
+                קטגוריה חדשה
+              </span>
+            </button>
           </div>
+
+          {showNewCat && (
+            <CategoryDialog
+              type={type}
+              onClose={() => setShowNewCat(false)}
+              onCreated={(c) => {
+                setShowNewCat(false);
+                qc.invalidateQueries({ queryKey: ["categories"] });
+                chooseCategory(c);
+              }}
+            />
+          )}
         </div>
       </AppShell>
     );

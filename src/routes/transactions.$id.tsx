@@ -138,7 +138,7 @@ function ViewTx() {
               ? (paymentMethods.find((m) => m.key === tx.payment_method)?.label ?? tx.payment_method)
               : <span className="text-muted-foreground">—</span>}
           </Detail>
-          <Detail label="הוזן ע״י">{memberLabels[tx.entered_by]}</Detail>
+          <Detail label="שולם ע״י">{memberLabels[tx.entered_by]}</Detail>
           <Detail label="תגיות">
             {tags.length === 0 ? (
               <span className="text-muted-foreground">—</span>
