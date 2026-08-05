@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   PieChart,
   Pie,
@@ -23,7 +23,6 @@ import {
 } from "@/lib/db";
 import {
   categoryShade,
-  currentMonthKey,
   formatILS,
   isCashflowOut,
   monthRangeFromKey,
@@ -31,6 +30,7 @@ import {
   shiftMonth,
   txTypeLabel,
 } from "@/lib/finance";
+import { useSelectedMonth } from "@/lib/month-store";
 import { useMemberLabels } from "@/lib/person";
 import { useMyProfile } from "@/lib/household";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const [month, setMonth] = useState<string>(currentMonthKey());
+  const [month, setMonth] = useSelectedMonth();
   const { start, end, startDate } = useMemo(() => monthRangeFromKey(month), [month]);
   const { data: profile } = useMyProfile();
   const firstName = (profile?.display_name ?? "").split(" ")[0];
