@@ -593,6 +593,65 @@ export type Database = {
           },
         ]
       }
+      vouchers: {
+        Row: {
+          barcode: string | null
+          created_at: string
+          currency: string
+          entered_by: string
+          expiry_date: string | null
+          face_value: number
+          household_id: string
+          id: string
+          image_url: string | null
+          label: string
+          occurred_at: string
+          remaining_value: number
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          created_at?: string
+          currency?: string
+          entered_by: string
+          expiry_date?: string | null
+          face_value: number
+          household_id: string
+          id?: string
+          image_url?: string | null
+          label: string
+          occurred_at?: string
+          remaining_value: number
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          created_at?: string
+          currency?: string
+          entered_by?: string
+          expiry_date?: string | null
+          face_value?: number
+          household_id?: string
+          id?: string
+          image_url?: string | null
+          label?: string
+          occurred_at?: string
+          remaining_value?: number
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vouchers_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
