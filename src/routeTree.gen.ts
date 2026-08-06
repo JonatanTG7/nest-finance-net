@@ -16,6 +16,7 @@ import { Route as TransactionsIndexRouteImport } from './routes/transactions.ind
 import { Route as InvestmentsIndexRouteImport } from './routes/investments.index'
 import { Route as TransactionsNewRouteImport } from './routes/transactions.new'
 import { Route as TransactionsIdRouteImport } from './routes/transactions.$id'
+import { Route as InvestmentsVouchersRouteImport } from './routes/investments.vouchers'
 import { Route as InvestmentsIbRouteImport } from './routes/investments.ib'
 import { Route as InvestmentsAccountIdRouteImport } from './routes/investments.$accountId'
 import { Route as TransactionsEditIdRouteImport } from './routes/transactions.edit.$id'
@@ -55,6 +56,11 @@ const TransactionsIdRoute = TransactionsIdRouteImport.update({
   path: '/transactions/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvestmentsVouchersRoute = InvestmentsVouchersRouteImport.update({
+  id: '/vouchers',
+  path: '/vouchers',
+  getParentRoute: () => InvestmentsRoute,
+} as any)
 const InvestmentsIbRoute = InvestmentsIbRouteImport.update({
   id: '/ib',
   path: '/ib',
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
+  '/investments/vouchers': typeof InvestmentsVouchersRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
   '/investments/': typeof InvestmentsIndexRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
+  '/investments/vouchers': typeof InvestmentsVouchersRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
   '/investments': typeof InvestmentsIndexRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
+  '/investments/vouchers': typeof InvestmentsVouchersRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
   '/investments/': typeof InvestmentsIndexRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/investments/$accountId'
     | '/investments/ib'
+    | '/investments/vouchers'
     | '/transactions/$id'
     | '/transactions/new'
     | '/investments/'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/investments/$accountId'
     | '/investments/ib'
+    | '/investments/vouchers'
     | '/transactions/$id'
     | '/transactions/new'
     | '/investments'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/investments/$accountId'
     | '/investments/ib'
+    | '/investments/vouchers'
     | '/transactions/$id'
     | '/transactions/new'
     | '/investments/'
@@ -206,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TransactionsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/investments/vouchers': {
+      id: '/investments/vouchers'
+      path: '/vouchers'
+      fullPath: '/investments/vouchers'
+      preLoaderRoute: typeof InvestmentsVouchersRouteImport
+      parentRoute: typeof InvestmentsRoute
+    }
     '/investments/ib': {
       id: '/investments/ib'
       path: '/ib'
@@ -233,12 +252,14 @@ declare module '@tanstack/react-router' {
 interface InvestmentsRouteChildren {
   InvestmentsAccountIdRoute: typeof InvestmentsAccountIdRoute
   InvestmentsIbRoute: typeof InvestmentsIbRoute
+  InvestmentsVouchersRoute: typeof InvestmentsVouchersRoute
   InvestmentsIndexRoute: typeof InvestmentsIndexRoute
 }
 
 const InvestmentsRouteChildren: InvestmentsRouteChildren = {
   InvestmentsAccountIdRoute: InvestmentsAccountIdRoute,
   InvestmentsIbRoute: InvestmentsIbRoute,
+  InvestmentsVouchersRoute: InvestmentsVouchersRoute,
   InvestmentsIndexRoute: InvestmentsIndexRoute,
 }
 
@@ -258,13 +279,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -155,6 +155,20 @@ function Investments() {
           );
         })}
 
+        <Link to="/investments/vouchers" className="block active:scale-[0.99] transition-transform">
+          <div className="rounded-2xl border bg-card p-4 h-full">
+            <div className="flex items-center gap-2">
+              <span className="size-3 rounded-full bg-primary" />
+              <p className="text-sm font-semibold">שוברים</p>
+              <span className="ms-auto text-xs text-muted-foreground">ILS</span>
+              <ChevronLeft className="size-4 text-muted-foreground" />
+            </div>
+            <p className="text-2xl font-bold mt-2 tabular-nums">{formatILS(voucherTotals.remaining)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {voucherTotals.count} שוברים · {formatILS(voucherTotals.remaining)} יתרה
+            </p>
+          </div>
+        </Link>
       </section>
 
     </AppShell>
