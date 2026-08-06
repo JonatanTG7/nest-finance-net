@@ -89,6 +89,18 @@ function Investments() {
     return m;
   }, [txs, accounts, ibTotals]);
 
+  const { data: vouchers = [] } = useQuery({
+    queryKey: ["vouchers"],
+    queryFn: fetchVouchers,
+  });
+  const voucherTotals = useMemo(
+    () => ({
+      count: vouchers.length,
+      remaining: vouchers.reduce((a, v) => a + Number(v.remaining_value), 0),
+    }),
+    [vouchers],
+  );
+
   const grandIls = useMemo(
     () => Array.from(totals.values()).reduce((a, b) => a + b.ils, 0),
     [totals],
