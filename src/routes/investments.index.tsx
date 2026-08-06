@@ -9,6 +9,7 @@ import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchIbHoldings, fetchIbPositions, IB_ACCOUNT_ID } from "@/lib/ib";
 import { getQuotes } from "@/lib/ib.functions";
 import { fetchUsdIlsRate } from "@/lib/fx";
+import { fetchVouchers } from "@/lib/vouchers";
 
 export const Route = createFileRoute("/investments/")({
   head: () => ({ meta: [{ title: "השקעות" }] }),
