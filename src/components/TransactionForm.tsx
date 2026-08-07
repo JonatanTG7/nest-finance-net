@@ -74,6 +74,37 @@ export function TransactionForm({
 
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
   const [showNewCat, setShowNewCat] = useState(false);
+  const [catToDelete, setCatToDelete] = useState<Category | null>(null);
+  const [catTxCount, setCatTxCount] = useState<number | null>(null);
+  const [deletingCat, setDeletingCat] = useState(false);
+
+  async function askDeleteCategory(c: Category) {
+    setCatToDelete(c);
+    setCatTxCount(null);
+    try {
+      setCatTxCount(await countTransactionsForCategory(c.id));
+    } catch {
+      setCatTxCount(0);
+    }
+  }
+
+  async function confirmDeleteCategory() {
+    if (!catToDelete) return;
+    setDeletingCat(true);
+    try {
+      await deleteCategory(catToDelete);
+      if (categoryId === catToDelete.id) setCategoryId(null);
+      await qc.invalidateQueries({ queryKey: ["categories"] });
+      await qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("הקטגוריה נמחקה");
+      setCatToDelete(null);
+    } catch {
+      toast.error("שגיאה במחיקת הקטגוריה");
+    } finally {
+      setDeletingCat(false);
+    }
+  }
+
   const [amount, setAmount] = useState<string>(existing ? String(existing.amount) : "");
   const [currency, setCurrency] = useState(existing?.currency ?? "ILS");
   const [fx, setFx] = useState<string>(existing ? String(existing.fx_rate_to_ils) : "1");
