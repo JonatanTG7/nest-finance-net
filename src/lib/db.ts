@@ -227,3 +227,39 @@ export async function createCategory(input: {
   if (error) throw error;
   return data as Category;
 }
+
+export async function countTransactionsForCategory(categoryId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", categoryId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function getOrCreateFallbackCategory(type: TxType): Promise<Category> {
+  const householdId = await getMyHouseholdId();
+  const { data: existing, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("type", type)
+    .eq("name", "אחר")
+    .limit(1);
+  if (error) throw error;
+  if (existing && existing.length > 0) return existing[0] as Category;
+  return createCategory({ name: "אחר", type, emoji: "📦", color: "#64748b" });
+}
+
+export async function deleteCategory(category: Category): Promise<void> {
+  const count = await countTransactionsForCategory(category.id);
+  if (count > 0) {
+    const fallback = await getOrCreateFallbackCategory(category.type as TxType);
+    const { error: upErr } = await supabase
+      .from("transactions")
+      .update({ category_id: fallback.id })
+      .eq("category_id", category.id);
+    if (upErr) throw upErr;
+  }
+  const { error } = await supabase.from("categories").delete().eq("id", category.id);
+  if (error) throw error;
+}

@@ -2,17 +2,30 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown } from "lucide-react";
+import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AppShell } from "@/components/AppShell";
 import { CategoryDialog } from "@/components/CategoryDialog";
+
 import {
+  countTransactionsForCategory,
   createTransaction,
+  deleteCategory,
   deleteTransaction,
   fetchCategories,
   fetchInvestmentAccounts,
@@ -23,6 +36,7 @@ import {
   type Transaction,
   type TransactionInput,
 } from "@/lib/db";
+
 import { txTypeLabel } from "@/lib/finance";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import {
@@ -60,6 +74,37 @@ export function TransactionForm({
 
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
   const [showNewCat, setShowNewCat] = useState(false);
+  const [catToDelete, setCatToDelete] = useState<Category | null>(null);
+  const [catTxCount, setCatTxCount] = useState<number | null>(null);
+  const [deletingCat, setDeletingCat] = useState(false);
+
+  async function askDeleteCategory(c: Category) {
+    setCatToDelete(c);
+    setCatTxCount(null);
+    try {
+      setCatTxCount(await countTransactionsForCategory(c.id));
+    } catch {
+      setCatTxCount(0);
+    }
+  }
+
+  async function confirmDeleteCategory() {
+    if (!catToDelete) return;
+    setDeletingCat(true);
+    try {
+      await deleteCategory(catToDelete);
+      if (categoryId === catToDelete.id) setCategoryId(null);
+      await qc.invalidateQueries({ queryKey: ["categories"] });
+      await qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("הקטגוריה נמחקה");
+      setCatToDelete(null);
+    } catch {
+      toast.error("שגיאה במחיקת הקטגוריה");
+    } finally {
+      setDeletingCat(false);
+    }
+  }
+
   const [amount, setAmount] = useState<string>(existing ? String(existing.amount) : "");
   const [currency, setCurrency] = useState(existing?.currency ?? "ILS");
   const [fx, setFx] = useState<string>(existing ? String(existing.fx_rate_to_ils) : "1");
@@ -396,24 +441,36 @@ export function TransactionForm({
 
           <div className="grid grid-cols-3 gap-3">
             {filteredCats.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => chooseCategory(c)}
-                className="aspect-square rounded-2xl bg-card border border-border flex flex-col items-center justify-center gap-2 p-2 active:scale-95 transition"
-                style={{ borderColor: c.color + "33" }}
-              >
-                <span
-                  className="size-14 rounded-2xl flex items-center justify-center text-3xl"
-                  style={{ background: c.color + "22" }}
+              <div key={c.id} className="relative">
+                <button
+                  type="button"
+                  onClick={() => chooseCategory(c)}
+                  className="w-full aspect-square rounded-2xl bg-card border border-border flex flex-col items-center justify-center gap-2 p-2 active:scale-95 transition"
+                  style={{ borderColor: c.color + "33" }}
                 >
-                  {c.emoji ?? "•"}
-                </span>
-                <span className="text-xs font-semibold text-center leading-tight">
-                  {c.name}
-                </span>
-              </button>
+                  <span
+                    className="size-14 rounded-2xl flex items-center justify-center text-3xl"
+                    style={{ background: c.color + "22" }}
+                  >
+                    {c.emoji ?? "•"}
+                  </span>
+                  <span className="text-xs font-semibold text-center leading-tight">
+                    {c.name}
+                  </span>
+                </button>
+                {!c.is_system && (
+                  <button
+                    type="button"
+                    onClick={() => void askDeleteCategory(c)}
+                    aria-label={`מחק קטגוריה ${c.name}`}
+                    className="absolute top-1.5 start-1.5 size-7 rounded-full bg-background/90 border flex items-center justify-center text-muted-foreground"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
             ))}
+
             <button
               type="button"
               onClick={() => setShowNewCat(true)}
@@ -439,6 +496,37 @@ export function TransactionForm({
               }}
             />
           )}
+
+          <AlertDialog
+            open={catToDelete !== null}
+            onOpenChange={(o) => !o && setCatToDelete(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>למחוק את הקטגוריה?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {catTxCount === null
+                    ? "בודק תנועות…"
+                    : catTxCount > 0
+                      ? `יש ${catTxCount} תנועות עם הקטגוריה הזו. הן יעברו ל"אחר" לאחר המחיקה. להמשיך?`
+                      : `"${catToDelete?.name}" תימחק לצמיתות.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>ביטול</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={deletingCat || catTxCount === null}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void confirmDeleteCategory();
+                  }}
+                >
+                  מחק
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
         </div>
       </AppShell>
     );
