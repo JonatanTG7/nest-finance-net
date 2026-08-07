@@ -23,7 +23,9 @@ import { AppShell } from "@/components/AppShell";
 import { CategoryDialog } from "@/components/CategoryDialog";
 
 import {
+  countTransactionsForCategory,
   createTransaction,
+  deleteCategory,
   deleteTransaction,
   fetchCategories,
   fetchInvestmentAccounts,
@@ -34,6 +36,7 @@ import {
   type Transaction,
   type TransactionInput,
 } from "@/lib/db";
+
 import { txTypeLabel } from "@/lib/finance";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import {
