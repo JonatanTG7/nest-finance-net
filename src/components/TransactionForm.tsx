@@ -496,6 +496,37 @@ export function TransactionForm({
               }}
             />
           )}
+
+          <AlertDialog
+            open={catToDelete !== null}
+            onOpenChange={(o) => !o && setCatToDelete(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>למחוק את הקטגוריה?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {catTxCount === null
+                    ? "בודק תנועות…"
+                    : catTxCount > 0
+                      ? `יש ${catTxCount} תנועות עם הקטגוריה הזו. הן יעברו ל"אחר" לאחר המחיקה. להמשיך?`
+                      : `"${catToDelete?.name}" תימחק לצמיתות.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>ביטול</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={deletingCat || catTxCount === null}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void confirmDeleteCategory();
+                  }}
+                >
+                  מחק
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
         </div>
       </AppShell>
     );
