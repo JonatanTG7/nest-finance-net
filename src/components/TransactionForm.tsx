@@ -441,24 +441,36 @@ export function TransactionForm({
 
           <div className="grid grid-cols-3 gap-3">
             {filteredCats.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => chooseCategory(c)}
-                className="aspect-square rounded-2xl bg-card border border-border flex flex-col items-center justify-center gap-2 p-2 active:scale-95 transition"
-                style={{ borderColor: c.color + "33" }}
-              >
-                <span
-                  className="size-14 rounded-2xl flex items-center justify-center text-3xl"
-                  style={{ background: c.color + "22" }}
+              <div key={c.id} className="relative">
+                <button
+                  type="button"
+                  onClick={() => chooseCategory(c)}
+                  className="w-full aspect-square rounded-2xl bg-card border border-border flex flex-col items-center justify-center gap-2 p-2 active:scale-95 transition"
+                  style={{ borderColor: c.color + "33" }}
                 >
-                  {c.emoji ?? "•"}
-                </span>
-                <span className="text-xs font-semibold text-center leading-tight">
-                  {c.name}
-                </span>
-              </button>
+                  <span
+                    className="size-14 rounded-2xl flex items-center justify-center text-3xl"
+                    style={{ background: c.color + "22" }}
+                  >
+                    {c.emoji ?? "•"}
+                  </span>
+                  <span className="text-xs font-semibold text-center leading-tight">
+                    {c.name}
+                  </span>
+                </button>
+                {!c.is_system && (
+                  <button
+                    type="button"
+                    onClick={() => void askDeleteCategory(c)}
+                    aria-label={`מחק קטגוריה ${c.name}`}
+                    className="absolute top-1.5 start-1.5 size-7 rounded-full bg-background/90 border flex items-center justify-center text-muted-foreground"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
             ))}
+
             <button
               type="button"
               onClick={() => setShowNewCat(true)}
