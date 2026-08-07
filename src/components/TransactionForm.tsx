@@ -77,6 +77,16 @@ export function TransactionForm({
   const [catToDelete, setCatToDelete] = useState<Category | null>(null);
   const [catTxCount, setCatTxCount] = useState<number | null>(null);
   const [deletingCat, setDeletingCat] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+  function clearLongPress() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+
 
   async function askDeleteCategory(c: Category) {
     setCatToDelete(c);
