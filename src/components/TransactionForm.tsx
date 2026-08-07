@@ -1,8 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown, Trash2 } from "lucide-react";
+import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown } from "lucide-react";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
