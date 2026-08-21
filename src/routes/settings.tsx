@@ -113,7 +113,6 @@ function Settings() {
         <div className="rounded-2xl bg-card border p-4 text-sm text-muted-foreground">
           ✨ כל תנועה שתזינו תופיע מיד גם במכשיר השני, בזמן אמת.
         </div>
-         <p className="text-xs text-muted-foreground mt-2">בדיקה בדיקה בדיקה</p>
       </section>
 
       <HouseholdSection />
