@@ -187,11 +187,6 @@ function VouchersPage() {
                                 פג תוקף
                               </span>
                             )}
-                            {v.barcode && (
-                              <span className="text-[10px] text-muted-foreground tabular-nums" dir="ltr">
-                                {v.barcode.slice(-6)}
-                              </span>
-                            )}
                           </div>
                         </div>
                         <p
