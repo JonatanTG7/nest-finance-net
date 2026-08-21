@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +41,6 @@ export function VoucherDetailDialog({
   const [occurredAt, setOccurredAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [zoomOpen, setZoomOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !voucher) return;
@@ -96,20 +94,11 @@ export function VoucherDetailDialog({
           </DialogHeader>
 
           {voucher.image_url && (
-            <button
-              type="button"
-              onClick={() => setZoomOpen(true)}
-              className="block w-full active:scale-[0.99] transition-transform"
-            >
-              <img
-                src={voucher.image_url}
-                alt={voucher.label}
-                className="w-full max-h-44 object-contain rounded-2xl border bg-card"
-              />
-              <p className="text-xs text-muted-foreground text-center mt-1">
-                הקש על התמונה להגדלה ולסריקת הברקוד
-              </p>
-            </button>
+            <img
+              src={voucher.image_url}
+              alt={voucher.label}
+              className="w-full max-h-44 object-contain rounded-2xl border bg-card"
+            />
           )}
 
           <p className="text-sm text-muted-foreground tabular-nums">
@@ -214,31 +203,7 @@ export function VoucherDetailDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {zoomOpen &&
-        voucher.image_url &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
-            onClick={() => setZoomOpen(false)}
-          >
-            <button
-              type="button"
-              onClick={() => setZoomOpen(false)}
-              className="absolute top-4 left-4 size-10 rounded-full bg-white/10 text-white flex items-center justify-center"
-              aria-label="סגור"
-            >
-              <X className="size-5" />
-            </button>
-            <img
-              src={voucher.image_url}
-              alt={voucher.label}
-              className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>,
-          document.body
-        )}
     </>
   );
 }
+
