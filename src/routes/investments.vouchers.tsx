@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus, Search, ChevronRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Plus, Search, ChevronRight, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { VoucherUploadDialog } from "@/components/vouchers/VoucherUploadDialog";
 import { VoucherDetailDialog } from "@/components/vouchers/VoucherDetailDialog";
@@ -45,6 +46,7 @@ function VouchersPage() {
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Voucher | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<{ url: string; label: string } | null>(null);
 
   const { data: vouchers = [], isLoading } = useQuery({
     queryKey: ["vouchers"],
@@ -158,23 +160,34 @@ function VouchersPage() {
                   const used = Number(v.remaining_value) <= 0;
                   const expired = isExpired(v);
                   return (
-                    <li key={v.id}>
-                      <button
-                        onClick={() => setSelected(v)}
-                        className="w-full flex items-center gap-3 p-4 text-start hover:bg-accent/50"
-                      >
-                        {v.image_url ? (
+                    <li key={v.id} className="flex items-center gap-3 p-4 hover:bg-accent/50">
+                      {/* לחיצה על התמונה מציגה זום מלא */}
+                      {v.image_url ? (
+                        <button
+                          type="button"
+                          onClick={() => setZoomedImage({ url: v.image_url!, label: v.label })}
+                          className="shrink-0 active:scale-95 transition-transform"
+                          aria-label="הגדל תמונה"
+                        >
                           <img
                             src={v.image_url}
                             alt={v.label}
-                            className="size-11 rounded-xl object-cover shrink-0 border"
+                            className="size-11 rounded-xl object-cover border"
                           />
-                        ) : (
-                          <span className="size-11 rounded-xl bg-accent flex items-center justify-center text-xl shrink-0">
-                            🎟️
-                          </span>
-                        )}
-                        <div className="flex-1 min-w-0">
+                        </button>
+                      ) : (
+                        <span className="size-11 rounded-xl bg-accent flex items-center justify-center text-xl shrink-0">
+                          🎟️
+                        </span>
+                      )}
+
+                      {/* לחיצה על השם והמחיר פותחת את דיאלוג העריכה */}
+                      <button
+                        type="button"
+                        onClick={() => setSelected(v)}
+                        className="flex-1 min-w-0 flex items-center justify-between text-start"
+                      >
+                        <div className="min-w-0">
                           <p className="font-medium truncate">{v.label}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             {used && (
@@ -189,8 +202,12 @@ function VouchersPage() {
                             )}
                           </div>
                         </div>
+
                         <p
-                          className={cn("text-sm font-semibold tabular-nums", used && "text-muted-foreground")}
+                          className={cn(
+                            "text-sm font-semibold tabular-nums",
+                            used && "text-muted-foreground"
+                          )}
                           dir="ltr"
                         >
                           {Number(v.remaining_value)} / {Number(v.face_value)} ₪
@@ -212,6 +229,31 @@ function VouchersPage() {
         onOpenChange={(v) => !v && setSelected(null)}
         onChanged={invalidate}
       />
+
+      {/* תצוגת זום לתמונה */}
+      {zoomedImage &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
+            onClick={() => setZoomedImage(null)}
+          >
+            <button
+              type="button"
+              onClick={() => setZoomedImage(null)}
+              className="absolute top-4 left-4 size-10 rounded-full bg-white/10 text-white flex items-center justify-center"
+              aria-label="סגור"
+            >
+              <X className="size-5" />
+            </button>
+            <img
+              src={zoomedImage.url}
+              alt={zoomedImage.label}
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>,
+          document.body
+        )}
     </AppShell>
   );
 }
