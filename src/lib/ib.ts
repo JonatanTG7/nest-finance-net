@@ -2,6 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMyHouseholdId } from "@/lib/household";
 import { logBalanceChange } from "@/lib/balance_history";
 
+export const IB_ACCOUNT_ID = "8456b768-3747-4685-96d1-db66e2b7c432";
+
 export interface IbHoldings {
   id: string;
   household_id: string;
