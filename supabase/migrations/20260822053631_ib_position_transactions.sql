@@ -1,5 +1,5 @@
 
--- Ledger of buy/sell transactions per IB position, so quantity changes are
+-- Ledger of buy or sell transactions per IB position, so quantity changes are
 -- additive (weighted-average cost) instead of overwriting from scratch, and
 -- sells lock in the price at time of sale (not the current market price).
 CREATE TABLE public.ib_position_transactions (
@@ -33,3 +33,5 @@ CREATE POLICY "hh members write ib_position_transactions" ON public.ib_position_
 
 CREATE INDEX ib_position_transactions_symbol_idx
   ON public.ib_position_transactions (household_id, symbol, occurred_at DESC);
+
+
