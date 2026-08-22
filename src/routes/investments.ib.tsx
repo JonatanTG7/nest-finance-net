@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ArrowUpDown, MoreVertical, Plus, Wallet, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, History, MoreVertical, Plus, Wallet, RefreshCw, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -13,14 +13,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CashDialog } from "@/components/ib/CashDialog";
-import { PositionDialog } from "@/components/ib/PositionDialog";
+import { BuyDialog } from "@/components/ib/BuyDialog";
+import { SellDialog } from "@/components/ib/SellDialog";
+import { PositionHistoryDialog } from "@/components/ib/PositionHistoryDialog";
 import { BalanceHistoryList } from "@/components/investments/BalanceHistoryList";
 import { fetchBalanceHistory, logBalanceChange } from "@/lib/balance_history";
 import {
   fetchIbHoldings,
   fetchIbPositions,
   setIbCash,
-  upsertIbPosition,
+  buyIbShares,
+  sellIbShares,
   deleteIbPosition,
   IB_ACCOUNT_ID,
   type IbPosition,
@@ -86,8 +89,11 @@ function IbPortfolio() {
   const qc = useQueryClient();
   const getQuotesFn = useServerFn(getQuotes);
   const [cashOpen, setCashOpen] = useState(false);
-  const [posOpen, setPosOpen] = useState(false);
-  const [editing, setEditing] = useState<IbPosition | null>(null);
+  const [buyOpen, setBuyOpen] = useState(false);
+  const [sellOpen, setSellOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [activePosition, setActivePosition] = useState<IbPosition | null>(null);
+  const [historySymbol, setHistorySymbol] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("marketValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [quoteCache, setQuoteCache] = useState<Record<string, CachedQuote>>({});
@@ -255,15 +261,33 @@ function IbPortfolio() {
   });
 
 
-  const savePos = useMutation({
-    mutationFn: upsertIbPosition,
+  const buyMutation = useMutation({
+    mutationFn: buyIbShares,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ib", "positions"] });
-      toast.success("נשמר");
+      qc.invalidateQueries({ queryKey: ["ib", "holdings"] });
+      qc.invalidateQueries({ queryKey: ["ib", "transactions"] });
+      qc.invalidateQueries({ queryKey: ["balance_history", IB_ACCOUNT_ID] });
+      toast.success("הקנייה נשמרה");
     },
     onError: (e) => {
       console.error(e);
-      toast.error("שגיאה בשמירה");
+      toast.error("שגיאה בשמירת הקנייה");
+    },
+  });
+
+  const sellMutation = useMutation({
+    mutationFn: sellIbShares,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ib", "positions"] });
+      qc.invalidateQueries({ queryKey: ["ib", "holdings"] });
+      qc.invalidateQueries({ queryKey: ["ib", "transactions"] });
+      qc.invalidateQueries({ queryKey: ["balance_history", IB_ACCOUNT_ID] });
+      toast.success("המכירה נשמרה");
+    },
+    onError: (e) => {
+      console.error(e);
+      toast.error("שגיאה בשמירת המכירה");
     },
   });
 
@@ -285,6 +309,16 @@ function IbPortfolio() {
           <h1 className="text-2xl font-bold">Interactive Brokers</h1>
           <p className="text-xs text-muted-foreground">תיק השקעות · USD</p>
         </div>
+        <button
+          onClick={() => {
+            setHistorySymbol(null);
+            setHistoryOpen(true);
+          }}
+          className="p-2 rounded-lg hover:bg-accent text-muted-foreground"
+          title="היסטוריית תנועות"
+        >
+          <History className="size-4" />
+        </button>
         <button
           onClick={() => refetchQuotes()}
           className="p-2 rounded-lg hover:bg-accent text-muted-foreground"
@@ -333,8 +367,8 @@ function IbPortfolio() {
             <Button
               size="sm"
               onClick={() => {
-                setEditing(null);
-                setPosOpen(true);
+                setActivePosition(null);
+                setBuyOpen(true);
               }}
             >
               <Plus className="size-4 me-1" />
@@ -498,17 +532,33 @@ function IbPortfolio() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               onClick={() => {
-                                setEditing(r);
-                                setPosOpen(true);
+                                setActivePosition(r);
+                                setBuyOpen(true);
                               }}
                             >
-                              עריכה
+                              קנה עוד
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setActivePosition(r);
+                                setSellOpen(true);
+                              }}
+                            >
+                              מכור
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setHistorySymbol(r.symbol);
+                                setHistoryOpen(true);
+                              }}
+                            >
+                              היסטוריית תנועות
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => removePos.mutate(r.id)}
                             >
-                              מחיקה
+                              מחיקה מלאה
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -540,17 +590,31 @@ function IbPortfolio() {
           await saveCash.mutateAsync(u);
         }}
       />
-      <PositionDialog
-        open={posOpen}
-        onOpenChange={setPosOpen}
-        position={editing}
+      <BuyDialog
+        open={buyOpen}
+        onOpenChange={setBuyOpen}
+        position={activePosition}
+        currentCash={cash}
         onSave={async (v) => {
-          await savePos.mutateAsync(v);
-        }}
-        onDelete={async (id) => {
-          await removePos.mutateAsync(id);
+          await buyMutation.mutateAsync({ ...v, currentCash: cash });
         }}
       />
+      <SellDialog
+        open={sellOpen}
+        onOpenChange={setSellOpen}
+        position={activePosition}
+        currentCash={cash}
+        onSave={async (v) => {
+          if (!activePosition) return;
+          await sellMutation.mutateAsync({
+            ...v,
+            positionId: activePosition.id,
+            symbol: activePosition.symbol,
+            currentCash: cash,
+          });
+        }}
+      />
+      <PositionHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} initialSymbol={historySymbol} />
     </AppShell>
   );
 }

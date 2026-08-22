@@ -222,6 +222,63 @@ export type Database = {
           },
         ]
       }
+      ib_position_transactions: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          kind: string
+          note: string | null
+          occurred_at: string
+          position_id: string | null
+          price: number
+          prior_avg_price: number | null
+          quantity: number
+          symbol: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          kind: string
+          note?: string | null
+          occurred_at?: string
+          position_id?: string | null
+          price: number
+          prior_avg_price?: number | null
+          quantity: number
+          symbol: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          occurred_at?: string
+          position_id?: string | null
+          price?: number
+          prior_avg_price?: number | null
+          quantity?: number
+          symbol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ib_position_transactions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ib_position_transactions_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "ib_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ib_positions: {
         Row: {
           avg_price: number

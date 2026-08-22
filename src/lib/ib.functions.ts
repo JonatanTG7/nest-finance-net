@@ -14,7 +14,7 @@ export type Quote = {
 
 // In-worker cache to soften rate limits.
 const cache = new Map<string, { at: number; q: Quote }>();
-const TTL_MS = 30_000;
+const TTL_MS = 10_000;
 
 type FinnhubQuote = {
   c?: number; // current
