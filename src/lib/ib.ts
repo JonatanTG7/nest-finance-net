@@ -2,8 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMyHouseholdId } from "@/lib/household";
 import { logBalanceChange } from "@/lib/balance_history";
 
-export const IB_ACCOUNT_ID = "8456b768-3747-4685-96d1-db66e2b7c432";
-
 export interface IbHoldings {
   id: string;
   household_id: string;
@@ -29,6 +27,17 @@ export interface IbTransaction {
   occurred_at: string;
   note: string | null;
   created_at: string;
+}
+
+// פונקציה חדשה למציאת המזהה האמיתי במסד הנתונים
+async function getIbAccountId(household_id: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("investment_accounts")
+    .select("id")
+    .eq("household_id", household_id)
+    .ilike("name", "%Interactive Brokers%")
+    .maybeSingle();
+  return data?.id ?? null;
 }
 
 export async function fetchIbHoldings(): Promise<IbHoldings | null> {
@@ -182,13 +191,22 @@ export async function buyIbShares(input: {
     const cost = input.quantity * input.price;
     const newCash = input.currentCash - cost;
     await setIbCash(newCash);
-    await logBalanceChange({
-      investment_account_id: IB_ACCOUNT_ID,
-      kind: `קניית ${symbol}`,
-      old_amount: input.currentCash,
-      new_amount: newCash,
-      currency: "USD",
-    });
+    
+    // התיקון: שליפה דינמית ועטיפה ב-try/catch
+    try {
+      const ibAccId = await getIbAccountId(household_id);
+      if (ibAccId) {
+        await logBalanceChange({
+          investment_account_id: ibAccId,
+          kind: `קניית ${symbol}`,
+          old_amount: input.currentCash,
+          new_amount: newCash,
+          currency: "USD",
+        });
+      }
+    } catch (err) {
+      console.error("שגיאה ברישום היסטוריית יתרה, אך הקנייה בוצעה", err);
+    }
   }
 }
 
@@ -255,13 +273,22 @@ export async function sellIbShares(input: {
     const proceeds = sellQty * input.price;
     const newCash = input.currentCash + proceeds;
     await setIbCash(newCash);
-    await logBalanceChange({
-      investment_account_id: IB_ACCOUNT_ID,
-      kind: `מכירת ${symbol}`,
-      old_amount: input.currentCash,
-      new_amount: newCash,
-      currency: "USD",
-    });
+    
+    // התיקון למכירה
+    try {
+      const ibAccId = await getIbAccountId(household_id);
+      if (ibAccId) {
+        await logBalanceChange({
+          investment_account_id: ibAccId,
+          kind: `מכירת ${symbol}`,
+          old_amount: input.currentCash,
+          new_amount: newCash,
+          currency: "USD",
+        });
+      }
+    } catch (err) {
+      console.error("שגיאה ברישום היסטוריית יתרה, אך המכירה בוצעה", err);
+    }
   }
 
   return { realizedPnl };
