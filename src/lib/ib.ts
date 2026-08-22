@@ -177,7 +177,6 @@ export async function buyIbShares(input: {
     const newCash = input.currentCash - cost;
     await setIbCash(newCash);
     
-    // מונע קריסה בשמירת הקנייה
     try {
       await logBalanceChange({
         investment_account_id: IB_ACCOUNT_ID,
@@ -186,8 +185,8 @@ export async function buyIbShares(input: {
         new_amount: newCash,
         currency: "USD",
       });
-    } catch (err) {
-      console.error("שגיאה ברישום היסטוריית יתרה - הקנייה עדיין נשמרה בהצלחה", err);
+    } catch (e) {
+      console.warn("Log balance failed, ignoring:", e);
     }
   }
 }
@@ -249,7 +248,6 @@ export async function sellIbShares(input: {
     const newCash = input.currentCash + proceeds;
     await setIbCash(newCash);
     
-    // מונע קריסה בשמירת המכירה
     try {
       await logBalanceChange({
         investment_account_id: IB_ACCOUNT_ID,
@@ -258,8 +256,8 @@ export async function sellIbShares(input: {
         new_amount: newCash,
         currency: "USD",
       });
-    } catch (err) {
-      console.error("שגיאה ברישום היסטוריית יתרה - המכירה עדיין נשמרה בהצלחה", err);
+    } catch (e) {
+      console.warn("Log balance failed, ignoring:", e);
     }
   }
 

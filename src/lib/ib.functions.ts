@@ -12,15 +12,14 @@ export type Quote = {
   dailyChangePct: number | null;
 };
 
-// In-worker cache to soften rate limits.
 const cache = new Map<string, { at: number; q: Quote }>();
 const TTL_MS = 10_000;
 
 type FinnhubQuote = {
-  c?: number; // current
-  d?: number; // change
-  dp?: number; // change percent
-  pc?: number; // previous close
+  c?: number;
+  d?: number;
+  dp?: number;
+  pc?: number;
   h?: number;
   l?: number;
   o?: number;
@@ -37,7 +36,6 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
     let last = typeof j.c === "number" && j.c > 0 ? j.c : null;
     const prevClose = typeof j.pc === "number" && j.pc > 0 ? j.pc : null;
 
-    // התיקון לסופ"ש: אם השוק סגור ומחזיר 0, נשתמש במחיר הסגירה במקום להחזיר null
     if (last == null && prevClose != null) {
       last = prevClose;
     }
@@ -45,6 +43,7 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
     if (last == null && prevClose == null) return null;
     
     const phase: MarketPhase = last != null ? guessPhaseNY() : "CLOSED";
+    
     return {
       symbol,
       last,
@@ -60,16 +59,15 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
 }
 
 function guessPhaseNY(): MarketPhase {
-  // NY time via toLocaleString.
   const now = new Date();
   const ny = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const day = ny.getDay(); // 0=Sun..6=Sat
+  const day = ny.getDay();
   if (day === 0 || day === 6) return "CLOSED";
   const minutes = ny.getHours() * 60 + ny.getMinutes();
-  const preOpen = 4 * 60; // 04:00
-  const regOpen = 9 * 60 + 30; // 09:30
-  const regClose = 16 * 60; // 16:00
-  const postClose = 20 * 60; // 20:00
+  const preOpen = 4 * 60;
+  const regOpen = 9 * 60 + 30;
+  const regClose = 16 * 60;
+  const postClose = 20 * 60;
   if (minutes >= regOpen && minutes < regClose) return "REGULAR";
   if (minutes >= preOpen && minutes < regOpen) return "PRE";
   if (minutes >= regClose && minutes < postClose) return "POST";
@@ -126,7 +124,6 @@ export const getQuotes = createServerFn({ method: "POST" })
     );
     results.push(...fetched);
 
-    // Preserve requested order.
     const by = new Map(results.map((r) => [r.symbol, r]));
     return syms.map((s) => by.get(s)!);
   });
