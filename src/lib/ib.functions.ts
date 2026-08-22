@@ -34,16 +34,16 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
     if (!r.ok) return null;
     const j = (await r.json()) as FinnhubQuote;
     
-    // התיקון: התמודדות עם סופי שבוע בהם המחיר הנוכחי מדווח כ-0
-    const cValid = typeof j.c === "number" && j.c > 0;
-    const pcValid = typeof j.pc === "number" && j.pc > 0;
+    let last = typeof j.c === "number" && j.c > 0 ? j.c : null;
+    const prevClose = typeof j.pc === "number" && j.pc > 0 ? j.pc : null;
 
-    const last = cValid ? j.c : (pcValid ? j.pc : null);
-    const prevClose = pcValid ? j.pc : null;
+    // התיקון לסופ"ש: אם השוק סגור ומחזיר 0, נשתמש במחיר הסגירה במקום להחזיר null
+    if (last == null && prevClose != null) {
+      last = prevClose;
+    }
 
     if (last == null && prevClose == null) return null;
-
-    // Determine phase from the current NY time
+    
     const phase: MarketPhase = last != null ? guessPhaseNY() : "CLOSED";
     return {
       symbol,

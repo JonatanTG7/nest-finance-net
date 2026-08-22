@@ -31,17 +31,6 @@ export interface IbTransaction {
   created_at: string;
 }
 
-// פונקציה חדשה למציאת המזהה האמיתי במסד הנתונים
-async function getIbAccountId(household_id: string): Promise<string | null> {
-  const { data } = await supabase
-    .from("investment_accounts")
-    .select("id")
-    .eq("household_id", household_id)
-    .ilike("name", "%Interactive Brokers%")
-    .maybeSingle();
-  return data?.id ?? null;
-}
-
 export async function fetchIbHoldings(): Promise<IbHoldings | null> {
   const { data, error } = await supabase.from("ib_holdings").select("*").maybeSingle();
   if (error) throw error;
@@ -126,12 +115,6 @@ export async function fetchIbTransactions(symbol?: string): Promise<IbTransactio
   }));
 }
 
-/**
- * Buy shares of a symbol (new or existing position). Recalculates the
- * position's average cost as a weighted average across the old and new
- * quantities, and records the transaction in the ledger. Optionally debits
- * cash by quantity * price.
- */
 export async function buyIbShares(input: {
   symbol: string;
   quantity: number;
@@ -194,31 +177,21 @@ export async function buyIbShares(input: {
     const newCash = input.currentCash - cost;
     await setIbCash(newCash);
     
-    // התיקון: שליפה דינמית ועטיפה ב-try/catch
+    // מונע קריסה בשמירת הקנייה
     try {
-      const ibAccId = await getIbAccountId(household_id);
-      if (ibAccId) {
-        await logBalanceChange({
-          investment_account_id: ibAccId,
-          kind: `קניית ${symbol}`,
-          old_amount: input.currentCash,
-          new_amount: newCash,
-          currency: "USD",
-        });
-      }
+      await logBalanceChange({
+        investment_account_id: IB_ACCOUNT_ID,
+        kind: `קניית ${symbol}`,
+        old_amount: input.currentCash,
+        new_amount: newCash,
+        currency: "USD",
+      });
     } catch (err) {
-      console.error("שגיאה ברישום היסטוריית יתרה, אך הקנייה בוצעה", err);
+      console.error("שגיאה ברישום היסטוריית יתרה - הקנייה עדיין נשמרה בהצלחה", err);
     }
   }
 }
 
-/**
- * Sell shares of an existing position at a fixed price (locked in
- * regardless of the current market price). Reduces quantity; if it reaches
- * zero the position is removed but the transaction stays in the ledger.
- * Average cost basis of the remaining shares is unchanged. Optionally
- * credits cash by quantity * price.
- */
 export async function sellIbShares(input: {
   positionId: string;
   symbol: string;
@@ -276,20 +249,17 @@ export async function sellIbShares(input: {
     const newCash = input.currentCash + proceeds;
     await setIbCash(newCash);
     
-    // התיקון למכירה
+    // מונע קריסה בשמירת המכירה
     try {
-      const ibAccId = await getIbAccountId(household_id);
-      if (ibAccId) {
-        await logBalanceChange({
-          investment_account_id: ibAccId,
-          kind: `מכירת ${symbol}`,
-          old_amount: input.currentCash,
-          new_amount: newCash,
-          currency: "USD",
-        });
-      }
+      await logBalanceChange({
+        investment_account_id: IB_ACCOUNT_ID,
+        kind: `מכירת ${symbol}`,
+        old_amount: input.currentCash,
+        new_amount: newCash,
+        currency: "USD",
+      });
     } catch (err) {
-      console.error("שגיאה ברישום היסטוריית יתרה, אך המכירה בוצעה", err);
+      console.error("שגיאה ברישום היסטוריית יתרה - המכירה עדיין נשמרה בהצלחה", err);
     }
   }
 
