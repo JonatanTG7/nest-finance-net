@@ -33,8 +33,8 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
     const r = await fetch(url, { headers: { Accept: "application/json" } });
     if (!r.ok) return null;
     const j = (await r.json()) as FinnhubQuote;
-
-    // התיקון: אם השוק סגור (או Finnhub מחזיר 0), נשתמש במחיר הסגירה של אתמול
+    
+    // התיקון: התמודדות עם סופי שבוע בהם המחיר הנוכחי מדווח כ-0
     const cValid = typeof j.c === "number" && j.c > 0;
     const pcValid = typeof j.pc === "number" && j.pc > 0;
 
@@ -43,6 +43,7 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
 
     if (last == null && prevClose == null) return null;
 
+    // Determine phase from the current NY time
     const phase: MarketPhase = last != null ? guessPhaseNY() : "CLOSED";
     return {
       symbol,
@@ -57,33 +58,6 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
     return null;
   }
 }
-
-// async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote | null> {
-//   try {
-//     const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${apiKey}`;
-//     const r = await fetch(url, { headers: { Accept: "application/json" } });
-//     if (!r.ok) return null;
-//     const j = (await r.json()) as FinnhubQuote;
-//     // Finnhub returns c=0 when the symbol is invalid; treat 0 as null.
-//     const last = typeof j.c === "number" && j.c > 0 ? j.c : null;
-//     const prevClose = typeof j.pc === "number" && j.pc > 0 ? j.pc : null;
-//     if (last == null && prevClose == null) return null;
-//     // Determine phase from the current NY time (rough heuristic — user just
-//     // needs "not CLOSED" during regular hours).
-//     const phase: MarketPhase = last != null ? guessPhaseNY() : "CLOSED";
-//     return {
-//       symbol,
-//       last,
-//       prevClose,
-//       phase,
-//       dailyChange: typeof j.d === "number" ? j.d : null,
-//       dailyChangePct: typeof j.dp === "number" ? j.dp : null,
-//     };
-//   } catch (e) {
-//     console.error("[ib] finnhub error", symbol, e);
-//     return null;
-//   }
-// }
 
 function guessPhaseNY(): MarketPhase {
   // NY time via toLocaleString.
