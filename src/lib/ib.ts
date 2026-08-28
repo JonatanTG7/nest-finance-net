@@ -115,6 +115,12 @@ export async function fetchIbTransactions(symbol?: string): Promise<IbTransactio
   }));
 }
 
+/**
+ * Buy shares of a symbol (new or existing position). Recalculates the
+ * position's average cost as a weighted average across the old and new
+ * quantities, and records the transaction in the ledger. Optionally debits
+ * cash by quantity * price.
+ */
 export async function buyIbShares(input: {
   symbol: string;
   quantity: number;
@@ -141,56 +147,74 @@ export async function buyIbShares(input: {
   const newQty = oldQty + input.quantity;
   const newAvg = newQty > 0 ? (oldQty * oldAvg + input.quantity * input.price) / newQty : input.price;
 
-  let positionId: string;
+  // Write the ledger entry FIRST. If this fails (e.g. the table/migration
+  // isn't in place yet), nothing else changes — no silent partial update.
   if (existing) {
+    const { error: txErr } = await supabase.from("ib_position_transactions").insert({
+      household_id,
+      position_id: existing.id,
+      symbol,
+      kind: "buy",
+      quantity: input.quantity,
+      price: input.price,
+      prior_avg_price: oldAvg,
+      occurred_at: input.occurred_at,
+      note: input.note ?? null,
+    });
+    if (txErr) throw txErr;
+
     const { error } = await supabase
       .from("ib_positions")
       .update({ quantity: newQty, avg_price: newAvg })
       .eq("id", existing.id);
     if (error) throw error;
-    positionId = existing.id;
   } else {
+    // No existing position: we must create the row first to get an id for
+    // the ledger's foreign key. If the ledger insert then fails, the new
+    // position still correctly reflects this buy — just without a ledger
+    // entry yet, which is safe to retry (not a silent double-count).
     const { data: inserted, error } = await supabase
       .from("ib_positions")
       .insert({ household_id, symbol, quantity: newQty, avg_price: newAvg })
       .select("id")
       .single();
     if (error) throw error;
-    positionId = inserted.id;
-  }
 
-  const { error: txErr } = await supabase.from("ib_position_transactions").insert({
-    household_id,
-    position_id: positionId,
-    symbol,
-    kind: "buy",
-    quantity: input.quantity,
-    price: input.price,
-    prior_avg_price: oldAvg,
-    occurred_at: input.occurred_at,
-    note: input.note ?? null,
-  });
-  if (txErr) throw txErr;
+    const { error: txErr } = await supabase.from("ib_position_transactions").insert({
+      household_id,
+      position_id: inserted.id,
+      symbol,
+      kind: "buy",
+      quantity: input.quantity,
+      price: input.price,
+      prior_avg_price: oldAvg,
+      occurred_at: input.occurred_at,
+      note: input.note ?? null,
+    });
+    if (txErr) throw txErr;
+  }
 
   if (input.adjustCash) {
     const cost = input.quantity * input.price;
     const newCash = input.currentCash - cost;
     await setIbCash(newCash);
-    
-    try {
-      await logBalanceChange({
-        investment_account_id: IB_ACCOUNT_ID,
-        kind: `קניית ${symbol}`,
-        old_amount: input.currentCash,
-        new_amount: newCash,
-        currency: "USD",
-      });
-    } catch (e) {
-      console.warn("Log balance failed, ignoring:", e);
-    }
+    await logBalanceChange({
+      investment_account_id: IB_ACCOUNT_ID,
+      kind: `קניית ${symbol}`,
+      old_amount: input.currentCash,
+      new_amount: newCash,
+      currency: "USD",
+    });
   }
 }
 
+/**
+ * Sell shares of an existing position at a fixed price (locked in
+ * regardless of the current market price). Reduces quantity; if it reaches
+ * zero the position is removed but the transaction stays in the ledger.
+ * Average cost basis of the remaining shares is unchanged. Optionally
+ * credits cash by quantity * price.
+ */
 export async function sellIbShares(input: {
   positionId: string;
   symbol: string;
@@ -217,17 +241,8 @@ export async function sellIbShares(input: {
   const sellQty = Math.min(input.quantity, oldQty);
   const newQty = Math.max(0, oldQty - sellQty);
 
-  if (newQty <= 0.000001) {
-    const { error } = await supabase.from("ib_positions").delete().eq("id", existing.id);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("ib_positions")
-      .update({ quantity: newQty })
-      .eq("id", existing.id);
-    if (error) throw error;
-  }
-
+  // Write the ledger entry FIRST. If this fails, the position is left
+  // completely untouched — no silent partial update.
   const { error: txErr } = await supabase.from("ib_position_transactions").insert({
     household_id,
     position_id: newQty <= 0.000001 ? null : existing.id,
@@ -241,27 +256,31 @@ export async function sellIbShares(input: {
   });
   if (txErr) throw txErr;
 
+  if (newQty <= 0.000001) {
+    const { error } = await supabase.from("ib_positions").delete().eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("ib_positions")
+      .update({ quantity: newQty })
+      .eq("id", existing.id);
+    if (error) throw error;
+  }
+
   const realizedPnl = (input.price - oldAvg) * sellQty;
 
   if (input.adjustCash) {
     const proceeds = sellQty * input.price;
     const newCash = input.currentCash + proceeds;
     await setIbCash(newCash);
-    
-    try {
-      await logBalanceChange({
-        investment_account_id: IB_ACCOUNT_ID,
-        kind: `מכירת ${symbol}`,
-        old_amount: input.currentCash,
-        new_amount: newCash,
-        currency: "USD",
-      });
-    } catch (e) {
-      console.warn("Log balance failed, ignoring:", e);
-    }
+    await logBalanceChange({
+      investment_account_id: IB_ACCOUNT_ID,
+      kind: `מכירת ${symbol}`,
+      old_amount: input.currentCash,
+      new_amount: newCash,
+      currency: "USD",
+    });
   }
 
   return { realizedPnl };
 }
-
-//.

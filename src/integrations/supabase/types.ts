@@ -716,7 +716,9 @@ export type Database = {
     Functions: {
       create_household: { Args: { _name: string }; Returns: string }
       current_household_id: { Args: never; Returns: string }
+      delete_my_household: { Args: never; Returns: undefined }
       generate_invite_code: { Args: { _household_id: string }; Returns: string }
+      leave_household: { Args: never; Returns: undefined }
       redeem_invite: { Args: { _code: string }; Returns: string }
     }
     Enums: {
@@ -859,5 +861,3 @@ export const Constants = {
     },
   },
 } as const
-
-//.

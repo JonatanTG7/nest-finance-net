@@ -108,3 +108,19 @@ export async function updateHouseholdName(id: string, name: string) {
     .eq("id", id);
   if (error) throw error;
 }
+
+/** Unlink myself from the household only. Safe when other members remain. */
+export async function leaveHousehold(): Promise<void> {
+  const { error } = await supabase.rpc("leave_household");
+  if (error) throw error;
+}
+
+/**
+ * Permanently deletes the whole household and everything in it
+ * (transactions, categories, tags, investment accounts, IB data, invites).
+ * Only succeeds when I'm the sole member — otherwise throws "not_sole_member".
+ */
+export async function deleteMyHousehold(): Promise<void> {
+  const { error } = await supabase.rpc("delete_my_household");
+  if (error) throw error;
+}

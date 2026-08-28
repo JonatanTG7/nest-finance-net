@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Sun, Moon, Copy, LogOut, Users, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
+import { DangerZoneSection } from "@/components/DangerZoneSection";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -113,11 +114,12 @@ function Settings() {
         <div className="rounded-2xl bg-card border p-4 text-sm text-muted-foreground">
           ✨ כל תנועה שתזינו תופיע מיד גם במכשיר השני, בזמן אמת.
         </div>
+        <p className="text-xs text-muted-foreground mt-2">בדיקה בדיקה בדיקה</p>
       </section>
 
       <HouseholdSection />
 
-
+      <DangerZoneSection />
 
       <section className="px-5 mt-8 mb-8">
         <button

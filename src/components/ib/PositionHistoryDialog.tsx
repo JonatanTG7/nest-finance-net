@@ -34,10 +34,11 @@ export function PositionHistoryDialog({
     setLastOpen(false);
   }
 
-  const { data: allTxs = [], isLoading } = useQuery({
+  const { data: allTxs = [], isLoading, isError, error } = useQuery({
     queryKey: ["ib", "transactions", "all"],
     queryFn: () => fetchIbTransactions(),
     enabled: open,
+    retry: 1,
   });
 
   const normalizedFilter = filter.trim().toUpperCase();
@@ -111,6 +112,10 @@ export function PositionHistoryDialog({
 
         {isLoading ? (
           <p className="text-sm text-muted-foreground text-center py-6">טוען...</p>
+        ) : isError ? (
+          <p className="text-sm text-destructive text-center py-6" dir="ltr">
+            שגיאה בטעינת ההיסטוריה: {(error as any)?.message ?? "לא ידועה"}
+          </p>
         ) : txs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">
             {normalizedFilter ? `אין תנועות עבור "${normalizedFilter}"` : "אין עדיין תנועות רשומות"}
@@ -169,5 +174,3 @@ export function PositionHistoryDialog({
     </Dialog>
   );
 }
-
-//.
