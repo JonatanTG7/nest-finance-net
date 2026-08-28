@@ -155,10 +155,16 @@ function Dashboard() {
       </section>
 
       <section className="px-5 md:px-0 mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="הכנסות" value={totals.income} className="bg-income/15 text-income" />
-        <StatCard label="הוצאות" value={totals.expense} className="bg-expense/15 text-expense" />
-        <StatCard label="קבועות" value={totals.fixed} className="bg-fixed/15 text-fixed" />
-        <Link to="/investments/ib" className="block active:scale-[0.98] transition-transform">
+        <Link to="/transactions" search={{ type: "income" }} className="block active:scale-[0.98] transition-transform">
+          <StatCard label="הכנסות" value={totals.income} className="bg-income/15 text-income" />
+        </Link>
+        <Link to="/transactions" search={{ type: "expense" }} className="block active:scale-[0.98] transition-transform">
+          <StatCard label="הוצאות" value={totals.expense} className="bg-expense/15 text-expense" />
+        </Link>
+        <Link to="/transactions" search={{ type: "fixed" }} className="block active:scale-[0.98] transition-transform">
+          <StatCard label="קבועות" value={totals.fixed} className="bg-fixed/15 text-fixed" />
+        </Link>
+        <Link to="/investments" className="block active:scale-[0.98] transition-transform">
           <StatCard label="השקעה" value={totals.investment} className="bg-savings/25 text-foreground" />
         </Link>
       </section>

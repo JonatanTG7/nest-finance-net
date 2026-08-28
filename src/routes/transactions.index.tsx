@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
@@ -19,6 +19,11 @@ import { usePaymentMethods } from "@/lib/payment_methods";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/transactions/")({
+  validateSearch: (search: Record<string, unknown>): { type?: TypeFilter } => {
+    const allowed: TypeFilter[] = ["income", "expense", "fixed", "investment"];
+    const t = search.type as TypeFilter | undefined;
+    return { type: t && allowed.includes(t) ? t : undefined };
+  },
   head: () => ({
     meta: [
       { title: "תנועות — כסף משפחתי" },
@@ -44,15 +49,51 @@ const RANGES: [Range, string][] = [
 ];
 
 function TransactionsList() {
+  const search = Route.useSearch();
   const [month, setMonth] = useSelectedMonth();
   const [range, setRange] = useState<Range>("month");
   const [tab, setTab] = useState<Tab>("list");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+
+  // Applied filters — these actually filter the list below.
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(search.type ?? "all");
   const [payers, setPayers] = useState<Person[]>([]);
   const [cats, setCats] = useState<string[]>([]);
   const [method, setMethod] = useState<string>("");
+
+  // Draft filters — edited inside the open filter panel, only take effect
+  // once "החל סינון" is pressed, so the list doesn't jump around mid-edit.
+  const [draftTypeFilter, setDraftTypeFilter] = useState<TypeFilter>(typeFilter);
+  const [draftPayers, setDraftPayers] = useState<Person[]>(payers);
+  const [draftCats, setDraftCats] = useState<string[]>(cats);
+  const [draftMethod, setDraftMethod] = useState<string>(method);
+
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+
+  // Deep-linked from the home screen (e.g. tapping "הכנסות") — apply immediately.
+  useEffect(() => {
+    if (search.type) {
+      setTypeFilter(search.type);
+      setDraftTypeFilter(search.type);
+    }
+  }, [search.type]);
+
+  function openFilters() {
+    // Re-sync draft with whatever is currently applied before editing.
+    setDraftTypeFilter(typeFilter);
+    setDraftPayers(payers);
+    setDraftCats(cats);
+    setDraftMethod(method);
+    setShowFilters(true);
+  }
+
+  function applyFilters() {
+    setTypeFilter(draftTypeFilter);
+    setPayers(draftPayers);
+    setCats(draftCats);
+    setMethod(draftMethod);
+    setShowFilters(false);
+  }
 
   const memberLabels = useMemberLabels();
   const { data: paymentMethods = [] } = usePaymentMethods();
@@ -169,6 +210,10 @@ function TransactionsList() {
     setPayers([]);
     setCats([]);
     setMethod("");
+    setDraftTypeFilter("all");
+    setDraftPayers([]);
+    setDraftCats([]);
+    setDraftMethod("");
     setQ("");
   }
 
@@ -208,7 +253,7 @@ function TransactionsList() {
             />
           </div>
           <button
-            onClick={() => setShowFilters((v) => !v)}
+            onClick={() => (showFilters ? setShowFilters(false) : openFilters())}
             className={cn(
               "h-11 px-4 rounded-xl border flex items-center gap-2 text-sm shrink-0",
               showFilters || activeFilters ? "bg-primary text-primary-foreground border-primary" : "bg-card",
@@ -225,8 +270,8 @@ function TransactionsList() {
               {(["all", "income", "expense", "fixed", "investment"] as TypeFilter[]).map((k) => (
                 <Chip
                   key={k}
-                  active={typeFilter === k}
-                  onClick={() => setTypeFilter(k)}
+                  active={draftTypeFilter === k}
+                  onClick={() => setDraftTypeFilter(k)}
                 >
                   {k === "all" ? "הכל" : txTypeLabel[k]}
                 </Chip>
@@ -235,7 +280,7 @@ function TransactionsList() {
 
             <FilterRow label="שולם ע״י">
               {(["yonatan", "shiri", "shared"] as Person[]).map((p) => (
-                <Chip key={p} active={payers.includes(p)} onClick={() => toggle(payers, p, setPayers)}>
+                <Chip key={p} active={draftPayers.includes(p)} onClick={() => toggle(draftPayers, p, setDraftPayers)}>
                   {memberLabels[p]}
                 </Chip>
               ))}
@@ -246,8 +291,8 @@ function TransactionsList() {
                 {paymentMethods.map((m) => (
                   <Chip
                     key={m.key}
-                    active={method === m.key}
-                    onClick={() => setMethod(method === m.key ? "" : m.key)}
+                    active={draftMethod === m.key}
+                    onClick={() => setDraftMethod(draftMethod === m.key ? "" : m.key)}
                   >
                     {m.label}
                   </Chip>
@@ -257,21 +302,27 @@ function TransactionsList() {
 
             <FilterRow label="קטגוריות">
               {allCats.map((c) => (
-                <Chip key={c.id} active={cats.includes(c.id)} onClick={() => toggle(cats, c.id, setCats)}>
+                <Chip key={c.id} active={draftCats.includes(c.id)} onClick={() => toggle(draftCats, c.id, setDraftCats)}>
                   {c.emoji} {c.name}
                 </Chip>
               ))}
             </FilterRow>
 
-            {(activeFilters > 0 || q) && (
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={applyFilters}
+                className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground font-semibold text-sm"
+              >
+                החל סינון
+              </button>
               <button
                 onClick={clearFilters}
-                className="text-xs text-muted-foreground inline-flex items-center gap-1"
+                className="h-11 px-4 rounded-xl border text-sm text-muted-foreground inline-flex items-center gap-1"
               >
                 <X className="size-3" />
-                נקה מסננים
+                נקה
               </button>
-            )}
+            </div>
           </div>
         )}
       </header>
