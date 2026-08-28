@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, LogIn, Home, Users } from "lucide-react";
+import { Loader2, LogIn, LogOut, Home, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import {
@@ -203,6 +203,14 @@ function Onboarding() {
           </div>
         )}
       </div>
+
+      <button
+        onClick={() => supabase.auth.signOut()}
+        className="mt-10 flex items-center gap-1.5 text-xs text-muted-foreground"
+      >
+        <LogOut className="size-3.5" />
+        התנתק והתחבר עם חשבון גוגל אחר
+      </button>
     </div>
   );
 }
