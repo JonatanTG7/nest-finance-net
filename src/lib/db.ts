@@ -18,13 +18,82 @@ const TX_SELECT =
   "*, category:categories(*), investment_account:investment_accounts(*), transaction_tags(tag:tags(*))";
 
 export async function fetchCategories(): Promise<Category[]> {
-  const { data, error } = await supabase
+  const [{ data, error }, hidden] = await Promise.all([
+    supabase.from("categories").select("*").order("sort_order").order("name"),
+    fetchHiddenCategoryIds(),
+  ]);
+  if (error) throw error;
+  return (data ?? []).filter((c) => !hidden.has(c.id));
+}
+
+export async function fetchHiddenCategoryIds(): Promise<Set<string>> {
+  const { data, error } = await supabase.from("household_hidden_categories").select("category_id");
+  if (error) throw error;
+  return new Set((data ?? []).map((r) => r.category_id));
+}
+
+export type CategoryWithHidden = Category & { hidden: boolean; txCount: number };
+
+/** Every category (including shared/system ones), with hidden + usage-count info, for the management screen. */
+export async function fetchCategoriesForManagement(): Promise<CategoryWithHidden[]> {
+  const [{ data, error }, hiddenIds] = await Promise.all([
+    supabase.from("categories").select("*").order("sort_order").order("name"),
+    fetchHiddenCategoryIds(),
+  ]);
+  if (error) throw error;
+  const cats = (data ?? []) as Category[];
+  const counts = await Promise.all(cats.map((c) => countTransactionsForCategory(c.id)));
+  return cats.map((c, i) => ({ ...c, hidden: hiddenIds.has(c.id), txCount: counts[i] }));
+}
+
+/** Hide a shared/system category from this household only — doesn't touch the row itself. */
+export async function hideCategoryForHousehold(categoryId: string): Promise<void> {
+  const household_id = await getMyHouseholdId();
+  const { error } = await supabase
+    .from("household_hidden_categories")
+    .upsert({ household_id, category_id: categoryId }, { onConflict: "household_id,category_id" });
+  if (error) throw error;
+}
+
+export async function unhideCategoryForHousehold(categoryId: string): Promise<void> {
+  const household_id = await getMyHouseholdId();
+  const { error } = await supabase
+    .from("household_hidden_categories")
+    .delete()
+    .eq("household_id", household_id)
+    .eq("category_id", categoryId);
+  if (error) throw error;
+}
+
+/**
+ * Merge one category into another: every transaction using `sourceId` is
+ * moved to `targetId`. If the source category belongs to this household
+ * (not shared/system), it's deleted outright. If it's a shared system
+ * category, it's only hidden for this household — it still exists for
+ * everyone else using it.
+ */
+export async function mergeCategories(sourceId: string, targetId: string): Promise<void> {
+  if (sourceId === targetId) throw new Error("same_category");
+
+  const { data: src, error: srcErr } = await supabase
     .from("categories")
     .select("*")
-    .order("sort_order")
-    .order("name");
-  if (error) throw error;
-  return data ?? [];
+    .eq("id", sourceId)
+    .single();
+  if (srcErr) throw srcErr;
+
+  const { error: upErr } = await supabase
+    .from("transactions")
+    .update({ category_id: targetId })
+    .eq("category_id", sourceId);
+  if (upErr) throw upErr;
+
+  if (!src.is_system) {
+    const { error: delErr } = await supabase.from("categories").delete().eq("id", sourceId);
+    if (delErr) throw delErr;
+  } else {
+    await hideCategoryForHousehold(sourceId);
+  }
 }
 
 export async function fetchTags(): Promise<Tag[]> {
@@ -85,6 +154,17 @@ export async function fetchInvestmentTransactions() {
   return (data ?? []) as unknown as Transaction[];
 }
 
+export async function fetchTransactionsForTrip(tripId: string) {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(TX_SELECT)
+    .eq("trip_id", tripId)
+    .order("occurred_at", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as Transaction[];
+}
+
 /** Payment method is now a free-text key (looked up in the payment_methods table). */
 export type PaymentMethod = string;
 
@@ -103,6 +183,7 @@ export interface TransactionInput {
   payment_method?: PaymentMethod | null;
   photo_url?: string | null;
   location?: string | null;
+  trip_id?: string | null;
 }
 
 async function ensureTags(names: string[], householdId: string): Promise<string[]> {
@@ -139,6 +220,7 @@ async function rowFromInput(input: TransactionInput) {
     payment_method: input.payment_method ?? null,
     photo_url: input.photo_url ?? null,
     location: input.location ?? null,
+    trip_id: input.trip_id ?? null,
     household_id: householdId,
     user_id: auth.user?.id ?? null,
   };

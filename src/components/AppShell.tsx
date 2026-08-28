@@ -1,14 +1,15 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, ListIcon, Plus, Settings as SettingsIcon, TrendingUp } from "lucide-react";
+import { Home, ListIcon, Plane, Plus, Settings as SettingsIcon, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMyHousehold } from "@/lib/household";
 
-type NavTo = "/" | "/transactions" | "/investments" | "/settings";
+type NavTo = "/" | "/transactions" | "/travel" | "/investments" | "/settings";
 type NavItem = { to: NavTo; label: string; icon: typeof Home; exact?: boolean };
 
 const items: NavItem[] = [
   { to: "/", label: "בית", icon: Home, exact: true },
   { to: "/transactions", label: "תנועות", icon: ListIcon },
+  { to: "/travel", label: "טיולים", icon: Plane },
   { to: "/investments", label: "השקעות", icon: TrendingUp },
   { to: "/settings", label: "הגדרות", icon: SettingsIcon },
 ];

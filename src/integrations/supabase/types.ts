@@ -128,6 +128,39 @@ export type Database = {
           },
         ]
       }
+      household_hidden_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          household_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          household_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          household_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_hidden_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_hidden_categories_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_invites: {
         Row: {
           code: string

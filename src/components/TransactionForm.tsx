@@ -48,6 +48,7 @@ import {
   usePaymentMethods,
 } from "@/lib/payment_methods";
 import { fetchRateToIls } from "@/lib/fx";
+import { fetchTrips } from "@/lib/trips";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
@@ -72,6 +73,7 @@ export function TransactionForm({
   });
   const { data: paymentMethods = [] } = usePaymentMethods();
   const invalidatePm = useInvalidatePaymentMethods();
+  const { data: trips = [] } = useQuery({ queryKey: ["trips"], queryFn: fetchTrips });
 
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
   const [showNewCat, setShowNewCat] = useState(false);
@@ -143,6 +145,7 @@ export function TransactionForm({
   const [uploading, setUploading] = useState(false);
   const [location, setLocation] = useState<string | null>(existing?.location ?? null);
   const [loadingLoc, setLoadingLoc] = useState(false);
+  const [tripId, setTripId] = useState<string | null>(existing?.trip_id ?? null);
   const [tagInput, setTagInput] = useState("");
   const [tagList, setTagList] = useState<string[]>(
     existing?.transaction_tags?.map((tt) => tt.tag.name) ?? [],
@@ -340,6 +343,7 @@ export function TransactionForm({
       payment_method: type === "income" ? null : paymentMethod,
       photo_url: photoUrl,
       location,
+      trip_id: tripId,
     };
 
     const repeatable = type === "expense" || type === "fixed";
@@ -950,6 +954,25 @@ export function TransactionForm({
                   </span>
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Trip */}
+          {trips.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">טיול</label>
+              <select
+                value={tripId ?? ""}
+                onChange={(e) => setTripId(e.target.value || null)}
+                className="w-full h-12 rounded-2xl bg-card border px-3 text-sm outline-none"
+              >
+                <option value="">ללא טיול</option>
+                {trips.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
