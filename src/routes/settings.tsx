@@ -63,7 +63,7 @@ function Settings() {
       </header>
 
       <section className="px-5 mt-2">
-        <h2 className="text-sm font-semibold mb-2">מי אני בטלפון הזה?</h2>
+        <h2 className="text-sm font-semibold mb-2">מי אני?</h2>
         <div className="grid grid-cols-2 gap-2">
           {(["yonatan", "shiri"] as Person[]).map((p) => (
             <button
@@ -80,9 +80,9 @@ function Settings() {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
+        {/* <p className="mt-2 text-xs text-muted-foreground">
           ערך זה ייבחר אוטומטית במסך הוספת תנועה. תמיד אפשר לשנות לפני שמירה.
-        </p>
+        </p> */}
       </section>
 
       <section className="px-5 mt-8">
@@ -104,9 +104,9 @@ function Settings() {
                 </option>
               ))}
             </select>
-            <p className="mt-1.5 text-xs text-muted-foreground">
+            {/* <p className="mt-1.5 text-xs text-muted-foreground">
               כשתוסיפו תנועה חדשה, המטבע הזה יהיה מסומן מראש — אפשר תמיד לשנות לפני שמירה.
-            </p>
+            </p> */}
           </div>
 
           <div className="border-t pt-4">
@@ -125,7 +125,6 @@ function Settings() {
             />
             <p className="mt-1.5 text-xs text-muted-foreground">
               רק תזכורת אישית לעצמכם (למשל בזמן התאמת תנועות מול דף חשבון) — נשמר על המכשיר שלכם בלבד,
-              לא מחובר לשום נתון בנקאי אמיתי ולא נראה לחברי משק הבית האחרים.
             </p>
           </div>
         </div>
@@ -170,7 +169,7 @@ function Settings() {
         </div>
       </section>
 
-      <section className="px-5 mt-8">
+      {/* <section className="px-5 mt-8">
         <h2 className="text-sm font-semibold mb-2">קטגוריות</h2>
         <Link
           to="/settings/categories"
@@ -179,14 +178,14 @@ function Settings() {
           <span>ניהול קטגוריות · איחוד והסתרה</span>
           <ArrowLeft className="size-4 text-muted-foreground rotate-180" />
         </Link>
-      </section>
+      </section> */}
 
-      <section className="px-5 mt-8">
+      {/* <section className="px-5 mt-8">
         <h2 className="text-sm font-semibold mb-2">סנכרון</h2>
         <div className="rounded-2xl bg-card border p-4 text-sm text-muted-foreground">
           ✨ כל תנועה שתזינו תופיע מיד גם במכשיר השני, בזמן אמת.
         </div>
-      </section>
+      </section> */}
 
       <HouseholdSection />
 

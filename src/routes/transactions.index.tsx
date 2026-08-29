@@ -248,7 +248,7 @@ function TransactionsList() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="חיפוש: שם, קטגוריה, תגית, Shiri / Jonatan…"
+              placeholder="חיפוש: שם, קטגוריה, תגית.."
               className="w-full rounded-xl bg-card border ps-4 pe-10 h-11 text-base outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>

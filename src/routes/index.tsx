@@ -192,7 +192,7 @@ function Dashboard() {
       </section>
 
       <div className="grid md:grid-cols-2 gap-4 mt-6 px-5 md:px-0">
-        <Card title="פילוח הוצאות לפי קטגוריה">
+        <Card title="הוצאות לפי קטגוריה">
           {pieData.length === 0 ? (
             <Empty>אין עדיין הוצאות בחודש זה</Empty>
           ) : (
@@ -223,7 +223,7 @@ function Dashboard() {
           )}
         </Card>
 
-        <Card title="Top 5 קטגוריות">
+        <Card title="טופ 5 קטגוריות">
           {topCats.length === 0 ? (
             <Empty>אין נתונים</Empty>
           ) : (
