@@ -17,7 +17,11 @@ const items: NavItem[] = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { data: household } = useMyHousehold();
-  const showQuickAdd = pathname !== "/transactions/new" && !pathname.startsWith("/investments/ib");
+  // The floating add-button only makes sense on the home screen — on other
+  // screens (vouchers, investments, trip dashboards...) a generic "add
+  // transaction" FAB is confusing since those screens have their own,
+  // more specific "add" actions.
+  const showQuickAdd = pathname === "/";
 
   // On a trip's own dashboard, "add transaction" should pre-link to that trip.
   const tripMatch = pathname.match(/^\/travel\/([^/]+)$/);
@@ -75,9 +79,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           to="/transactions/new"
           search={addTransactionSearch}
           aria-label="הוספת תנועה"
-          className="fixed bottom-20 left-1/2 z-20 flex size-16 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 transition-transform active:scale-95 md:hidden"
+          className="fixed bottom-20 left-5 z-20 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 transition-transform active:scale-95 md:hidden"
         >
-          <Plus className="size-7" />
+          <Plus className="size-6" />
         </Link>
       )}
 

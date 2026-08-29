@@ -49,11 +49,12 @@ import {
 } from "@/lib/payment_methods";
 import { fetchRateToIls } from "@/lib/fx";
 import { fetchTrips } from "@/lib/trips";
+import { getDefaultCurrency } from "@/lib/personal_settings";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
-const CURRENCIES = ["ILS", "USD", "EUR"] as const;
+const CURRENCIES = ["ILS", "USD", "EUR", "GBP", "JPY", "THB", "CHF", "CAD", "AUD", "AED", "TRY", "MXN", "INR", "CNY", "EGP"] as const;
 
 export function TransactionForm({
   existing,
@@ -121,7 +122,7 @@ export function TransactionForm({
   }
 
   const [amount, setAmount] = useState<string>(existing ? String(existing.amount) : "");
-  const [currency, setCurrency] = useState(existing?.currency ?? "ILS");
+  const [currency, setCurrency] = useState(existing?.currency ?? getDefaultCurrency());
   const [fx, setFx] = useState<string>(existing ? String(existing.fx_rate_to_ils) : "1");
   const [categoryId, setCategoryId] = useState<string | null>(existing?.category_id ?? null);
   const [accountId, setAccountId] = useState<string | null>(existing?.investment_account_id ?? null);

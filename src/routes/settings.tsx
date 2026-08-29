@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sun, Moon, Copy, LogOut, Users, Plus } from "lucide-react";
+import { Sun, Moon, Copy, LogOut, Users, Plus, ArrowLeft, ShieldAlert, Coins, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
-import { DangerZoneSection } from "@/components/DangerZoneSection";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
+import { getDefaultCurrency, setDefaultCurrency, getCardLast4, setCardLast4 } from "@/lib/personal_settings";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -24,11 +24,15 @@ export const Route = createFileRoute("/settings")({
 function Settings() {
   const [person, setPerson] = useState<Person>("yonatan");
   const [theme, setThemeState] = useState<Theme>("light");
+  const [currency, setCurrencyState] = useState("ILS");
+  const [cardLast4, setCardLast4State] = useState("");
   const memberLabels = useMemberLabels();
 
   useEffect(() => {
     setPerson(getDefaultPerson());
     setThemeState(getTheme());
+    setCurrencyState(getDefaultCurrency());
+    setCardLast4State(getCardLast4());
   }, []);
 
   function choose(p: Person) {
@@ -39,6 +43,17 @@ function Settings() {
   function chooseTheme(t: Theme) {
     setThemeState(t);
     setTheme(t);
+  }
+
+  function chooseCurrency(c: string) {
+    setCurrencyState(c);
+    setDefaultCurrency(c);
+  }
+
+  function chooseCardLast4(v: string) {
+    const digits = v.replace(/\D/g, "").slice(0, 4);
+    setCardLast4State(digits);
+    setCardLast4(digits);
   }
 
   return (
@@ -68,6 +83,52 @@ function Settings() {
         <p className="mt-2 text-xs text-muted-foreground">
           ערך זה ייבחר אוטומטית במסך הוספת תנועה. תמיד אפשר לשנות לפני שמירה.
         </p>
+      </section>
+
+      <section className="px-5 mt-8">
+        <h2 className="text-sm font-semibold mb-2">הגדרות אישיות</h2>
+        <div className="rounded-2xl bg-card border p-4 space-y-4">
+          <div>
+            <label className="text-sm font-medium flex items-center gap-1.5">
+              <Coins className="size-3.5 text-muted-foreground" />
+              מטבע ברירת מחדל
+            </label>
+            <select
+              value={currency}
+              onChange={(e) => chooseCurrency(e.target.value)}
+              className="w-full h-11 mt-1.5 rounded-xl bg-background border px-3 text-sm outline-none"
+            >
+              {["ILS", "USD", "EUR", "GBP", "JPY", "THB", "CHF", "CAD", "AUD", "AED", "TRY", "MXN", "INR", "CNY", "EGP"].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              כשתוסיפו תנועה חדשה, המטבע הזה יהיה מסומן מראש — אפשר תמיד לשנות לפני שמירה.
+            </p>
+          </div>
+
+          <div className="border-t pt-4">
+            <label className="text-sm font-medium flex items-center gap-1.5">
+              <CreditCard className="size-3.5 text-muted-foreground" />
+              4 ספרות אחרונות של כרטיס אשראי (רשות)
+            </label>
+            <input
+              value={cardLast4}
+              onChange={(e) => chooseCardLast4(e.target.value)}
+              placeholder="1234"
+              inputMode="numeric"
+              maxLength={4}
+              dir="ltr"
+              className="w-full h-11 mt-1.5 rounded-xl bg-background border px-3 text-sm outline-none tracking-widest"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              רק תזכורת אישית לעצמכם (למשל בזמן התאמת תנועות מול דף חשבון) — נשמר על המכשיר שלכם בלבד,
+              לא מחובר לשום נתון בנקאי אמיתי ולא נראה לחברי משק הבית האחרים.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="px-5 mt-8">
@@ -110,16 +171,37 @@ function Settings() {
       </section>
 
       <section className="px-5 mt-8">
+        <h2 className="text-sm font-semibold mb-2">קטגוריות</h2>
+        <Link
+          to="/settings/categories"
+          className="flex items-center justify-between rounded-2xl bg-card border p-4 text-sm"
+        >
+          <span>ניהול קטגוריות · איחוד והסתרה</span>
+          <ArrowLeft className="size-4 text-muted-foreground rotate-180" />
+        </Link>
+      </section>
+
+      <section className="px-5 mt-8">
         <h2 className="text-sm font-semibold mb-2">סנכרון</h2>
         <div className="rounded-2xl bg-card border p-4 text-sm text-muted-foreground">
           ✨ כל תנועה שתזינו תופיע מיד גם במכשיר השני, בזמן אמת.
         </div>
-        <p className="text-xs text-muted-foreground mt-2">בדיקה בדיקה בדיקה</p>
       </section>
 
       <HouseholdSection />
 
-      <DangerZoneSection />
+      <section className="px-5 mt-8">
+        <Link
+          to="/settings/danger"
+          className="flex items-center justify-between rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <ShieldAlert className="size-4" />
+            אזור מתקדם ומחיקת חשבון
+          </span>
+          <ArrowLeft className="size-4 rotate-180" />
+        </Link>
+      </section>
 
       <section className="px-5 mt-8 mb-8">
         <button
