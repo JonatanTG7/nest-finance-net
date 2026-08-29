@@ -87,7 +87,8 @@ function TripDashboard() {
   const status = tripStatus(trip);
   const durationDays = tripDurationDays(trip);
   const spentIls = spending?.totalIls ?? 0;
-  const budgetIls = rate != null ? trip.budget * rate : null;
+  const hasBudget = trip.budget > 0;
+  const budgetIls = hasBudget && rate != null ? trip.budget * rate : null;
   const remainingIls = budgetIls != null ? budgetIls - spentIls : null;
   const avgDaily = durationDays > 0 ? spentIls / durationDays : 0;
 
@@ -119,14 +120,18 @@ function TripDashboard() {
       <div className="px-5 md:px-0 pb-8 space-y-6">
         {/* Overview */}
         <div className="grid grid-cols-2 gap-3">
-          <StatBox icon={Wallet} label="תקציב" value={budgetIls != null ? ils(budgetIls) : "…"} sub={`${trip.budget.toLocaleString()} ${trip.currency}`} />
+          {hasBudget && (
+            <StatBox icon={Wallet} label="תקציב" value={budgetIls != null ? ils(budgetIls) : "…"} sub={`${trip.budget.toLocaleString()} ${trip.currency}`} />
+          )}
           <StatBox icon={TrendingUp} label="הוצא בפועל" value={ils(spentIls)} />
-          <StatBox
-            icon={Wallet}
-            label="נותר"
-            value={remainingIls != null ? ils(remainingIls) : "…"}
-            valueClassName={remainingIls != null && remainingIls < 0 ? "text-destructive" : undefined}
-          />
+          {hasBudget && (
+            <StatBox
+              icon={Wallet}
+              label="נותר"
+              value={remainingIls != null ? ils(remainingIls) : "…"}
+              valueClassName={remainingIls != null && remainingIls < 0 ? "text-destructive" : undefined}
+            />
+          )}
           <StatBox icon={Receipt} label="תנועות" value={String(txs.length)} />
           <StatBox icon={CalendarDays} label="משך הטיול" value={`${durationDays} ימים`} />
           <StatBox icon={TrendingUp} label="ממוצע יומי" value={ils(avgDaily)} />
@@ -141,7 +146,7 @@ function TripDashboard() {
             ) : txs.length === 0 ? (
               <div className="text-center py-10 space-y-2">
                 <p className="text-sm text-muted-foreground">אין עדיין תנועות משויכות לטיול הזה</p>
-                <Link to="/transactions/new" className="text-primary text-sm font-medium">
+                <Link to="/transactions/new" search={{ trip: tripId }} className="text-primary text-sm font-medium">
                   + הוספת הוצאה
                 </Link>
               </div>

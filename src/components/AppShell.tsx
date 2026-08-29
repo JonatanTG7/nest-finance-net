@@ -9,8 +9,8 @@ type NavItem = { to: NavTo; label: string; icon: typeof Home; exact?: boolean };
 const items: NavItem[] = [
   { to: "/", label: "בית", icon: Home, exact: true },
   { to: "/transactions", label: "תנועות", icon: ListIcon },
-  { to: "/travel", label: "טיולים", icon: Plane },
   { to: "/investments", label: "השקעות", icon: TrendingUp },
+  { to: "/travel", label: "טיולים", icon: Plane },
   { to: "/settings", label: "הגדרות", icon: SettingsIcon },
 ];
 
@@ -18,6 +18,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { data: household } = useMyHousehold();
   const showQuickAdd = pathname !== "/transactions/new" && !pathname.startsWith("/investments/ib");
+
+  // On a trip's own dashboard, "add transaction" should pre-link to that trip.
+  const tripMatch = pathname.match(/^\/travel\/([^/]+)$/);
+  const addTransactionSearch = tripMatch ? { trip: tripMatch[1] } : undefined;
 
   const isActive = (it: NavItem) =>
     it.exact ? pathname === it.to : pathname === it.to || pathname.startsWith(it.to + "/");
@@ -53,6 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="p-3">
           <Link
             to="/transactions/new"
+            search={addTransactionSearch}
             className="flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/20 hover:opacity-95"
           >
             <Plus className="size-5" />
@@ -68,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {showQuickAdd && (
         <Link
           to="/transactions/new"
+          search={addTransactionSearch}
           aria-label="הוספת תנועה"
           className="fixed bottom-20 left-1/2 z-20 flex size-16 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 transition-transform active:scale-95 md:hidden"
         >

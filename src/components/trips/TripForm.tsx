@@ -7,7 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { createTrip, updateTrip, uploadTripCover, type Trip, type TripInput } from "@/lib/trips";
 import { cn } from "@/lib/utils";
 
-const CURRENCIES = ["ILS", "USD", "EUR", "GBP", "JPY", "THB"] as const;
+const CURRENCIES = ["ILS", "USD", "EUR", "GBP", "JPY", "THB", "CHF", "CAD", "AUD", "AED", "TRY", "MXN", "INR", "CNY", "EGP"] as const;
 
 export function TripForm({ existing }: { existing?: Trip }) {
   const navigate = useNavigate();
@@ -26,7 +26,8 @@ export function TripForm({ existing }: { existing?: Trip }) {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const valid = name.trim() && country.trim() && startDate && endDate && endDate >= startDate && parseFloat(budget) >= 0;
+  const budgetNum = budget.trim() === "" ? 0 : parseFloat(budget);
+  const valid = name.trim() && country.trim() && startDate && endDate && endDate >= startDate && !isNaN(budgetNum) && budgetNum >= 0;
 
   async function handleFile(file: File) {
     setUploading(true);
@@ -49,7 +50,7 @@ export function TripForm({ existing }: { existing?: Trip }) {
       cities: cities.trim() || null,
       start_date: startDate,
       end_date: endDate,
-      budget: parseFloat(budget) || 0,
+      budget: budgetNum,
       currency,
       cover_image: coverUrl,
     };
@@ -199,7 +200,7 @@ export function TripForm({ existing }: { existing?: Trip }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">תקציב</label>
+            <label className="text-xs text-muted-foreground">תקציב (רשות)</label>
             <input
               type="number"
               inputMode="decimal"

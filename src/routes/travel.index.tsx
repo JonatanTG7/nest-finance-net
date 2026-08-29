@@ -77,7 +77,8 @@ function TripCard({ trip, fallbackGradient }: { trip: Trip; fallbackGradient: st
   });
 
   const status = tripStatus(trip);
-  const budgetIls = rate != null ? trip.budget * rate : null;
+  const hasBudget = trip.budget > 0;
+  const budgetIls = hasBudget && rate != null ? trip.budget * rate : null;
   const spentIls = spending?.totalIls ?? 0;
   const pct = budgetIls && budgetIls > 0 ? Math.min(100, Math.round((spentIls / budgetIls) * 100)) : 0;
   const overBudget = budgetIls != null && spentIls > budgetIls;
@@ -124,14 +125,16 @@ function TripCard({ trip, fallbackGradient }: { trip: Trip; fallbackGradient: st
           </p>
 
           <div className="mt-3">
-            <div className="h-1.5 rounded-full bg-white/25 overflow-hidden">
-              <div
-                className={cn("h-full rounded-full", overBudget ? "bg-rose-400" : "bg-white")}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            {hasBudget && (
+              <div className="h-1.5 rounded-full bg-white/25 overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full", overBudget ? "bg-rose-400" : "bg-white")}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            )}
             <p className="text-xs text-white/90 mt-1.5 tabular-nums">
-              {budgetIls != null ? `${ilsFmt(spentIls)} / ${ilsFmt(budgetIls)}` : ilsFmt(spentIls)}
+              {budgetIls != null ? `${ilsFmt(spentIls)} / ${ilsFmt(budgetIls)}` : `הוצא: ${ilsFmt(spentIls)}`}
             </p>
           </div>
         </div>

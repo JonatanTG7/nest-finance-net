@@ -18,12 +18,23 @@ const TX_SELECT =
   "*, category:categories(*), investment_account:investment_accounts(*), transaction_tags(tag:tags(*))";
 
 export async function fetchCategories(): Promise<Category[]> {
-  const [{ data, error }, hidden] = await Promise.all([
-    supabase.from("categories").select("*").order("sort_order").order("name"),
-    fetchHiddenCategoryIds(),
-  ]);
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("sort_order")
+    .order("name");
   if (error) throw error;
-  return (data ?? []).filter((c) => !hidden.has(c.id));
+  const all = data ?? [];
+
+  // Hiding is a nice-to-have layered on top — if it fails for any reason
+  // (e.g. the household_hidden_categories table/migration isn't in place),
+  // fall back to showing every category rather than showing none.
+  const hidden = await fetchHiddenCategoryIds().catch((e) => {
+    console.warn("fetchHiddenCategoryIds failed, showing all categories", e);
+    return new Set<string>();
+  });
+
+  return all.filter((c) => !hidden.has(c.id));
 }
 
 export async function fetchHiddenCategoryIds(): Promise<Set<string>> {

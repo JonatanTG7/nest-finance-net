@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown } from "lucide-react";
+import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown, Plane } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -58,9 +58,11 @@ const CURRENCIES = ["ILS", "USD", "EUR"] as const;
 export function TransactionForm({
   existing,
   onDone,
+  defaultTripId,
 }: {
   existing?: Transaction;
   onDone?: () => void;
+  defaultTripId?: string | null;
 }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -145,7 +147,8 @@ export function TransactionForm({
   const [uploading, setUploading] = useState(false);
   const [location, setLocation] = useState<string | null>(existing?.location ?? null);
   const [loadingLoc, setLoadingLoc] = useState(false);
-  const [tripId, setTripId] = useState<string | null>(existing?.trip_id ?? null);
+  const [tripId, setTripId] = useState<string | null>(existing?.trip_id ?? defaultTripId ?? null);
+  const [showTripPicker, setShowTripPicker] = useState<boolean>(!!(existing?.trip_id ?? defaultTripId));
   const [tagInput, setTagInput] = useState("");
   const [tagList, setTagList] = useState<string[]>(
     existing?.transaction_tags?.map((tt) => tt.tag.name) ?? [],
@@ -957,22 +960,49 @@ export function TransactionForm({
             </div>
           )}
 
-          {/* Trip */}
+          {/* Trip — collapsed by default so ordinary daily transactions aren't cluttered */}
           {trips.length > 0 && (
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">טיול</label>
-              <select
-                value={tripId ?? ""}
-                onChange={(e) => setTripId(e.target.value || null)}
-                className="w-full h-12 rounded-2xl bg-card border px-3 text-sm outline-none"
-              >
-                <option value="">ללא טיול</option>
-                {trips.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+            <div>
+              {showTripPicker ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground">טיול</label>
+                    {!existing?.trip_id && !defaultTripId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTripId(null);
+                          setShowTripPicker(false);
+                        }}
+                        className="text-xs text-muted-foreground"
+                      >
+                        הסרה
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={tripId ?? ""}
+                    onChange={(e) => setTripId(e.target.value || null)}
+                    className="w-full h-12 rounded-2xl bg-card border px-3 text-sm outline-none"
+                  >
+                    <option value="">ללא טיול</option>
+                    {trips.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowTripPicker(true)}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                >
+                  <Plane className="size-3.5" />
+                  קשר לטיול
+                </button>
+              )}
             </div>
           )}
 

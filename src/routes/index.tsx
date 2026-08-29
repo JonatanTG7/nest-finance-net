@@ -16,6 +16,8 @@ import {
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
+import { Plane } from "lucide-react";
+import { fetchTrips, tripStatus } from "@/lib/trips";
 import {
   fetchAllTransactions,
   fetchTransactionsBetween,
@@ -45,6 +47,8 @@ function Dashboard() {
   const { start, end, startDate } = useMemo(() => monthRangeFromKey(month), [month]);
   const { data: profile } = useMyProfile();
   const firstName = (profile?.display_name ?? "").split(" ")[0];
+  const { data: trips = [] } = useQuery({ queryKey: ["trips"], queryFn: fetchTrips });
+  const activeTrip = trips.find((t) => tripStatus(t) === "active");
 
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["dashboard", "month", start],
@@ -134,6 +138,24 @@ function Dashboard() {
         </div>
         <MonthPicker value={month} onChange={setMonth} />
       </header>
+
+      {activeTrip && (
+        <section className="px-5 md:px-0 mb-3">
+          <Link
+            to="/travel/$tripId"
+            params={{ tripId: activeTrip.id }}
+            className="flex items-center gap-3 rounded-2xl bg-gradient-to-l from-sky-500/15 to-transparent border border-sky-500/30 p-4"
+          >
+            <span className="size-10 rounded-full bg-sky-500/20 flex items-center justify-center shrink-0">
+              <Plane className="size-5 text-sky-500" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">אתם בטיול: {activeTrip.name} 🧳</p>
+              <p className="text-xs text-muted-foreground">הקישו כדי לראות את הטיול ולהוסיף הוצאה</p>
+            </div>
+          </Link>
+        </section>
+      )}
 
       <section className="px-5 md:px-0">
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground p-6 shadow-lg shadow-primary/20">
