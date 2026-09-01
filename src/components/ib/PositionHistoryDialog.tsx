@@ -119,7 +119,7 @@ export function PositionHistoryDialog({
           <p className="text-sm text-muted-foreground text-center py-6">טוען...</p>
         ) : isError ? (
           <p className="text-sm text-destructive text-center py-6" dir="ltr">
-            שגיאה בטעינת ההיסטוריה: {(error as any)?.message ?? "לא ידועה"}
+            שגיאה בטעינת ההיסטוריה: {(error as Error | null)?.message ?? "לא ידועה"}
           </p>
         ) : txs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">

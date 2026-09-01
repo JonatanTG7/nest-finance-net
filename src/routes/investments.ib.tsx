@@ -281,9 +281,9 @@ function IbPortfolio() {
       qc.invalidateQueries({ queryKey: ["balance_history", IB_ACCOUNT_ID] });
       toast.success("הקנייה נשמרה");
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       console.error(e);
-      toast.error(`שגיאה בשמירת הקנייה: ${e?.message ?? "לא ידועה"}`);
+      toast.error(`שגיאה בשמירת הקנייה: ${(e as Error)?.message ?? "לא ידועה"}`);
     },
   });
 
@@ -296,9 +296,9 @@ function IbPortfolio() {
       qc.invalidateQueries({ queryKey: ["balance_history", IB_ACCOUNT_ID] });
       toast.success("המכירה נשמרה");
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       console.error(e);
-      toast.error(`שגיאה בשמירת המכירה: ${e?.message ?? "לא ידועה"}`);
+      toast.error(`שגיאה בשמירת המכירה: ${(e as Error)?.message ?? "לא ידועה"}`);
     },
   });
 
