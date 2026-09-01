@@ -17,7 +17,9 @@ function AdvancedSettings() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold">אזור מתקדם</h1>
-          <p className="text-xs text-muted-foreground">פעולות בלתי הפיכות — קרא/י בעיון לפני שממשיכים</p>
+          <p className="text-xs text-muted-foreground">
+            פעולות בלתי הפיכות — קרא/י בעיון לפני שממשיכים
+          </p>
         </div>
       </header>
 

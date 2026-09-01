@@ -6,8 +6,7 @@ import { getMyHouseholdId } from "@/lib/household";
 
 export type Category = Database["public"]["Tables"]["categories"]["Row"];
 export type Tag = Database["public"]["Tables"]["tags"]["Row"];
-export type InvestmentAccount =
-  Database["public"]["Tables"]["investment_accounts"]["Row"];
+export type InvestmentAccount = Database["public"]["Tables"]["investment_accounts"]["Row"];
 export type Transaction = Database["public"]["Tables"]["transactions"]["Row"] & {
   category: Category | null;
   transaction_tags: { tag: Tag }[];
@@ -227,7 +226,7 @@ async function rowFromInput(input: TransactionInput) {
     occurred_at: input.occurred_at,
     entered_by: input.entered_by,
     investment_account_id:
-      input.type === "investment" ? input.investment_account_id ?? null : null,
+      input.type === "investment" ? (input.investment_account_id ?? null) : null,
     payment_method: input.payment_method ?? null,
     photo_url: input.photo_url ?? null,
     location: input.location ?? null,
@@ -252,11 +251,7 @@ export async function uploadTransactionPhoto(file: File): Promise<string> {
 
 export async function createTransaction(input: TransactionInput) {
   const row = await rowFromInput(input);
-  const { data: tx, error } = await supabase
-    .from("transactions")
-    .insert(row)
-    .select("id")
-    .single();
+  const { data: tx, error } = await supabase.from("transactions").insert(row).select("id").single();
   if (error) throw error;
   const tagIds = await ensureTags(input.tag_names, row.household_id);
   if (tagIds.length) {
@@ -270,12 +265,8 @@ export async function createTransaction(input: TransactionInput) {
 
 export async function updateTransaction(id: string, input: TransactionInput) {
   const row = await rowFromInput(input);
-  const { error } = await supabase
-    .from("transactions")
-    .update(row)
-    .eq("id", id);
+  const { error } = await supabase.from("transactions").update(row).eq("id", id);
   if (error) throw error;
-
 
   const { error: delErr } = await supabase
     .from("transaction_tags")

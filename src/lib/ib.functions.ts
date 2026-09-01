@@ -32,7 +32,7 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
     const r = await fetch(url, { headers: { Accept: "application/json" } });
     if (!r.ok) return null;
     const j = (await r.json()) as FinnhubQuote;
-    
+
     let last = typeof j.c === "number" && j.c > 0 ? j.c : null;
     const prevClose = typeof j.pc === "number" && j.pc > 0 ? j.pc : null;
 
@@ -41,9 +41,9 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<Quote 
     }
 
     if (last == null && prevClose == null) return null;
-    
+
     const phase: MarketPhase = last != null ? guessPhaseNY() : "CLOSED";
-    
+
     return {
       symbol,
       last,
@@ -128,4 +128,4 @@ export const getQuotes = createServerFn({ method: "POST" })
     return syms.map((s) => by.get(s)!);
   });
 
-  //.
+//.

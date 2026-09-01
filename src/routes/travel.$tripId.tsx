@@ -1,7 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, CalendarDays, PencilLine, Receipt, Trash2, TrendingUp, Wallet } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  PencilLine,
+  Receipt,
+  Trash2,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   AlertDialog,
@@ -15,7 +23,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { fetchTransactionsForTrip, type Transaction } from "@/lib/db";
-import { deleteTrip, fetchTrip, fetchTripSpending, tripDurationDays, tripStatus, tripStatusLabel } from "@/lib/trips";
+import {
+  deleteTrip,
+  fetchTrip,
+  fetchTripSpending,
+  tripDurationDays,
+  tripStatus,
+  tripStatusLabel,
+} from "@/lib/trips";
 import { fetchRateToIls } from "@/lib/fx";
 import { countryFlag } from "@/lib/flags";
 import { txTypeLabel } from "@/lib/finance";
@@ -29,7 +44,11 @@ export const Route = createFileRoute("/travel/$tripId")({
 });
 
 function ils(n: number) {
-  return n.toLocaleString("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });
+  return n.toLocaleString("he-IL", {
+    style: "currency",
+    currency: "ILS",
+    maximumFractionDigits: 0,
+  });
 }
 
 function TripDashboard() {
@@ -92,7 +111,12 @@ function TripDashboard() {
   const remainingIls = budgetIls != null ? budgetIls - spentIls : null;
   const avgDaily = durationDays > 0 ? spentIls / durationDays : 0;
 
-  const dateFmt = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
+  const dateFmt = (d: string) =>
+    new Date(d + "T00:00:00").toLocaleDateString("he-IL", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 
   return (
     <AppShell>
@@ -109,10 +133,17 @@ function TripDashboard() {
             {dateFmt(trip.start_date)} – {dateFmt(trip.end_date)} · {tripStatusLabel[status]}
           </p>
         </div>
-        <Link to="/travel/$tripId/edit" params={{ tripId }} className="p-2 rounded-lg hover:bg-accent text-muted-foreground">
+        <Link
+          to="/travel/$tripId/edit"
+          params={{ tripId }}
+          className="p-2 rounded-lg hover:bg-accent text-muted-foreground"
+        >
           <PencilLine className="size-4" />
         </Link>
-        <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground">
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="p-2 rounded-lg hover:bg-accent text-muted-foreground"
+        >
           <Trash2 className="size-4" />
         </button>
       </header>
@@ -121,7 +152,12 @@ function TripDashboard() {
         {/* Overview */}
         <div className="grid grid-cols-2 gap-3">
           {hasBudget && (
-            <StatBox icon={Wallet} label="תקציב" value={budgetIls != null ? ils(budgetIls) : "…"} sub={`${trip.budget.toLocaleString()} ${trip.currency}`} />
+            <StatBox
+              icon={Wallet}
+              label="תקציב"
+              value={budgetIls != null ? ils(budgetIls) : "…"}
+              sub={`${trip.budget.toLocaleString()} ${trip.currency}`}
+            />
           )}
           <StatBox icon={TrendingUp} label="הוצא בפועל" value={ils(spentIls)} />
           {hasBudget && (
@@ -129,7 +165,9 @@ function TripDashboard() {
               icon={Wallet}
               label="נותר"
               value={remainingIls != null ? ils(remainingIls) : "…"}
-              valueClassName={remainingIls != null && remainingIls < 0 ? "text-destructive" : undefined}
+              valueClassName={
+                remainingIls != null && remainingIls < 0 ? "text-destructive" : undefined
+              }
             />
           )}
           <StatBox icon={Receipt} label="תנועות" value={String(txs.length)} />
@@ -146,12 +184,23 @@ function TripDashboard() {
             ) : txs.length === 0 ? (
               <div className="text-center py-10 space-y-2">
                 <p className="text-sm text-muted-foreground">אין עדיין תנועות משויכות לטיול הזה</p>
-                <Link to="/transactions/new" search={{ trip: tripId }} className="text-primary text-sm font-medium">
+                <Link
+                  to="/transactions/new"
+                  search={{ trip: tripId }}
+                  className="text-primary text-sm font-medium"
+                >
                   + הוספת הוצאה
                 </Link>
               </div>
             ) : (
-              txs.map((tx) => <TripTxRow key={tx.id} tx={tx} memberLabels={memberLabels} paymentMethods={paymentMethods} />)
+              txs.map((tx) => (
+                <TripTxRow
+                  key={tx.id}
+                  tx={tx}
+                  memberLabels={memberLabels}
+                  paymentMethods={paymentMethods}
+                />
+              ))
             )}
           </div>
         </div>
@@ -162,7 +211,8 @@ function TripDashboard() {
           <AlertDialogHeader>
             <AlertDialogTitle>למחוק את "{trip.name}"?</AlertDialogTitle>
             <AlertDialogDescription>
-              התנועות המשויכות לא יימחקו — הן פשוט יפסיקו להיות מקושרות לטיול. לא ניתן לשחזר את הטיול עצמו.
+              התנועות המשויכות לא יימחקו — הן פשוט יפסיקו להיות מקושרות לטיול. לא ניתן לשחזר את
+              הטיול עצמו.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -200,7 +250,11 @@ function StatBox({
         <span className="text-xs">{label}</span>
       </div>
       <p className={cn("text-lg font-bold mt-1 tabular-nums", valueClassName)}>{value}</p>
-      {sub && <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums" dir="ltr">{sub}</p>}
+      {sub && (
+        <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums" dir="ltr">
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
@@ -216,7 +270,10 @@ function TripTxRow({
 }) {
   const isIn = tx.type === "income";
   const pmLabel = paymentMethods.find((p) => p.key === tx.payment_method)?.label;
-  const dateFmt = new Date(tx.occurred_at + "T00:00:00").toLocaleDateString("he-IL", { day: "numeric", month: "short" });
+  const dateFmt = new Date(tx.occurred_at + "T00:00:00").toLocaleDateString("he-IL", {
+    day: "numeric",
+    month: "short",
+  });
 
   return (
     <Link
@@ -237,7 +294,9 @@ function TripTxRow({
           {pmLabel ? ` · ${pmLabel}` : ""}
         </p>
       </div>
-      <p className={cn("font-bold tabular-nums shrink-0", isIn ? "text-income" : "text-foreground")}>
+      <p
+        className={cn("font-bold tabular-nums shrink-0", isIn ? "text-income" : "text-foreground")}
+      >
         {isIn ? "+" : "−"}
         {ils(Number(tx.amount_ils))}
       </p>

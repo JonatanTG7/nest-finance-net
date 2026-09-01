@@ -4,12 +4,7 @@ import { toast } from "sonner";
 import { Loader2, LogIn, LogOut, Home, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import {
-  createHousehold,
-  fetchMyProfile,
-  redeemInvite,
-  useInvalidateMe,
-} from "@/lib/household";
+import { createHousehold, fetchMyProfile, redeemInvite, useInvalidateMe } from "@/lib/household";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<unknown | null | undefined>(undefined);
@@ -51,9 +46,7 @@ function HouseholdGate({ children }: { children: React.ReactNode }) {
 
 function FullScreen({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-background">
-      {children}
-    </div>
+    <div className="min-h-[100dvh] flex items-center justify-center bg-background">{children}</div>
   );
 }
 
@@ -122,9 +115,13 @@ function Onboarding() {
       console.error(e);
       const msg = (e as Error).message || "";
       toast.error(
-        msg.includes("not_found") ? "קוד לא נמצא" :
-        msg.includes("expired") ? "הקוד פג תוקף" :
-        msg.includes("used_up") ? "הקוד נוצל" : "שגיאה בהצטרפות",
+        msg.includes("not_found")
+          ? "קוד לא נמצא"
+          : msg.includes("expired")
+            ? "הקוד פג תוקף"
+            : msg.includes("used_up")
+              ? "הקוד נוצל"
+              : "שגיאה בהצטרפות",
       );
     } finally {
       setBusy(false);
@@ -174,7 +171,10 @@ function Onboarding() {
             >
               {busy ? "יוצר…" : "צור"}
             </button>
-            <button onClick={() => setMode("choose")} className="w-full h-10 text-sm text-muted-foreground">
+            <button
+              onClick={() => setMode("choose")}
+              className="w-full h-10 text-sm text-muted-foreground"
+            >
               חזרה
             </button>
           </div>
@@ -197,7 +197,10 @@ function Onboarding() {
             >
               {busy ? "מצטרף…" : "הצטרף"}
             </button>
-            <button onClick={() => setMode("choose")} className="w-full h-10 text-sm text-muted-foreground">
+            <button
+              onClick={() => setMode("choose")}
+              className="w-full h-10 text-sm text-muted-foreground"
+            >
               חזרה
             </button>
           </div>

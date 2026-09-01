@@ -94,18 +94,12 @@ export async function listHouseholdMembers(householdId: string) {
 export async function updateMyPerson(person: "yonatan" | "shiri") {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new Error("not signed in");
-  const { error } = await supabase
-    .from("profiles")
-    .update({ person })
-    .eq("id", auth.user.id);
+  const { error } = await supabase.from("profiles").update({ person }).eq("id", auth.user.id);
   if (error) throw error;
 }
 
 export async function updateHouseholdName(id: string, name: string) {
-  const { error } = await supabase
-    .from("households")
-    .update({ name })
-    .eq("id", id);
+  const { error } = await supabase.from("households").update({ name }).eq("id", id);
   if (error) throw error;
 }
 

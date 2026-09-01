@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -66,7 +72,8 @@ export function SellDialog({
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground tabular-nums" dir="ltr">
-            מחזיק כרגע: {position.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })} · מחיר ממוצע{" "}
+            מחזיק כרגע: {position.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })} ·
+            מחיר ממוצע{" "}
             {position.avg_price.toLocaleString("en-US", { style: "currency", currency: "USD" })}
           </p>
           <div className="grid grid-cols-2 gap-3">
@@ -100,7 +107,13 @@ export function SellDialog({
           </div>
           <div className="space-y-1">
             <Label htmlFor="sell-date">תאריך</Label>
-            <Input id="sell-date" type="date" dir="ltr" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Input
+              id="sell-date"
+              type="date"
+              dir="ltr"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
 
           {proceeds != null && (
@@ -109,7 +122,12 @@ export function SellDialog({
                 תמורה: {proceeds.toLocaleString("en-US", { style: "currency", currency: "USD" })}
               </p>
               {realizedPnl != null && (
-                <p className={cn("tabular-nums font-medium", realizedPnl >= 0 ? "text-emerald-500" : "text-rose-400")}>
+                <p
+                  className={cn(
+                    "tabular-nums font-medium",
+                    realizedPnl >= 0 ? "text-emerald-500" : "text-rose-400",
+                  )}
+                >
                   רווח/הפסד ממומש: {realizedPnl >= 0 ? "+" : ""}
                   {realizedPnl.toLocaleString("en-US", { style: "currency", currency: "USD" })}
                 </p>
@@ -119,7 +137,8 @@ export function SellDialog({
 
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <Checkbox checked={adjustCash} onCheckedChange={(v) => setAdjustCash(!!v)} />
-            הוסף אוטומטית למזומן ({currentCash.toLocaleString("en-US", { style: "currency", currency: "USD" })})
+            הוסף אוטומטית למזומן (
+            {currentCash.toLocaleString("en-US", { style: "currency", currency: "USD" })})
           </label>
         </div>
         <DialogFooter className="gap-2">

@@ -96,7 +96,11 @@ export function BalanceDialog({
 
           <div className="space-y-1">
             <Label htmlFor="bal">
-              {mode === "set" ? "סכום חדש (₪)" : mode === "add" ? "סכום להוספה (₪)" : "סכום להפחתה (₪)"}
+              {mode === "set"
+                ? "סכום חדש (₪)"
+                : mode === "add"
+                  ? "סכום להוספה (₪)"
+                  : "סכום להפחתה (₪)"}
             </Label>
             <Input
               id="bal"

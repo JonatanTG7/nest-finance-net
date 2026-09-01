@@ -145,7 +145,8 @@ export async function buyIbShares(input: {
   const oldQty = existing ? Number(existing.quantity) : 0;
   const oldAvg = existing ? Number(existing.avg_price) : 0;
   const newQty = oldQty + input.quantity;
-  const newAvg = newQty > 0 ? (oldQty * oldAvg + input.quantity * input.price) / newQty : input.price;
+  const newAvg =
+    newQty > 0 ? (oldQty * oldAvg + input.quantity * input.price) / newQty : input.price;
 
   // Write the ledger entry FIRST. If this fails (e.g. the table/migration
   // isn't in place yet), nothing else changes — no silent partial update.

@@ -206,7 +206,7 @@ function VouchersPage() {
                         <p
                           className={cn(
                             "text-sm font-semibold tabular-nums",
-                            used && "text-muted-foreground"
+                            used && "text-muted-foreground",
                           )}
                           dir="ltr"
                         >
@@ -252,7 +252,7 @@ function VouchersPage() {
               onClick={(e) => e.stopPropagation()}
             />
           </div>,
-          document.body
+          document.body,
         )}
     </AppShell>
   );

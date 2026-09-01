@@ -2,7 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Plane } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { fetchTrips, fetchTripSpending, tripDurationDays, tripStatus, tripStatusLabel, type Trip } from "@/lib/trips";
+import {
+  fetchTrips,
+  fetchTripSpending,
+  tripDurationDays,
+  tripStatus,
+  tripStatusLabel,
+  type Trip,
+} from "@/lib/trips";
 import { fetchRateToIls } from "@/lib/fx";
 import { countryFlag } from "@/lib/flags";
 import { cn } from "@/lib/utils";
@@ -20,7 +27,11 @@ const FALLBACK_GRADIENTS = [
 ];
 
 function ilsFmt(n: number) {
-  return n.toLocaleString("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });
+  return n.toLocaleString("he-IL", {
+    style: "currency",
+    currency: "ILS",
+    maximumFractionDigits: 0,
+  });
 }
 
 function TravelHub() {
@@ -56,7 +67,11 @@ function TravelHub() {
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {trips.map((t, i) => (
-              <TripCard key={t.id} trip={t} fallbackGradient={FALLBACK_GRADIENTS[i % FALLBACK_GRADIENTS.length]} />
+              <TripCard
+                key={t.id}
+                trip={t}
+                fallbackGradient={FALLBACK_GRADIENTS[i % FALLBACK_GRADIENTS.length]}
+              />
             ))}
           </div>
         )}
@@ -80,10 +95,12 @@ function TripCard({ trip, fallbackGradient }: { trip: Trip; fallbackGradient: st
   const hasBudget = trip.budget > 0;
   const budgetIls = hasBudget && rate != null ? trip.budget * rate : null;
   const spentIls = spending?.totalIls ?? 0;
-  const pct = budgetIls && budgetIls > 0 ? Math.min(100, Math.round((spentIls / budgetIls) * 100)) : 0;
+  const pct =
+    budgetIls && budgetIls > 0 ? Math.min(100, Math.round((spentIls / budgetIls) * 100)) : 0;
   const overBudget = budgetIls != null && spentIls > budgetIls;
 
-  const dateFmt = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("he-IL", { day: "numeric", month: "short" });
+  const dateFmt = (d: string) =>
+    new Date(d + "T00:00:00").toLocaleDateString("he-IL", { day: "numeric", month: "short" });
 
   return (
     <Link
@@ -134,7 +151,9 @@ function TripCard({ trip, fallbackGradient }: { trip: Trip; fallbackGradient: st
               </div>
             )}
             <p className="text-xs text-white/90 mt-1.5 tabular-nums">
-              {budgetIls != null ? `${ilsFmt(spentIls)} / ${ilsFmt(budgetIls)}` : `הוצא: ${ilsFmt(spentIls)}`}
+              {budgetIls != null
+                ? `${ilsFmt(spentIls)} / ${ilsFmt(budgetIls)}`
+                : `הוצא: ${ilsFmt(spentIls)}`}
             </p>
           </div>
         </div>

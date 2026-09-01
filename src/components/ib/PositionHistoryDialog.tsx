@@ -34,7 +34,12 @@ export function PositionHistoryDialog({
     setLastOpen(false);
   }
 
-  const { data: allTxs = [], isLoading, isError, error } = useQuery({
+  const {
+    data: allTxs = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["ib", "transactions", "all"],
     queryFn: () => fetchIbTransactions(),
     enabled: open,
@@ -114,7 +119,7 @@ export function PositionHistoryDialog({
           <p className="text-sm text-muted-foreground text-center py-6">טוען...</p>
         ) : isError ? (
           <p className="text-sm text-destructive text-center py-6" dir="ltr">
-            שגיאה בטעינת ההיסטוריה: {(error as any)?.message ?? "לא ידועה"}
+            שגיאה בטעינת ההיסטוריה: {(error as Error | null)?.message ?? "לא ידועה"}
           </p>
         ) : txs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">
@@ -129,7 +134,10 @@ export function PositionHistoryDialog({
                   ? (t.price - t.prior_avg_price) * t.quantity
                   : null;
               return (
-                <div key={t.id} className="rounded-xl border p-3 flex items-center justify-between gap-3">
+                <div
+                  key={t.id}
+                  className="rounded-xl border p-3 flex items-center justify-between gap-3"
+                >
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold" dir="ltr">
@@ -150,11 +158,15 @@ export function PositionHistoryDialog({
                       </span>
                     </div>
                     <p className="text-sm mt-1 tabular-nums" dir="ltr">
-                      {t.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })} × {usdFmt.format(t.price)}
+                      {t.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })} ×{" "}
+                      {usdFmt.format(t.price)}
                     </p>
                     {pnl != null && (
                       <p
-                        className={cn("text-xs tabular-nums", pnl >= 0 ? "text-emerald-500" : "text-rose-400")}
+                        className={cn(
+                          "text-xs tabular-nums",
+                          pnl >= 0 ? "text-emerald-500" : "text-rose-400",
+                        )}
                         dir="ltr"
                       >
                         {pnl >= 0 ? "+" : ""}

@@ -52,7 +52,6 @@ function Investments() {
     refetchIntervalInBackground: false,
   });
 
-
   const ibTotals = useMemo(() => {
     const priceBy = new Map<string, number | null>();
     for (const q of ibQuotes) priceBy.set(q.symbol, q.last);
@@ -107,7 +106,6 @@ function Investments() {
     [totals],
   );
 
-
   return (
     <AppShell>
       <header className="px-5 md:px-0 pt-6 pb-3">
@@ -115,7 +113,6 @@ function Investments() {
         <p className="text-sm text-muted-foreground mt-1">
           לחץ על כל חשבון כדי לעדכן את הסכום ולראות את היסטוריית השינויים.
         </p>
-
       </header>
 
       <section className="px-5 md:px-0">
@@ -137,7 +134,10 @@ function Investments() {
                 <span className="ms-auto text-xs text-muted-foreground">{a.currency}</span>
                 <ChevronLeft className="size-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-bold mt-2 tabular-nums" dir={a.currency !== "ILS" ? "ltr" : undefined}>
+              <p
+                className="text-2xl font-bold mt-2 tabular-nums"
+                dir={a.currency !== "ILS" ? "ltr" : undefined}
+              >
                 {formatMoney(t.native, a.currency)}
               </p>
               {a.currency !== "ILS" && (
@@ -176,14 +176,15 @@ function Investments() {
               <span className="ms-auto text-xs text-muted-foreground">ILS</span>
               <ChevronLeft className="size-4 text-muted-foreground" />
             </div>
-            <p className="text-2xl font-bold mt-2 tabular-nums">{formatILS(voucherTotals.remaining)}</p>
+            <p className="text-2xl font-bold mt-2 tabular-nums">
+              {formatILS(voucherTotals.remaining)}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
               {voucherTotals.count} שוברים · {formatILS(voucherTotals.remaining)} יתרה
             </p>
           </div>
         </Link>
       </section>
-
     </AppShell>
   );
 }
