@@ -59,7 +59,10 @@ function ViewTx() {
     <AppShell>
       <div className="px-5 md:px-0 pt-6 pb-8 max-w-2xl mx-auto space-y-5">
         <header className="flex items-center justify-between">
-          <Link to="/transactions" className="text-sm text-muted-foreground flex items-center gap-1">
+          <Link
+            to="/transactions"
+            className="text-sm text-muted-foreground flex items-center gap-1"
+          >
             <ArrowRight className="size-4" />
             חזרה
           </Link>
@@ -91,12 +94,16 @@ function ViewTx() {
             {tx.category?.emoji ?? tx.title.slice(0, 1)}
           </div>
           <h1 className="text-xl font-semibold">{tx.title}</h1>
-          <p className={`text-4xl font-bold mt-3 tabular-nums ${isIn ? "text-income" : "text-foreground"}`}>
-            {isIn ? "+" : "−"}{formatILS(Number(tx.amount_ils))}
+          <p
+            className={`text-4xl font-bold mt-3 tabular-nums ${isIn ? "text-income" : "text-foreground"}`}
+          >
+            {isIn ? "+" : "−"}
+            {formatILS(Number(tx.amount_ils))}
           </p>
           {tx.currency !== "ILS" && (
             <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-              {Number(tx.amount).toLocaleString("he-IL")} {tx.currency} · שער {Number(tx.fx_rate_to_ils)}
+              {Number(tx.amount).toLocaleString("he-IL")} {tx.currency} · שער{" "}
+              {Number(tx.fx_rate_to_ils)}
             </p>
           )}
         </div>
@@ -125,18 +132,28 @@ function ViewTx() {
           {tx.investment_account && (
             <Detail label="חשבון השקעה">
               <span className="inline-flex items-center gap-2">
-                <span className="size-2.5 rounded-full" style={{ background: tx.investment_account.color }} />
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ background: tx.investment_account.color }}
+                />
                 {tx.investment_account.name}
               </span>
             </Detail>
           )}
           <Detail label="תאריך">
-            {new Intl.DateTimeFormat("he-IL", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(tx.occurred_at))}
+            {new Intl.DateTimeFormat("he-IL", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }).format(new Date(tx.occurred_at))}
           </Detail>
           <Detail label="אמצעי תשלום">
-            {tx.payment_method
-              ? (paymentMethods.find((m) => m.key === tx.payment_method)?.label ?? tx.payment_method)
-              : <span className="text-muted-foreground">—</span>}
+            {tx.payment_method ? (
+              (paymentMethods.find((m) => m.key === tx.payment_method)?.label ?? tx.payment_method)
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </Detail>
           <Detail label="שולם ע״י">{memberLabels[tx.entered_by]}</Detail>
           <Detail label="תגיות">
@@ -145,14 +162,21 @@ function ViewTx() {
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {tags.map((t) => (
-                  <span key={t} className="px-2.5 h-6 inline-flex items-center rounded-full bg-accent text-accent-foreground text-xs">
+                  <span
+                    key={t}
+                    className="px-2.5 h-6 inline-flex items-center rounded-full bg-accent text-accent-foreground text-xs"
+                  >
                     {t}
                   </span>
                 ))}
               </div>
             )}
           </Detail>
-          {tx.note && <Detail label="הערה"><span className="whitespace-pre-wrap">{tx.note}</span></Detail>}
+          {tx.note && (
+            <Detail label="הערה">
+              <span className="whitespace-pre-wrap">{tx.note}</span>
+            </Detail>
+          )}
         </div>
       </div>
     </AppShell>

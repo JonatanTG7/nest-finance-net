@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -15,7 +21,12 @@ export function PositionDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   position: IbPosition | null;
-  onSave: (input: { id?: string; symbol: string; quantity: number; avg_price: number }) => Promise<void>;
+  onSave: (input: {
+    id?: string;
+    symbol: string;
+    quantity: number;
+    avg_price: number;
+  }) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
 }) {
   const [symbol, setSymbol] = useState("");

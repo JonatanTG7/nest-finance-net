@@ -49,7 +49,9 @@ export function BalanceHistoryList({ rows }: { rows: BalanceHistoryRow[] }) {
                   <p className="text-xs text-muted-foreground tabular-nums mt-0.5" dir="ltr">
                     {fmtAmount(r.old_amount, r.currency)} → {fmtAmount(r.new_amount, r.currency)}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{fmtDate(r.created_at)}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {fmtDate(r.created_at)}
+                  </p>
                 </div>
                 <span
                   className={cn(

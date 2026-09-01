@@ -27,9 +27,15 @@ export const Route = createFileRoute("/transactions/")({
   head: () => ({
     meta: [
       { title: "תנועות — כסף משפחתי" },
-      { name: "description", content: "כל התנועות של משק הבית, חיפוש מרובה מסננים וסיכום לפי קטגוריה." },
+      {
+        name: "description",
+        content: "כל התנועות של משק הבית, חיפוש מרובה מסננים וסיכום לפי קטגוריה.",
+      },
       { property: "og:title", content: "תנועות — כסף משפחתי" },
-      { property: "og:description", content: "כל התנועות של משק הבית, חיפוש מרובה מסננים וסיכום לפי קטגוריה." },
+      {
+        property: "og:description",
+        content: "כל התנועות של משק הבית, חיפוש מרובה מסננים וסיכום לפי קטגוריה.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -148,7 +154,12 @@ function TransactionsList() {
       if (t.type === "income") income += v;
       else if (isCashflowOut(t.type)) out += v;
     }
-    return { income, out, count: filtered.length, avg: filtered.length ? out / filtered.length : 0 };
+    return {
+      income,
+      out,
+      count: filtered.length,
+      avg: filtered.length ? out / filtered.length : 0,
+    };
   }, [filtered]);
 
   const byCategory = useMemo(() => {
@@ -256,7 +267,9 @@ function TransactionsList() {
             onClick={() => (showFilters ? setShowFilters(false) : openFilters())}
             className={cn(
               "h-11 px-4 rounded-xl border flex items-center gap-2 text-sm shrink-0",
-              showFilters || activeFilters ? "bg-primary text-primary-foreground border-primary" : "bg-card",
+              showFilters || activeFilters
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card",
             )}
           >
             <SlidersHorizontal className="size-4" />
@@ -268,11 +281,7 @@ function TransactionsList() {
           <div className="mt-3 rounded-2xl border bg-card p-3 space-y-3">
             <FilterRow label="סוג">
               {(["all", "income", "expense", "fixed", "investment"] as TypeFilter[]).map((k) => (
-                <Chip
-                  key={k}
-                  active={draftTypeFilter === k}
-                  onClick={() => setDraftTypeFilter(k)}
-                >
+                <Chip key={k} active={draftTypeFilter === k} onClick={() => setDraftTypeFilter(k)}>
                   {k === "all" ? "הכל" : txTypeLabel[k]}
                 </Chip>
               ))}
@@ -280,7 +289,11 @@ function TransactionsList() {
 
             <FilterRow label="שולם ע״י">
               {(["yonatan", "shiri", "shared"] as Person[]).map((p) => (
-                <Chip key={p} active={draftPayers.includes(p)} onClick={() => toggle(draftPayers, p, setDraftPayers)}>
+                <Chip
+                  key={p}
+                  active={draftPayers.includes(p)}
+                  onClick={() => toggle(draftPayers, p, setDraftPayers)}
+                >
                   {memberLabels[p]}
                 </Chip>
               ))}
@@ -302,7 +315,11 @@ function TransactionsList() {
 
             <FilterRow label="קטגוריות">
               {allCats.map((c) => (
-                <Chip key={c.id} active={draftCats.includes(c.id)} onClick={() => toggle(draftCats, c.id, setDraftCats)}>
+                <Chip
+                  key={c.id}
+                  active={draftCats.includes(c.id)}
+                  onClick={() => toggle(draftCats, c.id, setDraftCats)}
+                >
                   {c.emoji} {c.name}
                 </Chip>
               ))}
@@ -335,13 +352,20 @@ function TransactionsList() {
       </section>
 
       <div className="px-5 md:px-0 mt-4 flex gap-2">
-        {([["list", "רשימה"], ["categories", "לפי קטגוריה"]] as [Tab, string][]).map(([k, label]) => (
+        {(
+          [
+            ["list", "רשימה"],
+            ["categories", "לפי קטגוריה"],
+          ] as [Tab, string][]
+        ).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
             className={cn(
               "flex-1 h-10 rounded-xl text-sm font-semibold border transition",
-              tab === k ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border",
+              tab === k
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border",
             )}
           >
             {label}
@@ -480,7 +504,9 @@ function Chip({
       onClick={onClick}
       className={cn(
         "px-3 h-8 rounded-full text-xs border transition",
-        active ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border",
+        active
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-background border-border",
       )}
     >
       {children}
@@ -488,15 +514,7 @@ function Chip({
   );
 }
 
-function Stat({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
+function Stat({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className="rounded-2xl bg-card border p-3">
       <p className="text-xs text-muted-foreground">{label}</p>

@@ -7,7 +7,23 @@ import { AppShell } from "@/components/AppShell";
 import { createTrip, updateTrip, uploadTripCover, type Trip, type TripInput } from "@/lib/trips";
 import { cn } from "@/lib/utils";
 
-const CURRENCIES = ["ILS", "USD", "EUR", "GBP", "JPY", "THB", "CHF", "CAD", "AUD", "AED", "TRY", "MXN", "INR", "CNY", "EGP"] as const;
+const CURRENCIES = [
+  "ILS",
+  "USD",
+  "EUR",
+  "GBP",
+  "JPY",
+  "THB",
+  "CHF",
+  "CAD",
+  "AUD",
+  "AED",
+  "TRY",
+  "MXN",
+  "INR",
+  "CNY",
+  "EGP",
+] as const;
 
 export function TripForm({ existing }: { existing?: Trip }) {
   const navigate = useNavigate();
@@ -17,8 +33,12 @@ export function TripForm({ existing }: { existing?: Trip }) {
   const [name, setName] = useState(existing?.name ?? "");
   const [country, setCountry] = useState(existing?.country ?? "");
   const [cities, setCities] = useState(existing?.cities ?? "");
-  const [startDate, setStartDate] = useState(existing?.start_date ?? new Date().toISOString().slice(0, 10));
-  const [endDate, setEndDate] = useState(existing?.end_date ?? new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(
+    existing?.start_date ?? new Date().toISOString().slice(0, 10),
+  );
+  const [endDate, setEndDate] = useState(
+    existing?.end_date ?? new Date().toISOString().slice(0, 10),
+  );
   const [budget, setBudget] = useState(existing ? String(existing.budget) : "");
   const [currency, setCurrency] = useState(existing?.currency ?? "ILS");
   const [coverUrl, setCoverUrl] = useState<string | null>(existing?.cover_image ?? null);
@@ -27,7 +47,14 @@ export function TripForm({ existing }: { existing?: Trip }) {
   const [submitting, setSubmitting] = useState(false);
 
   const budgetNum = budget.trim() === "" ? 0 : parseFloat(budget);
-  const valid = name.trim() && country.trim() && startDate && endDate && endDate >= startDate && !isNaN(budgetNum) && budgetNum >= 0;
+  const valid =
+    name.trim() &&
+    country.trim() &&
+    startDate &&
+    endDate &&
+    endDate >= startDate &&
+    !isNaN(budgetNum) &&
+    budgetNum >= 0;
 
   async function handleFile(file: File) {
     setUploading(true);
@@ -76,7 +103,10 @@ export function TripForm({ existing }: { existing?: Trip }) {
   return (
     <AppShell>
       <header className="px-5 md:px-0 pt-6 pb-3 flex items-center gap-2">
-        <button onClick={() => navigate({ to: "/travel" })} className="p-2 rounded-lg hover:bg-accent">
+        <button
+          onClick={() => navigate({ to: "/travel" })}
+          className="p-2 rounded-lg hover:bg-accent"
+        >
           <ArrowLeft className="size-5" />
         </button>
         <h1 className="text-2xl font-bold">{existing ? "עריכת טיול" : "טיול חדש"}</h1>
@@ -89,7 +119,11 @@ export function TripForm({ existing }: { existing?: Trip }) {
           <div className="mt-1 relative rounded-2xl overflow-hidden border h-36 bg-card flex items-center justify-center">
             {coverUrl ? (
               <>
-                <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <img
+                  src={coverUrl}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
                 <button
                   type="button"
                   onClick={() => setCoverUrl(null)}

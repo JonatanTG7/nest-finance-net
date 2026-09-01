@@ -18,11 +18,7 @@ import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
 import { Plane } from "lucide-react";
 import { fetchTrips, tripStatus } from "@/lib/trips";
-import {
-  fetchAllTransactions,
-  fetchTransactionsBetween,
-  type Transaction,
-} from "@/lib/db";
+import { fetchAllTransactions, fetchTransactionsBetween, type Transaction } from "@/lib/db";
 import {
   categoryShade,
   formatILS,
@@ -67,16 +63,29 @@ function Dashboard() {
   });
 
   const totals = useMemo(() => {
-    let income = 0, expense = 0, fixed = 0, investment = 0;
+    let income = 0,
+      expense = 0,
+      fixed = 0,
+      investment = 0;
     for (const t of txs) {
       const v = Number(t.amount_ils);
       switch (t.type) {
-        case "income": income += v; break;
-        case "expense": expense += v; break;
-        case "fixed": fixed += v; break;
+        case "income":
+          income += v;
+          break;
+        case "expense":
+          expense += v;
+          break;
+        case "fixed":
+          fixed += v;
+          break;
         // legacy "savings" transactions are treated as investments
-        case "savings": investment += v; break;
-        case "investment": investment += v; break;
+        case "savings":
+          investment += v;
+          break;
+        case "investment":
+          investment += v;
+          break;
       }
     }
     const remaining = income - expense - fixed - investment;
@@ -113,7 +122,10 @@ function Dashboard() {
       const k = shiftMonth(month, -i);
       buckets.set(k, {
         month: new Intl.DateTimeFormat("he-IL", { month: "short" }).format(parseMonthKey(k)),
-        income: 0, expense: 0, fixed: 0, investment: 0,
+        income: 0,
+        expense: 0,
+        fixed: 0,
+        investment: 0,
       });
     }
     for (const t of trendTxs) {
@@ -122,7 +134,12 @@ function Dashboard() {
       if (!b) continue;
       // Fold legacy "savings" transactions into investment.
       const bucketKey = t.type === "savings" ? "investment" : t.type;
-      if (bucketKey === "income" || bucketKey === "expense" || bucketKey === "fixed" || bucketKey === "investment") {
+      if (
+        bucketKey === "income" ||
+        bucketKey === "expense" ||
+        bucketKey === "fixed" ||
+        bucketKey === "investment"
+      ) {
         b[bucketKey] += Number(t.amount_ils);
       }
     }
@@ -151,7 +168,9 @@ function Dashboard() {
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">אתם בטיול: {activeTrip.name} 🧳</p>
-              <p className="text-xs text-muted-foreground">הקישו כדי לראות את הטיול ולהוסיף הוצאה</p>
+              <p className="text-xs text-muted-foreground">
+                הקישו כדי לראות את הטיול ולהוסיף הוצאה
+              </p>
             </div>
           </Link>
         </section>
@@ -177,17 +196,33 @@ function Dashboard() {
       </section>
 
       <section className="px-5 md:px-0 mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Link to="/transactions" search={{ type: "income" }} className="block active:scale-[0.98] transition-transform">
+        <Link
+          to="/transactions"
+          search={{ type: "income" }}
+          className="block active:scale-[0.98] transition-transform"
+        >
           <StatCard label="הכנסות" value={totals.income} className="bg-income/15 text-income" />
         </Link>
-        <Link to="/transactions" search={{ type: "expense" }} className="block active:scale-[0.98] transition-transform">
+        <Link
+          to="/transactions"
+          search={{ type: "expense" }}
+          className="block active:scale-[0.98] transition-transform"
+        >
           <StatCard label="הוצאות" value={totals.expense} className="bg-expense/15 text-expense" />
         </Link>
-        <Link to="/transactions" search={{ type: "fixed" }} className="block active:scale-[0.98] transition-transform">
+        <Link
+          to="/transactions"
+          search={{ type: "fixed" }}
+          className="block active:scale-[0.98] transition-transform"
+        >
           <StatCard label="קבועות" value={totals.fixed} className="bg-fixed/15 text-fixed" />
         </Link>
         <Link to="/investments" className="block active:scale-[0.98] transition-transform">
-          <StatCard label="השקעה" value={totals.investment} className="bg-savings/25 text-foreground" />
+          <StatCard
+            label="השקעה"
+            value={totals.investment}
+            className="bg-savings/25 text-foreground"
+          />
         </Link>
       </section>
 
@@ -200,12 +235,25 @@ function Dashboard() {
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={88} paddingAngle={2}>
-                      {pieData.map((d) => <Cell key={d.name} fill={d.color} />)}
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={55}
+                      outerRadius={88}
+                      paddingAngle={2}
+                    >
+                      {pieData.map((d) => (
+                        <Cell key={d.name} fill={d.color} />
+                      ))}
                     </Pie>
                     <Tooltip
                       formatter={(v: number) => formatILS(v)}
-                      contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)" }}
+                      contentStyle={{
+                        borderRadius: 12,
+                        border: "1px solid var(--border)",
+                        background: "var(--card)",
+                      }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -213,7 +261,10 @@ function Dashboard() {
               <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                 {pieData.slice(0, 8).map((d) => (
                   <li key={d.name} className="flex items-center gap-2">
-                    <span className="size-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                    <span
+                      className="size-2.5 rounded-full shrink-0"
+                      style={{ background: d.color }}
+                    />
                     <span className="truncate flex-1">{d.name}</span>
                     <span className="tabular-nums text-muted-foreground">{formatILS(d.value)}</span>
                   </li>
@@ -229,16 +280,26 @@ function Dashboard() {
           ) : (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topCats} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                <BarChart
+                  data={topCats}
+                  layout="vertical"
+                  margin={{ top: 8, right: 16, left: 8, bottom: 8 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis type="number" tick={{ fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
                   <Tooltip
                     formatter={(v: number) => formatILS(v)}
-                    contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)" }}
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: "1px solid var(--border)",
+                      background: "var(--card)",
+                    }}
                   />
                   <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                    {topCats.map((d) => <Cell key={d.name} fill={d.color} />)}
+                    {topCats.map((d) => (
+                      <Cell key={d.name} fill={d.color} />
+                    ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -257,7 +318,11 @@ function Dashboard() {
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip
                   formatter={(v: number) => formatILS(v)}
-                  contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)" }}
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "1px solid var(--border)",
+                    background: "var(--card)",
+                  }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="income" name="הכנסות" fill="var(--income)" radius={[6, 6, 0, 0]} />
@@ -273,7 +338,9 @@ function Dashboard() {
       <section className="px-5 md:px-0 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold">פעולות אחרונות</h2>
-          <Link to="/transactions" className="text-xs text-primary">הצג הכל</Link>
+          <Link to="/transactions" className="text-xs text-primary">
+            הצג הכל
+          </Link>
         </div>
         <div className="rounded-2xl bg-card border divide-y">
           {isLoading ? (
@@ -304,7 +371,15 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground text-center py-10">{children}</p>;
 }
 
-function StatCard({ label, value, className }: { label: string; value: number; className?: string }) {
+function StatCard({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: number;
+  className?: string;
+}) {
   return (
     <div className={cn("rounded-2xl p-4", className)}>
       <p className="text-xs opacity-80">{label}</p>
@@ -334,8 +409,11 @@ function TxRow({ tx }: { tx: Transaction }) {
           {tx.category?.name ?? txTypeLabel[tx.type]} · {memberLabels[tx.entered_by]}
         </p>
       </div>
-      <p className={cn("font-bold tabular-nums shrink-0", isIn ? "text-income" : "text-foreground")}>
-        {isIn ? "+" : "−"}{formatILS(Number(tx.amount_ils))}
+      <p
+        className={cn("font-bold tabular-nums shrink-0", isIn ? "text-income" : "text-foreground")}
+      >
+        {isIn ? "+" : "−"}
+        {formatILS(Number(tx.amount_ils))}
       </p>
     </Link>
   );

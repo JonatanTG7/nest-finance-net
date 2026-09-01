@@ -1,11 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sun, Moon, Copy, LogOut, Users, Plus, ArrowLeft, ShieldAlert, Coins, CreditCard } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  Copy,
+  LogOut,
+  Users,
+  Plus,
+  ArrowLeft,
+  ShieldAlert,
+  Coins,
+  CreditCard,
+} from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
-import { getDefaultCurrency, setDefaultCurrency, getCardLast4, setCardLast4 } from "@/lib/personal_settings";
+import {
+  getDefaultCurrency,
+  setDefaultCurrency,
+  getCardLast4,
+  setCardLast4,
+} from "@/lib/personal_settings";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -98,7 +114,23 @@ function Settings() {
               onChange={(e) => chooseCurrency(e.target.value)}
               className="w-full h-11 mt-1.5 rounded-xl bg-background border px-3 text-sm outline-none"
             >
-              {["ILS", "USD", "EUR", "GBP", "JPY", "THB", "CHF", "CAD", "AUD", "AED", "TRY", "MXN", "INR", "CNY", "EGP"].map((c) => (
+              {[
+                "ILS",
+                "USD",
+                "EUR",
+                "GBP",
+                "JPY",
+                "THB",
+                "CHF",
+                "CAD",
+                "AUD",
+                "AED",
+                "TRY",
+                "MXN",
+                "INR",
+                "CNY",
+                "EGP",
+              ].map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
@@ -111,8 +143,8 @@ function Settings() {
 
           <div className="border-t pt-4">
             <label className="text-sm font-medium flex items-center gap-1.5">
-              <CreditCard className="size-3.5 text-muted-foreground" />
-              4 ספרות אחרונות של כרטיס אשראי (רשות)
+              <CreditCard className="size-3.5 text-muted-foreground" />4 ספרות אחרונות של כרטיס
+              אשראי (רשות)
             </label>
             <input
               value={cardLast4}
@@ -124,7 +156,8 @@ function Settings() {
               className="w-full h-11 mt-1.5 rounded-xl bg-background border px-3 text-sm outline-none tracking-widest"
             />
             <p className="mt-1.5 text-xs text-muted-foreground">
-              רק תזכורת אישית לעצמכם (למשל בזמן התאמת תנועות מול דף חשבון) — נשמר על המכשיר שלכם בלבד,
+              רק תזכורת אישית לעצמכם (למשל בזמן התאמת תנועות מול דף חשבון) — נשמר על המכשיר שלכם
+              בלבד,
             </p>
           </div>
         </div>
@@ -164,8 +197,12 @@ function Settings() {
         <h2 className="text-sm font-semibold mb-2">התקנה כאפליקציה</h2>
         <div className="rounded-2xl bg-card border p-4 text-sm leading-relaxed text-muted-foreground">
           <p className="font-medium text-foreground mb-1">להוספה למסך הבית:</p>
-          <p>📱 <b>אייפון:</b> פתח בספארי → לחץ על כפתור השיתוף → "הוסף למסך הבית"</p>
-          <p className="mt-1">🤖 <b>אנדרואיד:</b> פתח בכרום → תפריט (⋮) → "הוסף למסך הבית"</p>
+          <p>
+            📱 <b>אייפון:</b> פתח בספארי → לחץ על כפתור השיתוף → "הוסף למסך הבית"
+          </p>
+          <p className="mt-1">
+            🤖 <b>אנדרואיד:</b> פתח בכרום → תפריט (⋮) → "הוסף למסך הבית"
+          </p>
         </div>
       </section>
 
@@ -317,7 +354,9 @@ function HouseholdSection() {
 
         {code ? (
           <div>
-            <div className="text-xs text-muted-foreground mb-1">קוד הזמנה חדש (חד־פעמי, בתוקף לשבוע):</div>
+            <div className="text-xs text-muted-foreground mb-1">
+              קוד הזמנה חדש (חד־פעמי, בתוקף לשבוע):
+            </div>
             <button
               onClick={copy}
               className="w-full h-14 rounded-xl bg-primary/10 border border-primary/30 text-primary font-bold tracking-widest text-xl flex items-center justify-center gap-2"

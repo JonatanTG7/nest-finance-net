@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -62,7 +68,9 @@ export function BuyDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{position ? `קניית מניות נוספות · ${position.symbol}` : "הוספת החזקה חדשה"}</DialogTitle>
+          <DialogTitle>
+            {position ? `קניית מניות נוספות · ${position.symbol}` : "הוספת החזקה חדשה"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
@@ -106,7 +114,13 @@ export function BuyDialog({
           </div>
           <div className="space-y-1">
             <Label htmlFor="buy-date">תאריך</Label>
-            <Input id="buy-date" type="date" dir="ltr" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Input
+              id="buy-date"
+              type="date"
+              dir="ltr"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
 
           {cost != null && (
@@ -117,7 +131,8 @@ export function BuyDialog({
 
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <Checkbox checked={adjustCash} onCheckedChange={(v) => setAdjustCash(!!v)} />
-            הפחת אוטומטית מהמזומן ({currentCash.toLocaleString("en-US", { style: "currency", currency: "USD" })})
+            הפחת אוטומטית מהמזומן (
+            {currentCash.toLocaleString("en-US", { style: "currency", currency: "USD" })})
           </label>
         </div>
         <DialogFooter className="gap-2">

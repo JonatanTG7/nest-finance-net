@@ -2,7 +2,19 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, X, MapPin, Camera, Calendar as CalIcon, Pencil, Loader2, Plus, RefreshCw, ChevronDown, Plane } from "lucide-react";
+import {
+  Check,
+  X,
+  MapPin,
+  Camera,
+  Calendar as CalIcon,
+  Pencil,
+  Loader2,
+  Plus,
+  RefreshCw,
+  ChevronDown,
+  Plane,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -54,7 +66,23 @@ import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
-const CURRENCIES = ["ILS", "USD", "EUR", "GBP", "JPY", "THB", "CHF", "CAD", "AUD", "AED", "TRY", "MXN", "INR", "CNY", "EGP"] as const;
+const CURRENCIES = [
+  "ILS",
+  "USD",
+  "EUR",
+  "GBP",
+  "JPY",
+  "THB",
+  "CHF",
+  "CAD",
+  "AUD",
+  "AED",
+  "TRY",
+  "MXN",
+  "INR",
+  "CNY",
+  "EGP",
+] as const;
 
 export function TransactionForm({
   existing,
@@ -68,7 +96,10 @@ export function TransactionForm({
   const navigate = useNavigate();
   const qc = useQueryClient();
   const memberLabels = useMemberLabels();
-  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+  });
   const { data: tags = [] } = useQuery({ queryKey: ["tags"], queryFn: fetchTags });
   const { data: accounts = [] } = useQuery({
     queryKey: ["investment_accounts"],
@@ -91,8 +122,6 @@ export function TransactionForm({
       longPressTimer.current = null;
     }
   }
-
-
 
   async function askDeleteCategory(c: Category) {
     setCatToDelete(c);
@@ -125,7 +154,9 @@ export function TransactionForm({
   const [currency, setCurrency] = useState(existing?.currency ?? getDefaultCurrency());
   const [fx, setFx] = useState<string>(existing ? String(existing.fx_rate_to_ils) : "1");
   const [categoryId, setCategoryId] = useState<string | null>(existing?.category_id ?? null);
-  const [accountId, setAccountId] = useState<string | null>(existing?.investment_account_id ?? null);
+  const [accountId, setAccountId] = useState<string | null>(
+    existing?.investment_account_id ?? null,
+  );
   const [title, setTitle] = useState(existing?.title ?? "");
   const [note, setNote] = useState(existing?.note ?? "");
   const [showNote, setShowNote] = useState(!!existing?.note);
@@ -149,7 +180,9 @@ export function TransactionForm({
   const [location, setLocation] = useState<string | null>(existing?.location ?? null);
   const [loadingLoc, setLoadingLoc] = useState(false);
   const [tripId, setTripId] = useState<string | null>(existing?.trip_id ?? defaultTripId ?? null);
-  const [showTripPicker, setShowTripPicker] = useState<boolean>(!!(existing?.trip_id ?? defaultTripId));
+  const [showTripPicker, setShowTripPicker] = useState<boolean>(
+    !!(existing?.trip_id ?? defaultTripId),
+  );
   const [tagInput, setTagInput] = useState("");
   const [tagList, setTagList] = useState<string[]>(
     existing?.transaction_tags?.map((tt) => tt.tag.name) ?? [],
@@ -159,10 +192,7 @@ export function TransactionForm({
 
   const [step, setStep] = useState<1 | 2>(existing ? 2 : 1);
 
-  const filteredCats = useMemo(
-    () => categories.filter((c) => c.type === type),
-    [categories, type],
-  );
+  const filteredCats = useMemo(() => categories.filter((c) => c.type === type), [categories, type]);
 
   const selectedCat = useMemo(
     () => categories.find((c) => c.id === categoryId) ?? null,
@@ -317,7 +347,6 @@ export function TransactionForm({
     return Math.max(1, Math.min(120, diff));
   }, [recurringUntil, date]);
 
-
   async function handleSubmit() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) {
@@ -448,9 +477,7 @@ export function TransactionForm({
                 }}
                 className={cn(
                   "px-4 h-10 rounded-full text-sm whitespace-nowrap border transition shrink-0",
-                  type === t
-                    ? typeButtonActiveClass(t)
-                    : "bg-card border-border text-foreground",
+                  type === t ? typeButtonActiveClass(t) : "bg-card border-border text-foreground",
                 )}
               >
                 {txTypeLabel[t]}
@@ -492,13 +519,10 @@ export function TransactionForm({
                   >
                     {c.emoji ?? "•"}
                   </span>
-                  <span className="text-xs font-semibold text-center leading-tight">
-                    {c.name}
-                  </span>
+                  <span className="text-xs font-semibold text-center leading-tight">{c.name}</span>
                 </button>
               </div>
             ))}
-
 
             <button
               type="button"
@@ -526,10 +550,7 @@ export function TransactionForm({
             />
           )}
 
-          <AlertDialog
-            open={catToDelete !== null}
-            onOpenChange={(o) => !o && setCatToDelete(null)}
-          >
+          <AlertDialog open={catToDelete !== null} onOpenChange={(o) => !o && setCatToDelete(null)}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>למחוק את הקטגוריה?</AlertDialogTitle>
@@ -555,7 +576,6 @@ export function TransactionForm({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-
         </div>
       </AppShell>
     );
@@ -564,9 +584,7 @@ export function TransactionForm({
   // ===================== STEP 2: details =====================
   const headerBg = selectedCat?.color ?? "#10b981";
   const isIncome = type === "income";
-  const PAYERS: Person[] = isIncome
-    ? ["yonatan", "shiri"]
-    : ["yonatan", "shiri", "shared"];
+  const PAYERS: Person[] = isIncome ? ["yonatan", "shiri"] : ["yonatan", "shiri", "shared"];
   const activePayer: Person = isIncome && enteredBy === "shared" ? "yonatan" : enteredBy;
   const canShowInstallments = type === "expense" || type === "fixed";
 
@@ -597,7 +615,11 @@ export function TransactionForm({
               style={{ background: headerBg }}
               aria-label="שמור"
             >
-              {submitting ? <Loader2 className="size-5 animate-spin" /> : <Check className="size-5" />}
+              {submitting ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <Check className="size-5" />
+              )}
             </button>
           </div>
 
@@ -656,7 +678,6 @@ export function TransactionForm({
             {selectedCat?.name} · {txTypeLabel[type]}
           </p>
         </div>
-
 
         {/* Compact details */}
         <div className="px-5 mt-4 space-y-3">
@@ -728,21 +749,20 @@ export function TransactionForm({
 
           {/* Payment method — single button opens a sheet (not relevant for income) */}
           {!isIncome && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-1.5">אמצעי תשלום</p>
-            <button
-              type="button"
-              onClick={() => setPmSheetOpen(true)}
-              className="w-full h-12 rounded-2xl bg-card border px-4 text-sm font-semibold flex items-center justify-between"
-            >
-              <span className={selectedPm ? "text-foreground" : "text-muted-foreground"}>
-                {selectedPm?.label ?? "בחר אמצעי תשלום"}
-              </span>
-              <span className="text-xs text-muted-foreground">החלף</span>
-            </button>
-          </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">אמצעי תשלום</p>
+              <button
+                type="button"
+                onClick={() => setPmSheetOpen(true)}
+                className="w-full h-12 rounded-2xl bg-card border px-4 text-sm font-semibold flex items-center justify-between"
+              >
+                <span className={selectedPm ? "text-foreground" : "text-muted-foreground"}>
+                  {selectedPm?.label ?? "בחר אמצעי תשלום"}
+                </span>
+                <span className="text-xs text-muted-foreground">החלף</span>
+              </button>
+            </div>
           )}
-
 
           {pmSheetOpen && (
             <div
@@ -895,12 +915,7 @@ export function TransactionForm({
                 <Camera className="size-4" />
               )}
               <span>{photoUrl ? "תמונה ✓" : "תמונה"}</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoChange}
-              />
+              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
             </label>
             <button
               type="button"
@@ -915,9 +930,7 @@ export function TransactionForm({
               ) : (
                 <MapPin className="size-4 shrink-0" />
               )}
-              <span className="truncate">
-                {location ? location.split(",")[0] : "מיקום"}
-              </span>
+              <span className="truncate">{location ? location.split(",")[0] : "מיקום"}</span>
             </button>
           </div>
 
@@ -953,8 +966,7 @@ export function TransactionForm({
                 >
                   <span className="size-2 rounded-full" style={{ background: a.color }} />
                   <span className="truncate">
-                    {a.name}{" "}
-                    <span className="text-xs text-muted-foreground">{a.currency}</span>
+                    {a.name} <span className="text-xs text-muted-foreground">{a.currency}</span>
                   </span>
                 </button>
               ))}
@@ -1095,8 +1107,6 @@ export function TransactionForm({
               </button>
             </div>
           )}
-
-
 
           {existing && (
             <button

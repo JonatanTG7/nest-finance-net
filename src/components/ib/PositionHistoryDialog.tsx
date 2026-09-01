@@ -34,7 +34,12 @@ export function PositionHistoryDialog({
     setLastOpen(false);
   }
 
-  const { data: allTxs = [], isLoading, isError, error } = useQuery({
+  const {
+    data: allTxs = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["ib", "transactions", "all"],
     queryFn: () => fetchIbTransactions(),
     enabled: open,
@@ -129,7 +134,10 @@ export function PositionHistoryDialog({
                   ? (t.price - t.prior_avg_price) * t.quantity
                   : null;
               return (
-                <div key={t.id} className="rounded-xl border p-3 flex items-center justify-between gap-3">
+                <div
+                  key={t.id}
+                  className="rounded-xl border p-3 flex items-center justify-between gap-3"
+                >
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold" dir="ltr">
@@ -150,11 +158,15 @@ export function PositionHistoryDialog({
                       </span>
                     </div>
                     <p className="text-sm mt-1 tabular-nums" dir="ltr">
-                      {t.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })} × {usdFmt.format(t.price)}
+                      {t.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })} ×{" "}
+                      {usdFmt.format(t.price)}
                     </p>
                     {pnl != null && (
                       <p
-                        className={cn("text-xs tabular-nums", pnl >= 0 ? "text-emerald-500" : "text-rose-400")}
+                        className={cn(
+                          "text-xs tabular-nums",
+                          pnl >= 0 ? "text-emerald-500" : "text-rose-400",
+                        )}
                         dir="ltr"
                       >
                         {pnl >= 0 ? "+" : ""}

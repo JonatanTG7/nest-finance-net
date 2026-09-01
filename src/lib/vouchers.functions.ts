@@ -48,8 +48,7 @@ function parseExtraction(raw: string): VoucherExtraction {
         : typeof o.amount === "string" && o.amount.trim() !== "" && !isNaN(Number(o.amount))
           ? Number(o.amount)
           : null;
-    const barcode =
-      typeof o.barcode === "string" ? o.barcode.replace(/\D/g, "") || null : null;
+    const barcode = typeof o.barcode === "string" ? o.barcode.replace(/\D/g, "") || null : null;
     const expiry =
       typeof o.expiry_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.expiry_date)
         ? o.expiry_date

@@ -125,7 +125,12 @@ export function VoucherUploadDialog({
         </DialogHeader>
 
         <div className="flex gap-2">
-          {([["ai", "מתמונה"], ["manual", "ידני"]] as [typeof mode, string][]).map(([k, t]) => (
+          {(
+            [
+              ["ai", "מתמונה"],
+              ["manual", "ידני"],
+            ] as [typeof mode, string][]
+          ).map(([k, t]) => (
             <button
               key={k}
               onClick={() => setMode(k)}

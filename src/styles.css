@@ -78,15 +78,15 @@
   --ring: oklch(0.7 0.05 250);
 
   /* PRD finance palette */
-  --income: oklch(0.7 0.17 145);          /* 🟢 ירוק — הכנסות */
+  --income: oklch(0.7 0.17 145); /* 🟢 ירוק — הכנסות */
   --income-foreground: oklch(0.99 0 0);
-  --home: oklch(0.6 0.16 245);            /* 🔵 כחול — הוצאות בית */
+  --home: oklch(0.6 0.16 245); /* 🔵 כחול — הוצאות בית */
   --home-foreground: oklch(0.99 0 0);
-  --expense: oklch(0.62 0.22 27);         /* 🔴 אדום — הוצאות שוטפות */
+  --expense: oklch(0.62 0.22 27); /* 🔴 אדום — הוצאות שוטפות */
   --expense-foreground: oklch(0.99 0 0);
-  --fixed: oklch(0.6 0.2 310);            /* 🟣 סגול — הוצאות קבועות */
+  --fixed: oklch(0.6 0.2 310); /* 🟣 סגול — הוצאות קבועות */
   --fixed-foreground: oklch(0.99 0 0);
-  --savings: oklch(0.78 0.16 85);         /* 🟡 זהב — חיסכון/השקעות */
+  --savings: oklch(0.78 0.16 85); /* 🟡 זהב — חיסכון/השקעות */
   --savings-foreground: oklch(0.2 0.02 260);
 
   --chart-1: var(--income);
@@ -122,15 +122,26 @@
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Rubik,
-      "Heebo", "Assistant", Arial, sans-serif;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Rubik,
+      "Heebo",
+      "Assistant",
+      Arial,
+      sans-serif;
   }
   /* Mobile-first: numeric tabular figures for money */
-  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }

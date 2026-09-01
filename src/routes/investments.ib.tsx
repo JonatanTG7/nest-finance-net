@@ -2,7 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ArrowUpDown, History, MoreVertical, Plus, Wallet, RefreshCw, WifiOff } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUpDown,
+  History,
+  MoreVertical,
+  Plus,
+  Wallet,
+  RefreshCw,
+  WifiOff,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -32,7 +41,6 @@ import { getQuotes, type Quote } from "@/lib/ib.functions";
 import { fetchUsdIlsRate } from "@/lib/fx";
 import { formatMoney, formatILS } from "@/lib/finance";
 import { cn } from "@/lib/utils";
-
 
 export const Route = createFileRoute("/investments/ib")({
   head: () => ({ meta: [{ title: "Interactive Brokers" }] }),
@@ -120,7 +128,11 @@ function IbPortfolio() {
 
   const symbols = useMemo(() => positions.map((p) => p.symbol), [positions]);
 
-  const { data: liveQuotes, isFetching: quotesLoading, refetch: refetchQuotes } = useQuery({
+  const {
+    data: liveQuotes,
+    isFetching: quotesLoading,
+    refetch: refetchQuotes,
+  } = useQuery({
     queryKey: ["ib", "quotes", symbols],
     queryFn: () => getQuotesFn({ data: { symbols } }),
     enabled: symbols.length > 0,
@@ -134,8 +146,6 @@ function IbPortfolio() {
     queryKey: ["balance_history", IB_ACCOUNT_ID],
     queryFn: () => fetchBalanceHistory(IB_ACCOUNT_ID),
   });
-
-
 
   // Merge live quotes into cache; never overwrite a good value with null.
   useEffect(() => {
@@ -157,7 +167,7 @@ function IbPortfolio() {
             phase,
             dailyChange,
             dailyChangePct,
-            at: q.last != null ? now : existing?.at ?? 0,
+            at: q.last != null ? now : (existing?.at ?? 0),
           };
         }
       }
@@ -180,7 +190,8 @@ function IbPortfolio() {
       const unrealized = last != null ? (last - p.avg_price) * p.quantity : 0;
       const unrealizedPct =
         last != null && p.avg_price > 0 ? ((last - p.avg_price) / p.avg_price) * 100 : null;
-      const perShareChange = cached?.dailyChange ?? (last != null && prevClose != null ? last - prevClose : null);
+      const perShareChange =
+        cached?.dailyChange ?? (last != null && prevClose != null ? last - prevClose : null);
       const dailyChangeAbs = perShareChange != null ? perShareChange * p.quantity : null;
       const dailyChangePct =
         cached?.dailyChangePct ??
@@ -224,7 +235,8 @@ function IbPortfolio() {
         av = a.unrealized ?? -Infinity;
         bv = b.unrealized ?? -Infinity;
       }
-      const cmp = typeof av === "string" ? av.localeCompare(bv as string) : (av as number) - (bv as number);
+      const cmp =
+        typeof av === "string" ? av.localeCompare(bv as string) : (av as number) - (bv as number);
       return sortDir === "asc" ? cmp : -cmp;
     });
     return arr;
@@ -259,7 +271,6 @@ function IbPortfolio() {
       toast.error("שגיאה בעדכון היתרה");
     },
   });
-
 
   const buyMutation = useMutation({
     mutationFn: buyIbShares,
@@ -437,10 +448,7 @@ function IbPortfolio() {
                   return (
                     <tr key={r.id} className={cn("hover:bg-muted/30", rowBg)}>
                       <td
-                        className={cn(
-                          "px-3 py-3 font-semibold border-b sticky left-0 z-10",
-                          rowBg,
-                        )}
+                        className={cn("px-3 py-3 font-semibold border-b sticky left-0 z-10", rowBg)}
                       >
                         <div className="flex items-center gap-1.5">
                           <span>{r.symbol}</span>
@@ -580,8 +588,6 @@ function IbPortfolio() {
 
       <BalanceHistoryList rows={history} />
 
-
-
       <CashDialog
         open={cashOpen}
         onOpenChange={setCashOpen}
@@ -614,7 +620,11 @@ function IbPortfolio() {
           });
         }}
       />
-      <PositionHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} initialSymbol={historySymbol} />
+      <PositionHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        initialSymbol={historySymbol}
+      />
     </AppShell>
   );
 }
@@ -664,7 +674,6 @@ function Th({
     </th>
   );
 }
-
 
 function SummaryStat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
