@@ -133,7 +133,19 @@ export async function buyIbShares(input: {
 }): Promise<void> {
   const household_id = await getMyHouseholdId();
   const symbol = input.symbol.trim().toUpperCase();
-  if (input.quantity <= 0) throw new Error("כמות חייבת להיות חיובית");
+  if (!symbol) throw new Error("יש להזין סימבול");
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new Error("כמות חייבת להיות חיובית");
+  }
+  if (!Number.isFinite(input.price) || input.price < 0) {
+    throw new Error("מחיר חייב להיות תקין");
+  }
+  if (!Number.isFinite(input.currentCash) || input.currentCash < 0) {
+    throw new Error("יתרת מזומן לא תקינה");
+  }
+  if (input.adjustCash && input.quantity * input.price > input.currentCash) {
+    throw new Error("אין מספיק מזומן לביצוע הקנייה");
+  }
 
   const { data: existing, error: exErr } = await supabase
     .from("ib_positions")
