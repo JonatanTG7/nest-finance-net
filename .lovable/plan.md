@@ -3,10 +3,12 @@
 ### 1. Data model (new tables)
 
 **`ib_holdings`** — per-user IB account state
+
 - `id`, `household_id`, `cash_usd numeric` (default 0)
 - RLS: household-scoped, one row per household (upsert on household_id)
 
 **`ib_positions`** — one row per ticker
+
 - `id`, `household_id`, `symbol text`, `quantity numeric`, `avg_price numeric`
 - Unique (household_id, symbol)
 - RLS: household-scoped, standard GRANTs
@@ -52,11 +54,14 @@ Route stays `/investments`. Each account card is clickable (matches user's reque
 ### 6. Calculations (client)
 
 For each position with live `last`:
+
 ```
 marketValue = quantity * last
 unrealizedPnL = (last - avg_price) * quantity
 ```
+
 Totals:
+
 ```
 totalMarketValue = sum(marketValue)
 totalUnrealized  = sum(unrealizedPnL)
@@ -67,6 +72,7 @@ portfolioIls     = portfolioUsd * usdIlsRate
 ### 7. Files
 
 Created:
+
 - `supabase/migrations/<ts>_ib_portfolio.sql`
 - `src/lib/ib.functions.ts` (getQuotes, protected)
 - `src/lib/ib.ts` (client CRUD helpers over supabase)
@@ -77,6 +83,7 @@ Created:
 - `src/components/ib/CashDialog.tsx`
 
 Edited:
+
 - `src/routes/investments.tsx` — IB card links to `/investments/ib`; totals for IB row come from portfolio.
 - `src/routes/index.tsx` — השקעה summary uses IB portfolio value instead of stored balance.
 - `src/routes/settings.tsx` — remove IB from the "update balance in ILS" list (other accounts stay).
