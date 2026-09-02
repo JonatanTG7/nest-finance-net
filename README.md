@@ -1,4 +1,4 @@
-# Family Spend 
+# Family Spend
 
 זה מCHATGPT
 📄 PRD — מערכת פיננסית משפחתית חכמה

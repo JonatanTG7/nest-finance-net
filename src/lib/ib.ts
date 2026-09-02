@@ -43,6 +43,7 @@ export async function fetchIbHoldings(): Promise<IbHoldings | null> {
 }
 
 export async function setIbCash(usd: number): Promise<void> {
+  if (!Number.isFinite(usd) || usd < 0) throw new Error("יתרת מזומן חייבת להיות מספר חיובי");
   const household_id = await getMyHouseholdId();
   const { error } = await supabase
     .from("ib_holdings")
@@ -132,7 +133,19 @@ export async function buyIbShares(input: {
 }): Promise<void> {
   const household_id = await getMyHouseholdId();
   const symbol = input.symbol.trim().toUpperCase();
-  if (input.quantity <= 0) throw new Error("כמות חייבת להיות חיובית");
+  if (!symbol) throw new Error("יש להזין סימבול");
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new Error("כמות חייבת להיות חיובית");
+  }
+  if (!Number.isFinite(input.price) || input.price < 0) {
+    throw new Error("מחיר חייב להיות תקין");
+  }
+  if (!Number.isFinite(input.currentCash) || input.currentCash < 0) {
+    throw new Error("יתרת מזומן לא תקינה");
+  }
+  if (input.adjustCash && input.quantity * input.price > input.currentCash) {
+    throw new Error("אין מספיק מזומן לביצוע הקנייה");
+  }
 
   const { data: existing, error: exErr } = await supabase
     .from("ib_positions")
@@ -228,18 +241,30 @@ export async function sellIbShares(input: {
 }): Promise<{ realizedPnl: number }> {
   const household_id = await getMyHouseholdId();
   const symbol = input.symbol.trim().toUpperCase();
-  if (input.quantity <= 0) throw new Error("כמות חייבת להיות חיובית");
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new Error("כמות חייבת להיות חיובית");
+  }
+  if (!Number.isFinite(input.price) || input.price < 0) {
+    throw new Error("מחיר חייב להיות תקין");
+  }
+  if (!Number.isFinite(input.currentCash) || input.currentCash < 0) {
+    throw new Error("יתרת מזומן לא תקינה");
+  }
 
   const { data: existing, error: exErr } = await supabase
     .from("ib_positions")
     .select("*")
     .eq("id", input.positionId)
+    .eq("household_id", household_id)
+    .eq("symbol", symbol)
     .single();
   if (exErr) throw exErr;
 
   const oldQty = Number(existing.quantity);
   const oldAvg = Number(existing.avg_price);
-  const sellQty = Math.min(input.quantity, oldQty);
+  if (!Number.isFinite(oldQty) || oldQty <= 0) throw new Error("ההחזקה אינה תקינה");
+  if (input.quantity > oldQty) throw new Error("אין מספיק מניות בהחזקה");
+  const sellQty = input.quantity;
   const newQty = Math.max(0, oldQty - sellQty);
 
   // Write the ledger entry FIRST. If this fails, the position is left
