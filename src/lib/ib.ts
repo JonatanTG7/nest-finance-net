@@ -262,7 +262,9 @@ export async function sellIbShares(input: {
 
   const oldQty = Number(existing.quantity);
   const oldAvg = Number(existing.avg_price);
-  const sellQty = Math.min(input.quantity, oldQty);
+  if (!Number.isFinite(oldQty) || oldQty <= 0) throw new Error("ההחזקה אינה תקינה");
+  if (input.quantity > oldQty) throw new Error("אין מספיק מניות בהחזקה");
+  const sellQty = input.quantity;
   const newQty = Math.max(0, oldQty - sellQty);
 
   // Write the ledger entry FIRST. If this fails, the position is left
