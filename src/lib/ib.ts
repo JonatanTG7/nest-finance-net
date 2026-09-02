@@ -43,6 +43,7 @@ export async function fetchIbHoldings(): Promise<IbHoldings | null> {
 }
 
 export async function setIbCash(usd: number): Promise<void> {
+  if (!Number.isFinite(usd) || usd < 0) throw new Error("יתרת מזומן חייבת להיות מספר חיובי");
   const household_id = await getMyHouseholdId();
   const { error } = await supabase
     .from("ib_holdings")
