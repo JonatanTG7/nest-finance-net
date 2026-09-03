@@ -23,8 +23,7 @@ async function consumeOAuthRedirect(): Promise<boolean> {
 
   if (!access_token && !refresh_token && !err) return false;
 
-  const clean = () =>
-    window.history.replaceState({}, "", window.location.pathname || "/");
+  const clean = () => window.history.replaceState({}, "", window.location.pathname || "/");
 
   if (!access_token || !refresh_token) {
     clean();
@@ -75,7 +74,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (!session) return <SignIn />;
   return <HouseholdGate>{children}</HouseholdGate>;
 }
-
 
 function HouseholdGate({ children }: { children: React.ReactNode }) {
   const { data: profile, isLoading } = useQuery({
