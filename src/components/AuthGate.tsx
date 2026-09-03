@@ -6,15 +6,62 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { createHousehold, fetchMyProfile, redeemInvite, useInvalidateMe } from "@/lib/household";
 
+/**
+ * Full-page OAuth (phone browser / standalone tab) returns to the app with the
+ * tokens in the URL. Nothing consumed them before, so the app stayed on the
+ * sign-in screen after picking a Google account. Consume + clean the URL here.
+ */
+async function consumeOAuthRedirect(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const search = new URLSearchParams(window.location.search);
+  const get = (k: string) => hash.get(k) ?? search.get(k);
+
+  const access_token = get("access_token");
+  const refresh_token = get("refresh_token");
+  const err = get("error_description") ?? get("error");
+
+  if (!access_token && !refresh_token && !err) return false;
+
+  const clean = () => window.history.replaceState({}, "", window.location.pathname || "/");
+
+  if (!access_token || !refresh_token) {
+    clean();
+    toast.error("שגיאה בכניסה");
+    return false;
+  }
+  try {
+    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    clean();
+    if (error) {
+      toast.error("שגיאה בכניסה");
+      return false;
+    }
+    return true;
+  } catch {
+    clean();
+    toast.error("שגיאה בכניסה");
+    return false;
+  }
+}
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<unknown | null | undefined>(undefined);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    let cancelled = false;
+    (async () => {
+      await consumeOAuthRedirect();
+      const { data } = await supabase.auth.getSession();
+      if (!cancelled) setSession(data.session);
+    })();
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   if (session === undefined) {
@@ -33,14 +80,36 @@ function HouseholdGate({ children }: { children: React.ReactNode }) {
     queryKey: ["me", "profile"],
     queryFn: fetchMyProfile,
   });
-  if (isLoading || !profile) {
+  if (isLoading) {
     return (
       <FullScreen>
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </FullScreen>
     );
   }
+  // No profile row (or it couldn't be read) — never hang on a spinner.
+  if (!profile) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-background p-6 text-center">
+        <p className="text-sm text-muted-foreground">לא הצלחנו לטעון את הפרופיל שלך.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-semibold"
+        >
+          נסה שוב
+        </button>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground"
+        >
+          <LogOut className="size-3.5" />
+          התנתק
+        </button>
+      </div>
+    );
+  }
   if (!profile.household_id) return <Onboarding />;
+
   return <>{children}</>;
 }
 
