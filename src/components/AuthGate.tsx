@@ -6,15 +6,63 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { createHousehold, fetchMyProfile, redeemInvite, useInvalidateMe } from "@/lib/household";
 
+/**
+ * Full-page OAuth (phone browser / standalone tab) returns to the app with the
+ * tokens in the URL. Nothing consumed them before, so the app stayed on the
+ * sign-in screen after picking a Google account. Consume + clean the URL here.
+ */
+async function consumeOAuthRedirect(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const search = new URLSearchParams(window.location.search);
+  const get = (k: string) => hash.get(k) ?? search.get(k);
+
+  const access_token = get("access_token");
+  const refresh_token = get("refresh_token");
+  const err = get("error_description") ?? get("error");
+
+  if (!access_token && !refresh_token && !err) return false;
+
+  const clean = () =>
+    window.history.replaceState({}, "", window.location.pathname || "/");
+
+  if (!access_token || !refresh_token) {
+    clean();
+    toast.error("שגיאה בכניסה");
+    return false;
+  }
+  try {
+    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    clean();
+    if (error) {
+      toast.error("שגיאה בכניסה");
+      return false;
+    }
+    return true;
+  } catch {
+    clean();
+    toast.error("שגיאה בכניסה");
+    return false;
+  }
+}
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<unknown | null | undefined>(undefined);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    let cancelled = false;
+    (async () => {
+      await consumeOAuthRedirect();
+      const { data } = await supabase.auth.getSession();
+      if (!cancelled) setSession(data.session);
+    })();
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   if (session === undefined) {
@@ -27,6 +75,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (!session) return <SignIn />;
   return <HouseholdGate>{children}</HouseholdGate>;
 }
+
 
 function HouseholdGate({ children }: { children: React.ReactNode }) {
   const { data: profile, isLoading } = useQuery({
