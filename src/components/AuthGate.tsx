@@ -82,14 +82,36 @@ function HouseholdGate({ children }: { children: React.ReactNode }) {
     queryKey: ["me", "profile"],
     queryFn: fetchMyProfile,
   });
-  if (isLoading || !profile) {
+  if (isLoading) {
     return (
       <FullScreen>
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </FullScreen>
     );
   }
+  // No profile row (or it couldn't be read) — never hang on a spinner.
+  if (!profile) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-background p-6 text-center">
+        <p className="text-sm text-muted-foreground">לא הצלחנו לטעון את הפרופיל שלך.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-semibold"
+        >
+          נסה שוב
+        </button>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground"
+        >
+          <LogOut className="size-3.5" />
+          התנתק
+        </button>
+      </div>
+    );
+  }
   if (!profile.household_id) return <Onboarding />;
+
   return <>{children}</>;
 }
 
