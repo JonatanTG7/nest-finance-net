@@ -335,6 +335,11 @@ export function TransactionForm({
 
   const selectedPm = paymentMethods.find((m) => m.key === paymentMethod) ?? null;
 
+  const { data: creditCards = [] } = useCreditCards();
+  const needsCard = !isIncome && isCreditMethod(paymentMethod);
+  const selectedCard = creditCards.find((c) => c.id === creditCardId) ?? null;
+
+
   function shiftMonthIso(iso: string, months: number) {
     const d = new Date(iso);
     d.setMonth(d.getMonth() + months);
