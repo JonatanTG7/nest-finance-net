@@ -367,8 +367,13 @@ export function TransactionForm({
       setStep(1);
       return;
     }
+    if (needsCard && creditCards.length > 0 && !creditCardId) {
+      toast.error("בחר כרטיס אשראי");
+      return;
+    }
     setDefaultPerson(enteredBy);
     if (paymentMethod) setLastPaymentMethod(paymentMethod);
+
 
     const baseInput: TransactionInput = {
       type,
