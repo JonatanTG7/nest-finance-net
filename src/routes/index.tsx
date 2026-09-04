@@ -16,7 +16,9 @@ import {
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
+import { UpcomingCharges } from "@/components/UpcomingCharges";
 import { Plane } from "lucide-react";
+
 import { fetchTrips, tripStatus } from "@/lib/trips";
 import { fetchAllTransactions, fetchTransactionsBetween, type Transaction } from "@/lib/db";
 import {
