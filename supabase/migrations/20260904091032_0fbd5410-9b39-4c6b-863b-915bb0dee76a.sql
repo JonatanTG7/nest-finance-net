@@ -1,0 +1,13 @@
+REVOKE EXECUTE ON FUNCTION public.current_household_id() FROM anon, authenticated, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon, authenticated, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.touch_updated_at() FROM anon, authenticated, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.create_household(text) FROM anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.redeem_invite(text) FROM anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.generate_invite_code(uuid) FROM anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.leave_household() FROM anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.delete_my_household() FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.create_household(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.redeem_invite(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_invite_code(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.leave_household() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_my_household() TO authenticated;
