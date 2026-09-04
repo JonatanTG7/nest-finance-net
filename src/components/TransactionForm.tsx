@@ -167,7 +167,9 @@ export function TransactionForm({
   const [paymentMethod, setPaymentMethod] = useState<string | null>(
     existing?.payment_method ?? getLastPaymentMethod() ?? "credit",
   );
+  const [creditCardId, setCreditCardId] = useState<string | null>(existing?.credit_card_id ?? null);
   const [pmSheetOpen, setPmSheetOpen] = useState(false);
+
   const [pmDraft, setPmDraft] = useState("");
   const [savingPm, setSavingPm] = useState(false);
   const [installments, setInstallments] = useState<number>(1);
