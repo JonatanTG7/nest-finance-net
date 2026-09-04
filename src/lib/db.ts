@@ -191,9 +191,11 @@ export interface TransactionInput {
   tag_names: string[];
   investment_account_id?: string | null;
   payment_method?: PaymentMethod | null;
+  credit_card_id?: string | null;
   photo_url?: string | null;
   location?: string | null;
   trip_id?: string | null;
+
 }
 
 async function ensureTags(names: string[], householdId: string): Promise<string[]> {
@@ -228,6 +230,8 @@ async function rowFromInput(input: TransactionInput) {
     investment_account_id:
       input.type === "investment" ? (input.investment_account_id ?? null) : null,
     payment_method: input.payment_method ?? null,
+    credit_card_id: input.credit_card_id ?? null,
+
     photo_url: input.photo_url ?? null,
     location: input.location ?? null,
     trip_id: input.trip_id ?? null,

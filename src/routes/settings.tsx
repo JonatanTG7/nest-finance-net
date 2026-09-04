@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
+import { CreditCardsSection } from "@/components/CreditCardsSection";
+
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import {
@@ -224,7 +226,10 @@ function Settings() {
         </div>
       </section> */}
 
+      <CreditCardsSection />
+
       <HouseholdSection />
+
 
       <section className="px-5 mt-8">
         <Link

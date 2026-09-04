@@ -128,6 +128,47 @@ export type Database = {
           },
         ]
       }
+      credit_cards: {
+        Row: {
+          billing_day: number
+          created_at: string
+          household_id: string
+          id: string
+          last_four: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          billing_day: number
+          created_at?: string
+          household_id: string
+          id?: string
+          last_four: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_day?: number
+          created_at?: string
+          household_id?: string
+          id?: string
+          last_four?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_cards_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_hidden_categories: {
         Row: {
           category_id: string
@@ -538,6 +579,7 @@ export type Database = {
           amount_ils: number
           category_id: string | null
           created_at: string
+          credit_card_id: string | null
           currency: string
           entered_by: Database["public"]["Enums"]["person"]
           fx_rate_to_ils: number
@@ -560,6 +602,7 @@ export type Database = {
           amount_ils: number
           category_id?: string | null
           created_at?: string
+          credit_card_id?: string | null
           currency?: string
           entered_by: Database["public"]["Enums"]["person"]
           fx_rate_to_ils?: number
@@ -582,6 +625,7 @@ export type Database = {
           amount_ils?: number
           category_id?: string | null
           created_at?: string
+          credit_card_id?: string | null
           currency?: string
           entered_by?: Database["public"]["Enums"]["person"]
           fx_rate_to_ils?: number
@@ -605,6 +649,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
             referencedColumns: ["id"]
           },
           {

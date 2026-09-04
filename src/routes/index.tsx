@@ -16,7 +16,9 @@ import {
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
+import { UpcomingCharges } from "@/components/UpcomingCharges";
 import { Plane } from "lucide-react";
+
 import { fetchTrips, tripStatus } from "@/lib/trips";
 import { fetchAllTransactions, fetchTransactionsBetween, type Transaction } from "@/lib/db";
 import {
@@ -226,7 +228,10 @@ function Dashboard() {
         </Link>
       </section>
 
+      <UpcomingCharges />
+
       <div className="grid md:grid-cols-2 gap-4 mt-6 px-5 md:px-0">
+
         <Card title="הוצאות לפי קטגוריה">
           {pieData.length === 0 ? (
             <Empty>אין עדיין הוצאות בחודש זה</Empty>

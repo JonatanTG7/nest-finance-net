@@ -59,7 +59,9 @@ import {
   useInvalidatePaymentMethods,
   usePaymentMethods,
 } from "@/lib/payment_methods";
+import { cardLabel, isCreditMethod, useCreditCards } from "@/lib/credit_cards";
 import { fetchRateToIls } from "@/lib/fx";
+
 import { fetchTrips } from "@/lib/trips";
 import { getDefaultCurrency } from "@/lib/personal_settings";
 import { cn } from "@/lib/utils";
@@ -165,7 +167,9 @@ export function TransactionForm({
   const [paymentMethod, setPaymentMethod] = useState<string | null>(
     existing?.payment_method ?? getLastPaymentMethod() ?? "credit",
   );
+  const [creditCardId, setCreditCardId] = useState<string | null>(existing?.credit_card_id ?? null);
   const [pmSheetOpen, setPmSheetOpen] = useState(false);
+
   const [pmDraft, setPmDraft] = useState("");
   const [savingPm, setSavingPm] = useState(false);
   const [installments, setInstallments] = useState<number>(1);
@@ -331,6 +335,11 @@ export function TransactionForm({
 
   const selectedPm = paymentMethods.find((m) => m.key === paymentMethod) ?? null;
 
+  const { data: creditCards = [] } = useCreditCards();
+  const needsCard = type !== "income" && isCreditMethod(paymentMethod);
+  const selectedCard = creditCards.find((c) => c.id === creditCardId) ?? null;
+
+
   function shiftMonthIso(iso: string, months: number) {
     const d = new Date(iso);
     d.setMonth(d.getMonth() + months);
@@ -358,8 +367,13 @@ export function TransactionForm({
       setStep(1);
       return;
     }
+    if (needsCard && creditCards.length > 0 && !creditCardId) {
+      toast.error("בחר כרטיס אשראי");
+      return;
+    }
     setDefaultPerson(enteredBy);
     if (paymentMethod) setLastPaymentMethod(paymentMethod);
+
 
     const baseInput: TransactionInput = {
       type,
