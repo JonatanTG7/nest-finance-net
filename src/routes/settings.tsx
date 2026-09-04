@@ -224,7 +224,10 @@ function Settings() {
         </div>
       </section> */}
 
+      <CreditCardsSection />
+
       <HouseholdSection />
+
 
       <section className="px-5 mt-8">
         <Link
