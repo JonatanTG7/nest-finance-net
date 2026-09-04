@@ -336,7 +336,7 @@ export function TransactionForm({
   const selectedPm = paymentMethods.find((m) => m.key === paymentMethod) ?? null;
 
   const { data: creditCards = [] } = useCreditCards();
-  const needsCard = !isIncome && isCreditMethod(paymentMethod);
+  const needsCard = type !== "income" && isCreditMethod(paymentMethod);
   const selectedCard = creditCards.find((c) => c.id === creditCardId) ?? null;
 
 
