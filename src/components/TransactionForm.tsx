@@ -337,8 +337,6 @@ export function TransactionForm({
 
   const { data: creditCards = [] } = useCreditCards();
   const needsCard = type !== "income" && isCreditMethod(paymentMethod);
-  const selectedCard = creditCards.find((c) => c.id === creditCardId) ?? null;
-
 
   function shiftMonthIso(iso: string, months: number) {
     const d = new Date(iso);
@@ -373,7 +371,6 @@ export function TransactionForm({
     }
     setDefaultPerson(enteredBy);
     if (paymentMethod) setLastPaymentMethod(paymentMethod);
-
 
     const baseInput: TransactionInput = {
       type,
@@ -785,9 +782,7 @@ export function TransactionForm({
             <div>
               <p className="text-xs text-muted-foreground mb-1.5">כרטיס אשראי</p>
               {creditCards.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  אין כרטיסים. אפשר להוסיף בהגדרות.
-                </p>
+                <p className="text-xs text-muted-foreground">אין כרטיסים. אפשר להוסיף בהגדרות.</p>
               ) : (
                 <select
                   value={creditCardId ?? ""}
@@ -804,7 +799,6 @@ export function TransactionForm({
               )}
             </div>
           )}
-
 
           {pmSheetOpen && (
             <div
