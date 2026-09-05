@@ -388,6 +388,8 @@ export function TransactionForm({
       tag_names: tagList,
       investment_account_id: type === "investment" ? accountId : null,
       payment_method: type === "income" ? null : paymentMethod,
+      credit_card_id: needsCard ? creditCardId : null,
+
       photo_url: photoUrl,
       location,
       trip_id: tripId,
@@ -778,6 +780,32 @@ export function TransactionForm({
             </div>
           )}
 
+          {/* Which credit card — only when paying by credit */}
+          {needsCard && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">כרטיס אשראי</p>
+              {creditCards.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  אין כרטיסים. אפשר להוסיף בהגדרות.
+                </p>
+              ) : (
+                <select
+                  value={creditCardId ?? ""}
+                  onChange={(e) => setCreditCardId(e.target.value || null)}
+                  className="w-full h-12 rounded-2xl bg-card border px-4 text-sm font-semibold outline-none"
+                >
+                  <option value="">בחר כרטיס</option>
+                  {creditCards.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {cardLabel(c)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+
           {pmSheetOpen && (
             <div
               className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
@@ -804,6 +832,8 @@ export function TransactionForm({
                       type="button"
                       onClick={() => {
                         setPaymentMethod(m.key);
+                        if (!isCreditMethod(m.key)) setCreditCardId(null);
+
                         setPmSheetOpen(false);
                       }}
                       className={cn(
