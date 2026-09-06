@@ -19,11 +19,21 @@ import { usePaymentMethods } from "@/lib/payment_methods";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/transactions/")({
-  validateSearch: (search: Record<string, unknown>): { type?: TypeFilter } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { type?: TypeFilter; method?: string; card?: string; range?: Range } => {
     const allowed: TypeFilter[] = ["income", "expense", "fixed", "investment"];
+    const ranges: Range[] = ["month", "3m", "12m", "all"];
     const t = search.type as TypeFilter | undefined;
-    return { type: t && allowed.includes(t) ? t : undefined };
+    const r = search.range as Range | undefined;
+    return {
+      type: t && allowed.includes(t) ? t : undefined,
+      method: typeof search.method === "string" ? search.method : undefined,
+      card: typeof search.card === "string" ? search.card : undefined,
+      range: r && ranges.includes(r) ? r : undefined,
+    };
   },
+
   head: () => ({
     meta: [
       { title: "תנועות — כסף משפחתי" },
