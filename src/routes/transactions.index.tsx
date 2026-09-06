@@ -431,6 +431,31 @@ function TransactionsList() {
         <Stat label="ממוצע לתנועה" value={formatILS(summary.avg)} />
       </section>
 
+      {selectedCard && byChargeDate.length > 0 && (
+        <section className="px-5 md:px-0 mt-3">
+          <div className="rounded-2xl bg-card border p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">{cardLabel(selectedCard)} — לפי מועד חיוב</h3>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {formatILS(byChargeDate.reduce((s, d) => s + d.total, 0))}
+              </span>
+            </div>
+            <ul className="divide-y -my-1">
+              {byChargeDate.map((d) => (
+                <li key={d.date} className="flex items-center justify-between py-2 text-sm">
+                  <span>
+                    חיוב ב-{formatChargeDate(d.date)}
+                    <span className="text-xs text-muted-foreground"> · {d.count} תנועות</span>
+                  </span>
+                  <span className="font-bold tabular-nums">{formatILS(d.total)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+
       <div className="px-5 md:px-0 mt-4 flex gap-2">
         {(
           [
