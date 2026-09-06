@@ -23,6 +23,8 @@ import { fetchTrips, tripStatus } from "@/lib/trips";
 import { fetchAllTransactions, fetchTransactionsBetween, type Transaction } from "@/lib/db";
 import {
   categoryShade,
+  cycleRangeFromKey,
+  todayLocalISO,
   formatILS,
   isCashflowOut,
   monthRangeFromKey,
@@ -33,6 +35,7 @@ import {
 import { useSelectedMonth } from "@/lib/month-store";
 import { useMemberLabels } from "@/lib/person";
 import { useMyProfile } from "@/lib/household";
+import { usePeriodSettings } from "@/lib/personal_settings";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
