@@ -73,12 +73,12 @@ function Dashboard() {
     },
   });
 
-  const totals = useMemo(() => {
+  const sumTotals = (list: Transaction[]) => {
     let income = 0,
       expense = 0,
       fixed = 0,
       investment = 0;
-    for (const t of txs) {
+    for (const t of list) {
       const v = Number(t.amount_ils);
       switch (t.type) {
         case "income":
@@ -101,7 +101,20 @@ function Dashboard() {
     }
     const remaining = income - expense - fixed - investment;
     return { income, expense, fixed, investment, remaining };
-  }, [txs]);
+  };
+
+  /** Full period (everything recorded in the period) — used for the forecast. */
+  const totals = useMemo(() => sumTotals(txs), [txs]);
+
+  /** Only what has already happened — money actually in and out until today. */
+  const soFar = useMemo(
+    () => sumTotals(txs.filter((t) => t.occurred_at <= today)),
+    [txs, today],
+  );
+
+  /** Is "today" inside the displayed period at all? */
+  const periodIsCurrent = today >= start && today < end;
+
 
   // Pie: outflow per category, each slice in its own colour
   const pieData = useMemo(() => {
