@@ -158,16 +158,19 @@ function TransactionsList() {
       if (payers.length && !payers.includes(t.entered_by as Person)) return false;
       if (cats.length && !cats.includes(t.category?.id ?? "none")) return false;
       if (method && t.payment_method !== method) return false;
+      if (card && t.credit_card_id !== card) return false;
       if (needle) {
         const tagsHay = (t.transaction_tags ?? []).map((tt) => tt.tag.name).join(" ");
         const methodLabel =
           paymentMethods.find((m) => m.key === t.payment_method)?.label ?? t.payment_method ?? "";
+        const cardName = creditCards.find((c) => c.id === t.credit_card_id);
         const hay = [
           t.title,
           t.note ?? "",
           t.category?.name ?? "",
           tagsHay,
           methodLabel,
+          cardName ? cardLabel(cardName) : "",
           memberLabels[t.entered_by as Person] ?? "",
           t.entered_by,
         ]
@@ -177,7 +180,26 @@ function TransactionsList() {
       }
       return true;
     });
-  }, [txs, typeFilter, payers, cats, method, q, memberLabels, paymentMethods]);
+  }, [txs, typeFilter, payers, cats, method, card, q, memberLabels, paymentMethods, creditCards]);
+
+  // When a specific card is selected, break the total down by the date the
+  // bank actually charges it, instead of showing one lump sum.
+  const selectedCard = creditCards.find((c) => c.id === card) ?? null;
+  const byChargeDate = useMemo(() => {
+    if (!selectedCard) return [];
+    const m = new Map<string, { total: number; count: number }>();
+    for (const t of filtered) {
+      const d = chargeDateFor(t.occurred_at, selectedCard.billing_day);
+      const prev = m.get(d) ?? { total: 0, count: 0 };
+      prev.total += Number(t.amount_ils);
+      prev.count += 1;
+      m.set(d, prev);
+    }
+    return Array.from(m.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, v]) => ({ date, ...v }));
+  }, [filtered, selectedCard]);
+
 
   const summary = useMemo(() => {
     let income = 0;
