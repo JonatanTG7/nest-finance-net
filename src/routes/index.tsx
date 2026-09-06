@@ -42,16 +42,22 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const [month, setMonth] = useSelectedMonth();
-  const { start, end, startDate } = useMemo(() => monthRangeFromKey(month), [month]);
+  const { mode, startDay } = usePeriodSettings();
+  const { start, end, startDate } = useMemo(
+    () => (mode === "cycle" ? cycleRangeFromKey(month, startDay) : monthRangeFromKey(month)),
+    [month, mode, startDay],
+  );
+  const today = todayLocalISO();
   const { data: profile } = useMyProfile();
   const firstName = (profile?.display_name ?? "").split(" ")[0];
   const { data: trips = [] } = useQuery({ queryKey: ["trips"], queryFn: fetchTrips });
   const activeTrip = trips.find((t) => tripStatus(t) === "active");
 
   const { data: txs = [], isLoading } = useQuery({
-    queryKey: ["dashboard", "month", start],
+    queryKey: ["dashboard", "month", start, end],
     queryFn: () => fetchTransactionsBetween(start, end),
   });
+
 
   // 6-month rolling window for the trend chart
   const { data: trendTxs = [] } = useQuery({
