@@ -67,14 +67,15 @@ const RANGES: [Range, string][] = [
 function TransactionsList() {
   const search = Route.useSearch();
   const [month, setMonth] = useSelectedMonth();
-  const [range, setRange] = useState<Range>("month");
+  const [range, setRange] = useState<Range>(search.range ?? "month");
   const [tab, setTab] = useState<Tab>("list");
 
   // Applied filters — these actually filter the list below.
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(search.type ?? "all");
   const [payers, setPayers] = useState<Person[]>([]);
   const [cats, setCats] = useState<string[]>([]);
-  const [method, setMethod] = useState<string>("");
+  const [method, setMethod] = useState<string>(search.method ?? "");
+  const [card, setCard] = useState<string>(search.card ?? "");
 
   // Draft filters — edited inside the open filter panel, only take effect
   // once "החל סינון" is pressed, so the list doesn't jump around mid-edit.
@@ -82,17 +83,27 @@ function TransactionsList() {
   const [draftPayers, setDraftPayers] = useState<Person[]>(payers);
   const [draftCats, setDraftCats] = useState<string[]>(cats);
   const [draftMethod, setDraftMethod] = useState<string>(method);
+  const [draftCard, setDraftCard] = useState<string>(card);
 
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Deep-linked from the home screen (e.g. tapping "הכנסות") — apply immediately.
+  // Deep-linked from the home screen (e.g. tapping "הכנסות" or a credit card) — apply immediately.
   useEffect(() => {
     if (search.type) {
       setTypeFilter(search.type);
       setDraftTypeFilter(search.type);
     }
-  }, [search.type]);
+    if (search.method) {
+      setMethod(search.method);
+      setDraftMethod(search.method);
+    }
+    if (search.card) {
+      setCard(search.card);
+      setDraftCard(search.card);
+    }
+    if (search.range) setRange(search.range);
+  }, [search.type, search.method, search.card, search.range]);
 
   function openFilters() {
     // Re-sync draft with whatever is currently applied before editing.
@@ -100,6 +111,7 @@ function TransactionsList() {
     setDraftPayers(payers);
     setDraftCats(cats);
     setDraftMethod(method);
+    setDraftCard(card);
     setShowFilters(true);
   }
 
@@ -108,11 +120,14 @@ function TransactionsList() {
     setPayers(draftPayers);
     setCats(draftCats);
     setMethod(draftMethod);
+    setCard(isCreditMethod(draftMethod) ? draftCard : "");
     setShowFilters(false);
   }
 
   const memberLabels = useMemberLabels();
   const { data: paymentMethods = [] } = usePaymentMethods();
+  const { data: creditCards = [] } = useCreditCards();
+
 
   const period = useMemo(() => {
     if (range === "all") return null;
