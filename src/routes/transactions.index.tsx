@@ -375,6 +375,24 @@ function TransactionsList() {
               </FilterRow>
             )}
 
+            {isCreditMethod(draftMethod) && creditCards.length > 0 && (
+              <FilterRow label="כרטיס">
+                <Chip active={!draftCard} onClick={() => setDraftCard("")}>
+                  כל הכרטיסים
+                </Chip>
+                {creditCards.map((c) => (
+                  <Chip
+                    key={c.id}
+                    active={draftCard === c.id}
+                    onClick={() => setDraftCard(draftCard === c.id ? "" : c.id)}
+                  >
+                    {cardLabel(c)}
+                  </Chip>
+                ))}
+              </FilterRow>
+            )}
+
+
             <FilterRow label="קטגוריות">
               {allCats.map((c) => (
                 <Chip
