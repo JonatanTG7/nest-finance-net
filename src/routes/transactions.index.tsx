@@ -16,14 +16,32 @@ import {
 import { useSelectedMonth } from "@/lib/month-store";
 import { useMemberLabels, type Person } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
+import {
+  cardLabel,
+  chargeDateFor,
+  formatChargeDate,
+  isCreditMethod,
+  useCreditCards,
+} from "@/lib/credit_cards";
+
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/transactions/")({
-  validateSearch: (search: Record<string, unknown>): { type?: TypeFilter } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { type?: TypeFilter; method?: string; card?: string; range?: Range } => {
     const allowed: TypeFilter[] = ["income", "expense", "fixed", "investment"];
+    const ranges: Range[] = ["month", "3m", "12m", "all"];
     const t = search.type as TypeFilter | undefined;
-    return { type: t && allowed.includes(t) ? t : undefined };
+    const r = search.range as Range | undefined;
+    return {
+      type: t && allowed.includes(t) ? t : undefined,
+      method: typeof search.method === "string" ? search.method : undefined,
+      card: typeof search.card === "string" ? search.card : undefined,
+      range: r && ranges.includes(r) ? r : undefined,
+    };
   },
+
   head: () => ({
     meta: [
       { title: "תנועות — כסף משפחתי" },
@@ -57,14 +75,15 @@ const RANGES: [Range, string][] = [
 function TransactionsList() {
   const search = Route.useSearch();
   const [month, setMonth] = useSelectedMonth();
-  const [range, setRange] = useState<Range>("month");
+  const [range, setRange] = useState<Range>(search.range ?? "month");
   const [tab, setTab] = useState<Tab>("list");
 
   // Applied filters — these actually filter the list below.
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(search.type ?? "all");
   const [payers, setPayers] = useState<Person[]>([]);
   const [cats, setCats] = useState<string[]>([]);
-  const [method, setMethod] = useState<string>("");
+  const [method, setMethod] = useState<string>(search.method ?? "");
+  const [card, setCard] = useState<string>(search.card ?? "");
 
   // Draft filters — edited inside the open filter panel, only take effect
   // once "החל סינון" is pressed, so the list doesn't jump around mid-edit.
@@ -72,17 +91,27 @@ function TransactionsList() {
   const [draftPayers, setDraftPayers] = useState<Person[]>(payers);
   const [draftCats, setDraftCats] = useState<string[]>(cats);
   const [draftMethod, setDraftMethod] = useState<string>(method);
+  const [draftCard, setDraftCard] = useState<string>(card);
 
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Deep-linked from the home screen (e.g. tapping "הכנסות") — apply immediately.
+  // Deep-linked from the home screen (e.g. tapping "הכנסות" or a credit card) — apply immediately.
   useEffect(() => {
     if (search.type) {
       setTypeFilter(search.type);
       setDraftTypeFilter(search.type);
     }
-  }, [search.type]);
+    if (search.method) {
+      setMethod(search.method);
+      setDraftMethod(search.method);
+    }
+    if (search.card) {
+      setCard(search.card);
+      setDraftCard(search.card);
+    }
+    if (search.range) setRange(search.range);
+  }, [search.type, search.method, search.card, search.range]);
 
   function openFilters() {
     // Re-sync draft with whatever is currently applied before editing.
@@ -90,6 +119,7 @@ function TransactionsList() {
     setDraftPayers(payers);
     setDraftCats(cats);
     setDraftMethod(method);
+    setDraftCard(card);
     setShowFilters(true);
   }
 
@@ -98,11 +128,14 @@ function TransactionsList() {
     setPayers(draftPayers);
     setCats(draftCats);
     setMethod(draftMethod);
+    setCard(isCreditMethod(draftMethod) ? draftCard : "");
     setShowFilters(false);
   }
 
   const memberLabels = useMemberLabels();
   const { data: paymentMethods = [] } = usePaymentMethods();
+  const { data: creditCards = [] } = useCreditCards();
+
 
   const period = useMemo(() => {
     if (range === "all") return null;
@@ -125,16 +158,19 @@ function TransactionsList() {
       if (payers.length && !payers.includes(t.entered_by as Person)) return false;
       if (cats.length && !cats.includes(t.category?.id ?? "none")) return false;
       if (method && t.payment_method !== method) return false;
+      if (card && t.credit_card_id !== card) return false;
       if (needle) {
         const tagsHay = (t.transaction_tags ?? []).map((tt) => tt.tag.name).join(" ");
         const methodLabel =
           paymentMethods.find((m) => m.key === t.payment_method)?.label ?? t.payment_method ?? "";
+        const cardName = creditCards.find((c) => c.id === t.credit_card_id);
         const hay = [
           t.title,
           t.note ?? "",
           t.category?.name ?? "",
           tagsHay,
           methodLabel,
+          cardName ? cardLabel(cardName) : "",
           memberLabels[t.entered_by as Person] ?? "",
           t.entered_by,
         ]
@@ -144,7 +180,26 @@ function TransactionsList() {
       }
       return true;
     });
-  }, [txs, typeFilter, payers, cats, method, q, memberLabels, paymentMethods]);
+  }, [txs, typeFilter, payers, cats, method, card, q, memberLabels, paymentMethods, creditCards]);
+
+  // When a specific card is selected, break the total down by the date the
+  // bank actually charges it, instead of showing one lump sum.
+  const selectedCard = creditCards.find((c) => c.id === card) ?? null;
+  const byChargeDate = useMemo(() => {
+    if (!selectedCard) return [];
+    const m = new Map<string, { total: number; count: number }>();
+    for (const t of filtered) {
+      const d = chargeDateFor(t.occurred_at, selectedCard.billing_day);
+      const prev = m.get(d) ?? { total: 0, count: 0 };
+      prev.total += Number(t.amount_ils);
+      prev.count += 1;
+      m.set(d, prev);
+    }
+    return Array.from(m.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, v]) => ({ date, ...v }));
+  }, [filtered, selectedCard]);
+
 
   const summary = useMemo(() => {
     let income = 0;
@@ -210,7 +265,11 @@ function TransactionsList() {
   }, [filtered]);
 
   const activeFilters =
-    (typeFilter !== "all" ? 1 : 0) + payers.length + cats.length + (method ? 1 : 0);
+    (typeFilter !== "all" ? 1 : 0) +
+    payers.length +
+    cats.length +
+    (method ? 1 : 0) +
+    (card ? 1 : 0);
 
   function toggle<T>(arr: T[], v: T, set: (next: T[]) => void) {
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -221,12 +280,15 @@ function TransactionsList() {
     setPayers([]);
     setCats([]);
     setMethod("");
+    setCard("");
     setDraftTypeFilter("all");
     setDraftPayers([]);
     setDraftCats([]);
     setDraftMethod("");
+    setDraftCard("");
     setQ("");
   }
+
 
   return (
     <AppShell>
@@ -313,6 +375,24 @@ function TransactionsList() {
               </FilterRow>
             )}
 
+            {isCreditMethod(draftMethod) && creditCards.length > 0 && (
+              <FilterRow label="כרטיס">
+                <Chip active={!draftCard} onClick={() => setDraftCard("")}>
+                  כל הכרטיסים
+                </Chip>
+                {creditCards.map((c) => (
+                  <Chip
+                    key={c.id}
+                    active={draftCard === c.id}
+                    onClick={() => setDraftCard(draftCard === c.id ? "" : c.id)}
+                  >
+                    {cardLabel(c)}
+                  </Chip>
+                ))}
+              </FilterRow>
+            )}
+
+
             <FilterRow label="קטגוריות">
               {allCats.map((c) => (
                 <Chip
@@ -350,6 +430,31 @@ function TransactionsList() {
         <Stat label="הכנסות" value={formatILS(summary.income)} className="text-income" />
         <Stat label="ממוצע לתנועה" value={formatILS(summary.avg)} />
       </section>
+
+      {selectedCard && byChargeDate.length > 0 && (
+        <section className="px-5 md:px-0 mt-3">
+          <div className="rounded-2xl bg-card border p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">{cardLabel(selectedCard)} — לפי מועד חיוב</h3>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {formatILS(byChargeDate.reduce((s, d) => s + d.total, 0))}
+              </span>
+            </div>
+            <ul className="divide-y -my-1">
+              {byChargeDate.map((d) => (
+                <li key={d.date} className="flex items-center justify-between py-2 text-sm">
+                  <span>
+                    חיוב ב-{formatChargeDate(d.date)}
+                    <span className="text-xs text-muted-foreground"> · {d.count} תנועות</span>
+                  </span>
+                  <span className="font-bold tabular-nums">{formatILS(d.total)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
 
       <div className="px-5 md:px-0 mt-4 flex gap-2">
         {(

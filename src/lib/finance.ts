@@ -181,3 +181,24 @@ function hslToRgb(h: number, s: number, l: number) {
     b: Math.round((b + m) * 255),
   };
 }
+
+/**
+ * Cash-flow month: starts on `startDay` of the given month key and ends
+ * (exclusive) on the same day of the next month. Example: key "2026-09"
+ * with startDay 10 → 2026-09-10 .. 2026-10-10.
+ */
+export function cycleRangeFromKey(key: string, startDay: number) {
+  const day = Math.max(1, Math.min(28, Math.round(startDay) || 1));
+  const base = parseMonthKey(key);
+  const startDate = new Date(base.getFullYear(), base.getMonth(), day);
+  const endDate = new Date(base.getFullYear(), base.getMonth() + 1, day);
+  const iso = (x: Date) =>
+    `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+  return { start: iso(startDate), end: iso(endDate), startDate };
+}
+
+/** Local (not UTC) today as YYYY-MM-DD. */
+export function todayLocalISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
