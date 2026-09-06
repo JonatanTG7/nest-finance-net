@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CreditCard } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { CreditCard, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatILS } from "@/lib/finance";
 import {
+  CREDIT_PM_KEY,
   cardLabel,
   chargeDateFor,
   formatChargeDate,
@@ -38,23 +40,32 @@ export function UpcomingCharges() {
     const today = todayISO();
     return cards
       .map((card) => {
-        const byDate = new Map<string, number>();
+        const byDate = new Map<string, { total: number; count: number }>();
         for (const r of rows) {
           if (r.credit_card_id !== card.id) continue;
           const charge = chargeDateFor(r.occurred_at, card.billing_day);
           // Past cycles were already deducted — leave them untouched.
           if (charge < today) continue;
-          byDate.set(charge, (byDate.get(charge) ?? 0) + Number(r.amount_ils));
+          const prev = byDate.get(charge) ?? { total: 0, count: 0 };
+          prev.total += Number(r.amount_ils);
+          prev.count += 1;
+          byDate.set(charge, prev);
         }
         const dates = Array.from(byDate.keys()).sort();
-        if (dates.length === 0) return null;
-        const nextDate = dates[0];
-        const nextTotal = byDate.get(nextDate) ?? 0;
-        const laterTotal = dates.slice(1).reduce((s, d) => s + (byDate.get(d) ?? 0), 0);
-        return { card, nextDate, nextTotal, laterTotal };
+        const nextDate = dates[0] ?? null;
+        const next = nextDate ? byDate.get(nextDate)! : { total: 0, count: 0 };
+        const laterTotal = dates
+          .slice(1)
+          .reduce((s, d) => s + (byDate.get(d)?.total ?? 0), 0);
+        return {
+          card,
+          nextDate,
+          nextTotal: next.total,
+          nextCount: next.count,
+          laterTotal,
+        };
       })
-      .filter((g): g is NonNullable<typeof g> => g !== null)
-      .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
+      .sort((a, b) => (a.nextDate ?? "9999").localeCompare(b.nextDate ?? "9999"));
   }, [cards, rows]);
 
   if (groups.length === 0) return null;
@@ -72,16 +83,25 @@ export function UpcomingCharges() {
           <span className="text-xs text-muted-foreground tabular-nums">{formatILS(total)}</span>
         </div>
         <ul className="divide-y -my-1">
-          {groups.map(({ card, nextDate, nextTotal, laterTotal }) => (
-            <li key={card.id} className="flex items-center gap-3 py-2.5">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{cardLabel(card)}</p>
-                <p className="text-xs text-muted-foreground">
-                  חיוב ב-{formatChargeDate(nextDate)}
-                  {laterTotal > 0 ? ` · עוד ${formatILS(laterTotal)} בהמשך` : ""}
-                </p>
-              </div>
-              <p className="text-sm font-bold tabular-nums shrink-0">{formatILS(nextTotal)}</p>
+          {groups.map(({ card, nextDate, nextTotal, nextCount, laterTotal }) => (
+            <li key={card.id}>
+              <Link
+                to="/transactions"
+                search={{ method: CREDIT_PM_KEY, card: card.id, range: "3m" }}
+                className="flex items-center gap-3 py-2.5 hover:bg-accent/40 rounded-lg px-1 -mx-1"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{cardLabel(card)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {nextDate
+                      ? `חיוב ב-${formatChargeDate(nextDate)} · ${nextCount} תנועות`
+                      : "אין חיובים ממתינים"}
+                    {laterTotal > 0 ? ` · עוד ${formatILS(laterTotal)} בהמשך` : ""}
+                  </p>
+                </div>
+                <p className="text-sm font-bold tabular-nums shrink-0">{formatILS(nextTotal)}</p>
+                <ChevronLeft className="size-4 text-muted-foreground shrink-0" />
+              </Link>
             </li>
           ))}
         </ul>
