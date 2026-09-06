@@ -1,97 +1,30 @@
-## IB Portfolio — Plan
+# תזרים חודשי מקצועי + כרטיסי אשראי לפי מספר כרטיס
 
-### 1. Data model (new tables)
+## מה יקרה בסוף
 
-**`ib_holdings`** — per-user IB account state
+1. בדף הבית תוכל להחליף בין שתי צורות הסתכלות על החודש: **חודש לוח** (1 עד סוף החודש) או **חודש תזרים** לפי יום פתיחה שתבחר בהגדרות (למשל 1 או 10, לפי יום המשכורת). הבחירה נזכרת.
+2. בדף הבית יופיעו שתי שורות זו מעל זו:
+   - **עד היום** — כמה נכנס בפועל, כמה יצא בפועל, ומה נשאר עכשיו.
+   - **תחזית לסוף החודש** — כולל חיובי אשראי עתידיים והוצאות קבועות שעוד לא ירדו.
+3. ווידג'ט "חיובים קרובים" ישודרג: לכל אחד משלושת הכרטיסים שם + 4 ספרות, תאריך החיוב הקרוב, הסכום, מספר התנועות, ולחיצה תעביר לתנועות מסוננות לאותו כרטיס ולאותו חיוב.
+4. בתנועות: מסנן אמצעי תשלום → כשבוחרים "אשראי" נפתחת מתחת בחירת כרטיס מסוים ("יונתן *1111"), כולל אפשרות "כל הכרטיסים". הסינון נשמר בכתובת הדף כך שאפשר להגיע אליו מדף הבית.
+5. בתנועות, כשמסונן כרטיס, יופיע סיכום: סה"כ לכרטיס בטווח + פירוט לפי מועד חיוב, לא רק סכום אחד גדול.
 
-- `id`, `household_id`, `cash_usd numeric` (default 0)
-- RLS: household-scoped, one row per household (upsert on household_id)
+## התשובה לשאלה על המשכורת
 
-**`ib_positions`** — one row per ticker
+הבעיה שאתה מתאר היא בדיוק ההבדל בין שתי הצורות:
 
-- `id`, `household_id`, `symbol text`, `quantity numeric`, `avg_price numeric`
-- Unique (household_id, symbol)
-- RLS: household-scoped, standard GRANTs
+- **חודש לוח**: משכורת של אשתך ב-1/9 והמשכורת שלך ב-10/9 שתיהן נחשבות לספטמבר. פשוט להבין, אבל ההוצאות של השבוע הראשון בספטמבר מכוסות בפועל מהמשכורת של אוגוסט.
+- **חודש תזרים** (יום פתיחה 1): התקופה נמשכת מ-1/9 עד 30/9, ואתה רואה "כמה כסף נכנס בתקופה הזאת ומה יוצא ממנו". אם תבחר יום פתיחה 10, התקופה תהיה 10/9–9/10, וכל תקופה תתחיל בדיוק אחרי שהמשכורת הגדולה נכנסה — זה ההצגה הנכונה יותר לניהול תזרים.
 
-Migration also: nothing removed from `investment_accounts` (IB row stays, just its "balance" is computed from these tables, not stored). Legacy `starting_balance*` on the IB row is ignored for totals.
+ההמלצה: להשתמש בחודש לוח לדוחות והשוואות, ובחודש תזרים עם יום פתיחה 10 כדי לדעת כמה נשאר לבזבז עד המשכורת הבאה. שתי האפשרויות ייבנו, עם מתג להחלפה.
 
-### 2. Live prices (Finnhub)
+## פרטים טכניים
 
-- Add secret `FINNHUB_API_KEY` (I'll open the secure form after this plan).
-- Server function `getQuotes({ symbols })` in `src/lib/ib.functions.ts`:
-  - Uses `requireSupabaseAuth`, reads `process.env.FINNHUB_API_KEY` inside handler.
-  - Calls `https://finnhub.io/api/v1/quote?symbol=X` per symbol in parallel, returns `{ symbol, last, prevClose }`.
-  - Cached in-memory 60s per symbol per worker to save quota.
-- Client uses TanStack Query with 60s staleTime; refetch on window focus.
-
-### 3. USD→ILS
-
-Reuse existing `fetchUsdIlsRate()` in `src/lib/fx.ts`; cached via a `["fx","usdils"]` query.
-
-### 4. UI — under Investments
-
-Route stays `/investments`. Each account card is clickable (matches user's request "like קרן כספית — clickable"). For the IB card, clicking opens a dedicated view `/investments/ib` (new file `src/routes/investments.ib.tsx`) styled per the screenshot:
-
-- **Header summary (left column on desktop, top on mobile):**
-  - Total portfolio value in USD (large), ILS equivalent muted below
-  - Rows: Cash, Unrealized P&L (green/red, `+` sign), Realized P&L (shown as `—` / hidden per user)
-  - Buttons: **Manage Cash**, **Add Position**
-
-- **Positions table (main area):**
-  Columns: `INSTRUMENT | POSITION | LAST | AVG PRICE | UNREALIZED P&L | MARKET VALUE` + row action menu (Edit / Delete).
-  Empty state: "אין החזקות עדיין" + CTA.
-
-- **Other investment accounts** on `/investments` keep the existing balance-update flow untouched.
-
-- **Dashboard** השקעה card total now includes IB portfolio USD × FX (replaces old IB balance in the aggregate).
-
-### 5. Management modals
-
-- **Manage Cash** (Dialog): single USD input → upserts `ib_holdings.cash_usd`.
-- **Position form** (Dialog, reused for add/edit): symbol (uppercased, trimmed), quantity, avg price. Delete button on edit.
-- All mutations invalidate `["ib","holdings"]`, `["ib","positions"]`, `["ib","quotes"]`.
-
-### 6. Calculations (client)
-
-For each position with live `last`:
-
-```
-marketValue = quantity * last
-unrealizedPnL = (last - avg_price) * quantity
-```
-
-Totals:
-
-```
-totalMarketValue = sum(marketValue)
-totalUnrealized  = sum(unrealizedPnL)
-portfolioUsd     = cash_usd + totalMarketValue
-portfolioIls     = portfolioUsd * usdIlsRate
-```
-
-### 7. Files
-
-Created:
-
-- `supabase/migrations/<ts>_ib_portfolio.sql`
-- `src/lib/ib.functions.ts` (getQuotes, protected)
-- `src/lib/ib.ts` (client CRUD helpers over supabase)
-- `src/routes/investments.ib.tsx`
-- `src/components/ib/PortfolioSummary.tsx`
-- `src/components/ib/PositionsTable.tsx`
-- `src/components/ib/PositionDialog.tsx`
-- `src/components/ib/CashDialog.tsx`
-
-Edited:
-
-- `src/routes/investments.tsx` — IB card links to `/investments/ib`; totals for IB row come from portfolio.
-- `src/routes/index.tsx` — השקעה summary uses IB portfolio value instead of stored balance.
-- `src/routes/settings.tsx` — remove IB from the "update balance in ILS" list (other accounts stay).
-
-### Secrets
-
-I'll request `FINNHUB_API_KEY` via the secure form once the plan is approved. Get a free key at finnhub.io → Dashboard.
-
-### Out of scope (per your answer)
-
-Realized P&L is skipped for now — the row is either omitted or shown as `—`.
+- `src/lib/finance.ts`: פונקציה `cycleRangeFromKey(monthKey, cycleStartDay)` שמחזירה טווח תאריכים לחודש תזרים, לצד `monthRangeFromKey` הקיים.
+- `src/lib/personal_settings.ts` (קיים, localStorage): שמירת `periodMode: "calendar" | "cycle"` ו-`cycleStartDay: number`, עם הוק לקריאה/כתיבה.
+- הגדרות (`src/routes/settings.tsx`): קטע "חודש כספי" — בחירת סוג חודש ויום פתיחה 1–28.
+- דף הבית (`src/routes/index.tsx`): שימוש בטווח הפעיל לשאילתות, פיצול הכרטיס הראשי ל"עד היום" (`occurred_at <= today`) ול"תחזית" (כל הטווח + חיובי אשראי עתידיים מ-`chargeDateFor`). ללא שינוי בסכימת הנתונים.
+- `src/components/UpcomingCharges.tsx`: הצגת כל הכרטיסים כולל מספר תנועות, ו-`Link` ל-`/transactions?method=credit&card=<id>`.
+- `src/routes/transactions.index.tsx`: הרחבת `validateSearch` ל-`type`, `method`, `card` עם `fallback`; המסנן הקיים של אמצעי תשלום יקבל בחירת כרטיס מתחתיו כשנבחר "אשראי"; הוספת סיכום לפי מועד חיוב כשמסונן כרטיס. השדה `credit_card_id` שכבר נשמר בתנועות הוא מה שמסנן; ייטען גם שם הכרטיס דרך `useCreditCards()`.
+- אין מיגרציה למסד הנתונים — כל הצרכים נתמכים ע"י `credit_cards` ו-`transactions.credit_card_id` הקיימים. תאריכי החיוב ממשיכים להיות מחושבים בזמן ריצה מ-`billing_day`.
