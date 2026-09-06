@@ -265,7 +265,11 @@ function TransactionsList() {
   }, [filtered]);
 
   const activeFilters =
-    (typeFilter !== "all" ? 1 : 0) + payers.length + cats.length + (method ? 1 : 0);
+    (typeFilter !== "all" ? 1 : 0) +
+    payers.length +
+    cats.length +
+    (method ? 1 : 0) +
+    (card ? 1 : 0);
 
   function toggle<T>(arr: T[], v: T, set: (next: T[]) => void) {
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -276,12 +280,15 @@ function TransactionsList() {
     setPayers([]);
     setCats([]);
     setMethod("");
+    setCard("");
     setDraftTypeFilter("all");
     setDraftPayers([]);
     setDraftCats([]);
     setDraftMethod("");
+    setDraftCard("");
     setQ("");
   }
+
 
   return (
     <AppShell>
