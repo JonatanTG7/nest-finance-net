@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { Person } from "@/lib/person";
+import { todayISO } from "@/lib/dates";
 import { getMyHouseholdId } from "@/lib/household";
 
 export type Voucher = Database["public"]["Tables"]["vouchers"]["Row"];
@@ -74,6 +75,5 @@ export async function uploadVoucherPhoto(file: File): Promise<string> {
 
 export function isExpired(v: Voucher): boolean {
   if (!v.expiry_date) return false;
-  const today = new Date().toISOString().slice(0, 10);
-  return v.expiry_date < today;
+  return v.expiry_date < todayISO();
 }

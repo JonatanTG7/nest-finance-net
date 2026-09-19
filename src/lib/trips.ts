@@ -1,12 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { getMyHouseholdId } from "@/lib/household";
+import { todayISO } from "@/lib/dates";
 
 export type Trip = Database["public"]["Tables"]["trips"]["Row"];
 export type TripStatus = "upcoming" | "active" | "completed";
 
 export function tripStatus(trip: Pick<Trip, "start_date" | "end_date">): TripStatus {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   if (today < trip.start_date) return "upcoming";
   if (today > trip.end_date) return "completed";
   return "active";

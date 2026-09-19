@@ -59,11 +59,12 @@ import {
   useInvalidatePaymentMethods,
   usePaymentMethods,
 } from "@/lib/payment_methods";
-import { cardLabel, isCreditMethod, useCreditCards } from "@/lib/credit_cards";
+import { cardLabel, isCreditMethod, isBitLabel, useCreditCards } from "@/lib/credit_cards";
 import { fetchRateToIls } from "@/lib/fx";
 
 import { fetchTrips } from "@/lib/trips";
 import { getDefaultCurrency } from "@/lib/personal_settings";
+import { todayISO, isoLocal } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 
@@ -162,7 +163,7 @@ export function TransactionForm({
   const [title, setTitle] = useState(existing?.title ?? "");
   const [note, setNote] = useState(existing?.note ?? "");
   const [showNote, setShowNote] = useState(!!existing?.note);
-  const [date, setDate] = useState(existing?.occurred_at ?? new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(existing?.occurred_at ?? todayISO());
   const [enteredBy, setEnteredBy] = useState<Person>(existing?.entered_by ?? getDefaultPerson());
   const [paymentMethod, setPaymentMethod] = useState<string | null>(
     existing?.payment_method ?? getLastPaymentMethod() ?? "credit",
@@ -336,12 +337,12 @@ export function TransactionForm({
   const selectedPm = paymentMethods.find((m) => m.key === paymentMethod) ?? null;
 
   const { data: creditCards = [] } = useCreditCards();
-  const needsCard = type !== "income" && isCreditMethod(paymentMethod);
+  const currentPmLabel = paymentMethods.find((m) => m.key === paymentMethod)?.label;
+  const needsCard = type !== "income" && (isCreditMethod(paymentMethod) || isBitLabel(currentPmLabel));
 
   function shiftMonthIso(iso: string, months: number) {
-    const d = new Date(iso);
-    d.setMonth(d.getMonth() + months);
-    return d.toISOString().slice(0, 10);
+    const [y, m, dd] = iso.split("-").map(Number);
+    return isoLocal(new Date(y, (m - 1) + months, dd));
   }
 
   // How many monthly occurrences from `date` through the chosen end month (inclusive).
@@ -826,7 +827,7 @@ export function TransactionForm({
                       type="button"
                       onClick={() => {
                         setPaymentMethod(m.key);
-                        if (!isCreditMethod(m.key)) setCreditCardId(null);
+                        if (!isCreditMethod(m.key) && !isBitLabel(m.label)) setCreditCardId(null);
 
                         setPmSheetOpen(false);
                       }}

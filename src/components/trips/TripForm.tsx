@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Camera, Loader2, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { createTrip, updateTrip, uploadTripCover, type Trip, type TripInput } from "@/lib/trips";
+import { todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 const CURRENCIES = [
@@ -33,12 +34,8 @@ export function TripForm({ existing }: { existing?: Trip }) {
   const [name, setName] = useState(existing?.name ?? "");
   const [country, setCountry] = useState(existing?.country ?? "");
   const [cities, setCities] = useState(existing?.cities ?? "");
-  const [startDate, setStartDate] = useState(
-    existing?.start_date ?? new Date().toISOString().slice(0, 10),
-  );
-  const [endDate, setEndDate] = useState(
-    existing?.end_date ?? new Date().toISOString().slice(0, 10),
-  );
+  const [startDate, setStartDate] = useState(existing?.start_date ?? todayISO());
+  const [endDate, setEndDate] = useState(existing?.end_date ?? todayISO());
   const [budget, setBudget] = useState(existing ? String(existing.budget) : "");
   const [currency, setCurrency] = useState(existing?.currency ?? "ILS");
   const [coverUrl, setCoverUrl] = useState<string | null>(existing?.cover_image ?? null);

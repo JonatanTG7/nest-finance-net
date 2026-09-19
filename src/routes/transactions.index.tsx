@@ -14,6 +14,7 @@ import {
   txTypeLabel,
 } from "@/lib/finance";
 import { useSelectedMonth } from "@/lib/month-store";
+import { isoLocal } from "@/lib/dates";
 import { useMemberLabels, type Person } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
 import {
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/transactions/")({
     search: Record<string, unknown>,
   ): { type?: TypeFilter; method?: string; card?: string; range?: Range } => {
     const allowed: TypeFilter[] = ["income", "expense", "fixed", "investment"];
-    const ranges: Range[] = ["month", "3m", "12m", "all"];
+    const ranges: Range[] = ["month", "3m", "12m", "year", "all", "custom"];
     const t = search.type as TypeFilter | undefined;
     const r = search.range as Range | undefined;
     return {
@@ -62,20 +63,24 @@ export const Route = createFileRoute("/transactions/")({
 });
 
 type TypeFilter = "all" | "income" | "expense" | "fixed" | "investment";
-type Range = "month" | "3m" | "12m" | "all";
+type Range = "month" | "3m" | "12m" | "year" | "all" | "custom";
 type Tab = "list" | "categories";
 
 const RANGES: [Range, string][] = [
   ["month", "חודש"],
   ["3m", "3 חודשים"],
   ["12m", "12 חודשים"],
+  ["year", "השנה"],
   ["all", "הכל"],
+  ["custom", "טווח מותאם"],
 ];
 
 function TransactionsList() {
   const search = Route.useSearch();
   const [month, setMonth] = useSelectedMonth();
   const [range, setRange] = useState<Range>(search.range ?? "month");
+  const [customStart, setCustomStart] = useState<string>("");
+  const [customEnd, setCustomEnd] = useState<string>("");
   const [tab, setTab] = useState<Tab>("list");
 
   // Applied filters — these actually filter the list below.
@@ -139,11 +144,23 @@ function TransactionsList() {
 
   const period = useMemo(() => {
     if (range === "all") return null;
+    if (range === "custom") {
+      if (!customStart || !customEnd) return null;
+      // "end" is exclusive downstream — push it one day forward so the
+      // selected end date itself is included.
+      const [y, m, d] = customEnd.split("-").map(Number);
+      const endExclusive = isoLocal(new Date(y, m - 1, d + 1));
+      return customStart <= customEnd ? { start: customStart, end: endExclusive } : null;
+    }
+    if (range === "year") {
+      const y = new Date().getFullYear();
+      return { start: `${y}-01-01`, end: `${y + 1}-01-01` };
+    }
     const back = range === "month" ? 0 : range === "3m" ? 2 : 11;
     const { start } = monthRangeFromKey(shiftMonth(month, -back));
     const { end } = monthRangeFromKey(month);
     return { start, end };
-  }, [range, month]);
+  }, [range, month, customStart, customEnd]);
 
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["transactions", "range", range, period?.start ?? "all", period?.end ?? "all"],
@@ -295,7 +312,9 @@ function TransactionsList() {
       <header className="px-5 md:px-0 pt-6 pb-3 sticky top-0 z-10 bg-background/95 backdrop-blur">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <h1 className="text-2xl font-bold">תנועות</h1>
-          {range !== "all" && <MonthPicker value={month} onChange={setMonth} />}
+          {(range === "month" || range === "3m" || range === "12m") && (
+            <MonthPicker value={month} onChange={setMonth} />
+          )}
         </div>
 
         <div className="mt-3 flex gap-2 overflow-x-auto -mx-5 md:mx-0 px-5 md:px-0 pb-1">
@@ -314,6 +333,29 @@ function TransactionsList() {
             </button>
           ))}
         </div>
+
+        {range === "custom" && (
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              type="date"
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              dir="ltr"
+              className="flex-1 h-10 rounded-xl bg-card border px-3 text-sm outline-none"
+            />
+            <span className="text-xs text-muted-foreground">עד</span>
+            <input
+              type="date"
+              value={customEnd}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              dir="ltr"
+              className={cn(
+                "flex-1 h-10 rounded-xl bg-card border px-3 text-sm outline-none",
+                customStart && customEnd && customEnd < customStart && "border-destructive",
+              )}
+            />
+          </div>
+        )}
 
         <div className="mt-3 flex gap-2">
           <div className="relative flex-1">

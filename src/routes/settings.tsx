@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   ShieldAlert,
   Coins,
-  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
@@ -18,12 +17,7 @@ import { CreditCardsSection } from "@/components/CreditCardsSection";
 
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
-import {
-  getDefaultCurrency,
-  setDefaultCurrency,
-  getCardLast4,
-  setCardLast4,
-} from "@/lib/personal_settings";
+import { getDefaultCurrency, setDefaultCurrency } from "@/lib/personal_settings";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -43,14 +37,12 @@ function Settings() {
   const [person, setPerson] = useState<Person>("yonatan");
   const [theme, setThemeState] = useState<Theme>("light");
   const [currency, setCurrencyState] = useState("ILS");
-  const [cardLast4, setCardLast4State] = useState("");
   const memberLabels = useMemberLabels();
 
   useEffect(() => {
     setPerson(getDefaultPerson());
     setThemeState(getTheme());
     setCurrencyState(getDefaultCurrency());
-    setCardLast4State(getCardLast4());
   }, []);
 
   function choose(p: Person) {
@@ -66,12 +58,6 @@ function Settings() {
   function chooseCurrency(c: string) {
     setCurrencyState(c);
     setDefaultCurrency(c);
-  }
-
-  function chooseCardLast4(v: string) {
-    const digits = v.replace(/\D/g, "").slice(0, 4);
-    setCardLast4State(digits);
-    setCardLast4(digits);
   }
 
   return (
@@ -141,26 +127,6 @@ function Settings() {
             {/* <p className="mt-1.5 text-xs text-muted-foreground">
               כשתוסיפו תנועה חדשה, המטבע הזה יהיה מסומן מראש — אפשר תמיד לשנות לפני שמירה.
             </p> */}
-          </div>
-
-          <div className="border-t pt-4">
-            <label className="text-sm font-medium flex items-center gap-1.5">
-              <CreditCard className="size-3.5 text-muted-foreground" />4 ספרות אחרונות של כרטיס
-              אשראי (רשות)
-            </label>
-            <input
-              value={cardLast4}
-              onChange={(e) => chooseCardLast4(e.target.value)}
-              placeholder="1234"
-              inputMode="numeric"
-              maxLength={4}
-              dir="ltr"
-              className="w-full h-11 mt-1.5 rounded-xl bg-background border px-3 text-sm outline-none tracking-widest"
-            />
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              רק תזכורת אישית לעצמכם (למשל בזמן התאמת תנועות מול דף חשבון) — נשמר על המכשיר שלכם
-              בלבד,
-            </p>
           </div>
         </div>
       </section>

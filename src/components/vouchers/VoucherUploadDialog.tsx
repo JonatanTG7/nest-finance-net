@@ -15,8 +15,7 @@ import { cn } from "@/lib/utils";
 import { createVoucher, uploadVoucherPhoto } from "@/lib/vouchers";
 import { extractVoucherData } from "@/lib/vouchers.functions";
 import { getDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
-
-const todayISO = () => new Date().toISOString().slice(0, 10);
+import { todayISO } from "@/lib/dates";
 
 export function VoucherUploadDialog({
   open,

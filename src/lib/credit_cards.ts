@@ -17,6 +17,17 @@ export function isCreditMethod(key: string | null | undefined) {
   return key === CREDIT_PM_KEY;
 }
 
+/**
+ * Bit payments are, underneath, still a charge to a linked credit card —
+ * so we ask for the card the same way we do for "credit". Bit isn't a
+ * fixed built-in method (payment methods are free-text per household), so
+ * we detect it by label rather than a fixed key.
+ */
+export function isBitLabel(label: string | null | undefined): boolean {
+  if (!label) return false;
+  return /ביט|bit/i.test(label);
+}
+
 export function cardLabel(c: Pick<CreditCard, "name" | "last_four">) {
   return c.last_four ? `${c.name} (*${c.last_four})` : c.name;
 }

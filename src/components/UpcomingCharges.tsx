@@ -65,6 +65,7 @@ export function UpcomingCharges() {
           laterTotal,
         };
       })
+      .filter((g) => g.nextDate != null && g.nextTotal > 0)
       .sort((a, b) => (a.nextDate ?? "9999").localeCompare(b.nextDate ?? "9999"));
   }, [cards, rows]);
 
@@ -93,9 +94,7 @@ export function UpcomingCharges() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{cardLabel(card)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {nextDate
-                      ? `חיוב ב-${formatChargeDate(nextDate)} · ${nextCount} תנועות`
-                      : "אין חיובים ממתינים"}
+                    {`חיוב ב-${formatChargeDate(nextDate!)} · ${nextCount} תנועות`}
                     {laterTotal > 0 ? ` · עוד ${formatILS(laterTotal)} בהמשך` : ""}
                   </p>
                 </div>

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { IbPosition } from "@/lib/ib";
+import { todayISO } from "@/lib/dates";
 
 export function SellDialog({
   open,
@@ -41,7 +42,7 @@ export function SellDialog({
     if (!open) return;
     setQty("");
     setPrice("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(todayISO());
     setAdjustCash(true);
   }, [open, position]);
 

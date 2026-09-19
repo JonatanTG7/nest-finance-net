@@ -1,4 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
+import { isoLocal } from "@/lib/dates";
 
 export type TxType = Database["public"]["Enums"]["transaction_type"];
 
@@ -67,8 +68,7 @@ export function formatMonthHebrew(d: Date): string {
 export function monthRange(d = new Date()) {
   const start = new Date(d.getFullYear(), d.getMonth(), 1);
   const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-  const iso = (x: Date) => x.toISOString().slice(0, 10);
-  return { start: iso(start), end: iso(end), startDate: start };
+  return { start: isoLocal(start), end: isoLocal(end), startDate: start };
 }
 
 /** "2026-04" → Date for the first of that month (local time). */
@@ -94,8 +94,7 @@ export function shiftMonth(key: string, delta: number): string {
 export function monthRangeFromKey(key: string) {
   const startDate = parseMonthKey(key);
   const end = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1);
-  const iso = (x: Date) => x.toISOString().slice(0, 10);
-  return { start: iso(startDate), end: iso(end), startDate };
+  return { start: isoLocal(startDate), end: isoLocal(end), startDate };
 }
 
 /**
