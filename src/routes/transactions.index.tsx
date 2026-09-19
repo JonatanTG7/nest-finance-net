@@ -14,7 +14,7 @@ import {
   txTypeLabel,
 } from "@/lib/finance";
 import { useSelectedMonth } from "@/lib/month-store";
-import { isoLocal } from "@/lib/dates";
+import { isoLocal, todayISO } from "@/lib/dates";
 import { useMemberLabels, type Person } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
 import {
@@ -68,17 +68,15 @@ type Tab = "list" | "categories";
 
 const RANGES: [Range, string][] = [
   ["month", "חודש"],
-  ["3m", "3 חודשים"],
-  ["12m", "12 חודשים"],
   ["year", "השנה"],
-  ["all", "הכל"],
-  ["custom", "טווח מותאם"],
+  ["custom", "טווח תאריכים"],
 ];
 
 function TransactionsList() {
   const search = Route.useSearch();
   const [month, setMonth] = useSelectedMonth();
   const [range, setRange] = useState<Range>(search.range ?? "month");
+  const [yearEnd, setYearEnd] = useState<string>(todayISO());
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
   const [tab, setTab] = useState<Tab>("list");
@@ -154,13 +152,16 @@ function TransactionsList() {
     }
     if (range === "year") {
       const y = new Date().getFullYear();
-      return { start: `${y}-01-01`, end: `${y + 1}-01-01` };
+      const end = yearEnd || todayISO();
+      const [ey, em, ed] = end.split("-").map(Number);
+      const endExclusive = isoLocal(new Date(ey, em - 1, ed + 1));
+      return { start: `${y}-01-01`, end: endExclusive };
     }
     const back = range === "month" ? 0 : range === "3m" ? 2 : 11;
     const { start } = monthRangeFromKey(shiftMonth(month, -back));
     const { end } = monthRangeFromKey(month);
     return { start, end };
-  }, [range, month, customStart, customEnd]);
+  }, [range, month, yearEnd, customStart, customEnd]);
 
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["transactions", "range", range, period?.start ?? "all", period?.end ?? "all"],
@@ -312,9 +313,7 @@ function TransactionsList() {
       <header className="px-5 md:px-0 pt-6 pb-3 sticky top-0 z-10 bg-background/95 backdrop-blur">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <h1 className="text-2xl font-bold">תנועות</h1>
-          {(range === "month" || range === "3m" || range === "12m") && (
-            <MonthPicker value={month} onChange={setMonth} />
-          )}
+          {range === "month" && <MonthPicker value={month} onChange={setMonth} />}
         </div>
 
         <div className="mt-3 flex gap-2 overflow-x-auto -mx-5 md:mx-0 px-5 md:px-0 pb-1">
@@ -333,6 +332,21 @@ function TransactionsList() {
             </button>
           ))}
         </div>
+
+        {range === "year" && (
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              1.1.{new Date().getFullYear()} עד
+            </span>
+            <input
+              type="date"
+              value={yearEnd}
+              onChange={(e) => setYearEnd(e.target.value)}
+              dir="ltr"
+              className="flex-1 h-10 rounded-xl bg-card border px-3 text-sm outline-none"
+            />
+          </div>
+        )}
 
         {range === "custom" && (
           <div className="mt-3 flex items-center gap-2">
