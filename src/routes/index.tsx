@@ -17,7 +17,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
 import { UpcomingCharges } from "@/components/UpcomingCharges";
-import { Plane } from "lucide-react";
+import { Plane, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 import { fetchTrips, tripStatus } from "@/lib/trips";
 import { fetchAllTransactions, fetchTransactionsBetween, type Transaction } from "@/lib/db";
@@ -59,6 +59,19 @@ function Dashboard() {
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["dashboard", "month", start, end],
     queryFn: () => fetchTransactionsBetween(start, end),
+  });
+
+  // The period immediately before the current one (same length/anchor rule —
+  // cycle or calendar month, whichever this household uses) — for the
+  // "higher / lower than last time" comparisons.
+  const prevRange = useMemo(() => {
+    const prevKey = shiftMonth(month, -1);
+    return mode === "cycle" ? cycleRangeFromKey(prevKey, startDay) : monthRangeFromKey(prevKey);
+  }, [month, mode, startDay]);
+
+  const { data: prevTxs = [] } = useQuery({
+    queryKey: ["dashboard", "prev", prevRange.start, prevRange.end],
+    queryFn: () => fetchTransactionsBetween(prevRange.start, prevRange.end),
   });
 
 
@@ -118,7 +131,7 @@ function Dashboard() {
 
   // Pie: outflow per category, each slice in its own colour
   const pieData = useMemo(() => {
-    const m = new Map<string, { name: string; value: number; color: string }>();
+    const m = new Map<string, { key: string; name: string; value: number; color: string }>();
     let i = 0;
     for (const t of txs) {
       if (!isCashflowOut(t.type)) continue;
@@ -128,13 +141,59 @@ function Dashboard() {
       const color = t.category ? categoryShade(baseColor, t.category.id, i++) : "#888";
       const prev = m.get(key);
       if (prev) prev.value += Number(t.amount_ils);
-      else m.set(key, { name, value: Number(t.amount_ils), color });
+      else m.set(key, { key, name, value: Number(t.amount_ils), color });
     }
     return Array.from(m.values()).sort((a, b) => b.value - a.value);
   }, [txs]);
 
   // Top 5 categories (bar with category colors)
   const topCats = useMemo(() => pieData.slice(0, 5), [pieData]);
+
+  const prevTotals = useMemo(() => sumTotals(prevTxs), [prevTxs]);
+
+  /** This period vs the one before it — total in / total out. */
+  const comparison = useMemo(() => {
+    const out = totals.expense + totals.fixed + totals.investment;
+    const prevOut = prevTotals.expense + prevTotals.fixed + prevTotals.investment;
+    const outDelta = out - prevOut;
+    const outPct = prevOut > 0 ? (outDelta / prevOut) * 100 : null;
+    const incomeDelta = totals.income - prevTotals.income;
+    const incomePct = prevTotals.income > 0 ? (incomeDelta / prevTotals.income) * 100 : null;
+    return { out, prevOut, outDelta, outPct, incomeDelta, incomePct };
+  }, [totals, prevTotals]);
+
+  /** Per-category outflow for the previous period, keyed by category id. */
+  const prevByCategory = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of prevTxs) {
+      if (!isCashflowOut(t.type)) continue;
+      const key = t.category?.id ?? "other";
+      m.set(key, (m.get(key) ?? 0) + Number(t.amount_ils));
+    }
+    return m;
+  }, [prevTxs]);
+
+  /** Categories with the biggest ILS change vs the previous period. */
+  const categoryMovers = useMemo(() => {
+    const ids = new Set([...pieData.map((d) => d.key), ...prevByCategory.keys()]);
+    return Array.from(ids)
+      .map((id) => {
+        const cur = pieData.find((d) => d.key === id);
+        const thisTotal = cur?.value ?? 0;
+        const lastTotal = prevByCategory.get(id) ?? 0;
+        return {
+          id,
+          name: cur?.name ?? "ללא קטגוריה",
+          color: cur?.color ?? "#888",
+          thisTotal,
+          lastTotal,
+          delta: thisTotal - lastTotal,
+        };
+      })
+      .filter((c) => c.thisTotal > 0 || c.lastTotal > 0)
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+      .slice(0, 5);
+  }, [pieData, prevByCategory]);
 
   // Trend: 6 months, totals per type
   const trendData = useMemo(() => {
@@ -218,6 +277,60 @@ function Dashboard() {
           </div>
         </div>
       </section>
+
+      {/* This period vs the one before it */}
+      <section className="px-5 md:px-0 mt-4 grid grid-cols-2 gap-3">
+        <ComparisonCard
+          label="סך יוצא"
+          delta={comparison.outDelta}
+          pct={comparison.outPct}
+          goodDirection="down"
+        />
+        <ComparisonCard
+          label="הכנסות"
+          delta={comparison.incomeDelta}
+          pct={comparison.incomePct}
+          goodDirection="up"
+        />
+      </section>
+
+      {categoryMovers.length > 0 && (
+        <section className="px-5 md:px-0 mt-4">
+          <Card title="השינויים הבולטים לעומת התקופה הקודמת">
+            <ul className="divide-y -mx-4">
+              {categoryMovers.map((c) => (
+                <li key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className="size-2.5 rounded-full shrink-0" style={{ background: c.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {formatILS(c.thisTotal)} · קודם {formatILS(c.lastTotal)}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "flex items-center gap-1 text-xs font-semibold shrink-0 tabular-nums",
+                      c.delta > 0
+                        ? "text-rose-500"
+                        : c.delta < 0
+                          ? "text-emerald-500"
+                          : "text-muted-foreground",
+                    )}
+                  >
+                    {c.delta > 0 ? (
+                      <TrendingUp className="size-3.5" />
+                    ) : c.delta < 0 ? (
+                      <TrendingDown className="size-3.5" />
+                    ) : null}
+                    {c.delta > 0 ? "+" : ""}
+                    {formatILS(c.delta)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      )}
 
       <section className="px-5 md:px-0 mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
         <Link
@@ -396,6 +509,50 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground text-center py-10">{children}</p>;
+}
+
+function ComparisonCard({
+  label,
+  delta,
+  pct,
+  goodDirection,
+}: {
+  label: string;
+  delta: number;
+  pct: number | null;
+  /** Whether a rise ("up") or a drop ("down") in this metric is the good outcome. */
+  goodDirection: "up" | "down";
+}) {
+  const direction = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+  const isGood = direction === "flat" ? null : direction === goodDirection;
+  return (
+    <div className="rounded-2xl bg-card border p-4">
+      <p className="text-xs text-muted-foreground">{label} לעומת קודם</p>
+      <div className="flex items-end justify-between gap-2 mt-1.5">
+        <p className="text-lg font-bold tabular-nums" dir="ltr">
+          {delta > 0 ? "+" : ""}
+          {formatILS(delta)}
+        </p>
+        {pct != null && (
+          <span
+            className={cn(
+              "flex items-center gap-0.5 text-xs font-semibold shrink-0",
+              isGood == null ? "text-muted-foreground" : isGood ? "text-emerald-500" : "text-rose-500",
+            )}
+          >
+            {direction === "up" ? (
+              <TrendingUp className="size-3.5" />
+            ) : direction === "down" ? (
+              <TrendingDown className="size-3.5" />
+            ) : (
+              <Minus className="size-3.5" />
+            )}
+            {Math.abs(pct).toFixed(0)}%
+          </span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function StatCard({
