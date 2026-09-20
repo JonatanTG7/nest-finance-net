@@ -183,13 +183,19 @@ function Dashboard() {
     return { out, prevOut, outDelta, outPct, incomeDelta, incomePct };
   }, [totals, prevTotals]);
 
-  /** Per-category outflow for the previous period, keyed by category id. */
+  /** Per-category outflow for the previous period, with name/color kept so a
+   *  category that was used last period but not this one still shows its
+   *  real name instead of falling back to "no category". */
   const prevByCategory = useMemo(() => {
-    const m = new Map<string, number>();
+    const m = new Map<string, { name: string; color: string; total: number }>();
     for (const t of prevTxs) {
       if (!isCashflowOut(t.type)) continue;
       const key = t.category?.id ?? "other";
-      m.set(key, (m.get(key) ?? 0) + Number(t.amount_ils));
+      const name = t.category?.name ?? "ללא קטגוריה";
+      const color = t.category?.color ?? "#888";
+      const prev = m.get(key);
+      if (prev) prev.total += Number(t.amount_ils);
+      else m.set(key, { name, color, total: Number(t.amount_ils) });
     }
     return m;
   }, [prevTxs]);
@@ -200,12 +206,13 @@ function Dashboard() {
     return Array.from(ids)
       .map((id) => {
         const cur = pieData.find((d) => d.key === id);
+        const prev = prevByCategory.get(id);
         const thisTotal = cur?.value ?? 0;
-        const lastTotal = prevByCategory.get(id) ?? 0;
+        const lastTotal = prev?.total ?? 0;
         return {
           id,
-          name: cur?.name ?? "ללא קטגוריה",
-          color: cur?.color ?? "#888",
+          name: cur?.name ?? prev?.name ?? "ללא קטגוריה",
+          color: cur?.color ?? prev?.color ?? "#888",
           thisTotal,
           lastTotal,
           delta: thisTotal - lastTotal,
