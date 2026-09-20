@@ -447,9 +447,11 @@ function Dashboard() {
                         borderRadius: 12,
                         border: "1px solid var(--border)",
                         background: "var(--card)",
-                      }}                      
+                        color: "var(--foreground)",
+                      }}
+                      itemStyle={{ color: "var(--foreground)" }}
+                      labelStyle={{ color: "var(--foreground)" }}
                     />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
                 {/* Total in the donut's center */}
