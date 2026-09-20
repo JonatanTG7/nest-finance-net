@@ -351,3 +351,28 @@ export async function deleteCategory(category: Category): Promise<void> {
   const { error } = await supabase.from("categories").delete().eq("id", category.id);
   if (error) throw error;
 }
+
+/**
+ * Transactions with no category at all. This shouldn't happen through the
+ * app's own transaction form (a category is required), but categories.id
+ * is ON DELETE SET NULL — deleting a category any other way (raw SQL,
+ * outside this app) silently orphans whatever transactions pointed to it.
+ */
+export async function countUncategorizedTransactions(): Promise<number> {
+  const { count, error } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .is("category_id", null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function fetchUncategorizedTransactions(): Promise<Transaction[]> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(TX_SELECT)
+    .is("category_id", null)
+    .order("occurred_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as Transaction[];
+}
