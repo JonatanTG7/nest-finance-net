@@ -447,7 +447,10 @@ function Dashboard() {
                         borderRadius: 12,
                         border: "1px solid var(--border)",
                         background: "var(--card)",
+                        color: "var(--foreground)",
                       }}
+                      itemStyle={{ color: "var(--foreground)" }}
+                      labelStyle={{ color: "var(--foreground)" }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -501,7 +504,10 @@ function Dashboard() {
                       borderRadius: 12,
                       border: "1px solid var(--border)",
                       background: "var(--card)",
+                      color: "var(--foreground)",
                     }}
+                    itemStyle={{ color: "var(--foreground)" }}
+                    labelStyle={{ color: "var(--foreground)" }}
                   />
                   <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={48}>
                     {topCats.map((d) => (
@@ -565,9 +571,12 @@ function Dashboard() {
                     borderRadius: 12,
                     border: "1px solid var(--border)",
                     background: "var(--card)",
+                    color: "var(--foreground)",
                   }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--foreground)" }}
                 />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 12, color: "var(--foreground)" }} />
                 <Bar dataKey="income" name="הכנסות" fill="var(--income)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="expense" name="הוצאות" fill="var(--expense)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="fixed" name="קבועות" fill="var(--fixed)" radius={[6, 6, 0, 0]} />
