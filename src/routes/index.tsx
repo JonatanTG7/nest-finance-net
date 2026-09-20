@@ -323,6 +323,39 @@ function Dashboard() {
         </div>
       </section>
 
+      <section className="px-5 md:px-0 mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Link
+          to="/transactions"
+          search={{ type: "income" }}
+          className="block active:scale-[0.98] transition-transform"
+        >
+          <StatCard label="הכנסות" value={totals.income} className="bg-income/15 text-income" />
+        </Link>
+        <Link
+          to="/transactions"
+          search={{ type: "expense" }}
+          className="block active:scale-[0.98] transition-transform"
+        >
+          <StatCard label="הוצאות" value={totals.expense} className="bg-expense/15 text-expense" />
+        </Link>
+        <Link
+          to="/transactions"
+          search={{ type: "fixed" }}
+          className="block active:scale-[0.98] transition-transform"
+        >
+          <StatCard label="קבועות" value={totals.fixed} className="bg-fixed/15 text-fixed" />
+        </Link>
+        <Link to="/investments" className="block active:scale-[0.98] transition-transform">
+          <StatCard
+            label="השקעה"
+            value={totals.investment}
+            className="bg-savings/25 text-foreground"
+          />
+        </Link>
+      </section>
+
+      <UpcomingCharges />
+
       {/* This period vs the one before it */}
       <section className="px-5 md:px-0 mt-4 grid grid-cols-2 gap-3">
         <ComparisonCard
@@ -376,39 +409,6 @@ function Dashboard() {
           </Card>
         </section>
       )}
-
-      <section className="px-5 md:px-0 mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Link
-          to="/transactions"
-          search={{ type: "income" }}
-          className="block active:scale-[0.98] transition-transform"
-        >
-          <StatCard label="הכנסות" value={totals.income} className="bg-income/15 text-income" />
-        </Link>
-        <Link
-          to="/transactions"
-          search={{ type: "expense" }}
-          className="block active:scale-[0.98] transition-transform"
-        >
-          <StatCard label="הוצאות" value={totals.expense} className="bg-expense/15 text-expense" />
-        </Link>
-        <Link
-          to="/transactions"
-          search={{ type: "fixed" }}
-          className="block active:scale-[0.98] transition-transform"
-        >
-          <StatCard label="קבועות" value={totals.fixed} className="bg-fixed/15 text-fixed" />
-        </Link>
-        <Link to="/investments" className="block active:scale-[0.98] transition-transform">
-          <StatCard
-            label="השקעה"
-            value={totals.investment}
-            className="bg-savings/25 text-foreground"
-          />
-        </Link>
-      </section>
-
-      <UpcomingCharges />
 
       <div className="grid md:grid-cols-2 gap-4 mt-6 px-5 md:px-0">
 

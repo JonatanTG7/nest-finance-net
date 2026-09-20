@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Sun,
@@ -34,6 +34,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function Settings() {
+  const navigate = useNavigate();
   const [person, setPerson] = useState<Person>("yonatan");
   const [theme, setThemeState] = useState<Theme>("light");
   const [currency, setCurrencyState] = useState("ILS");
@@ -198,16 +199,17 @@ function Settings() {
 
 
       <section className="px-5 mt-8">
-        <Link
-          to="/settings/danger"
-          className="flex items-center justify-between rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/settings/danger" })}
+          className="w-full flex items-center justify-between rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
         >
           <span className="flex items-center gap-2 font-medium">
             <ShieldAlert className="size-4" />
-            אזור מתקדם ומחיקת חשבון
+            מחיקת חשבון
           </span>
           <ArrowLeft className="size-4 rotate-180" />
-        </Link>
+        </button>
       </section>
 
       <section className="px-5 mt-8 mb-8">

@@ -1,18 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Search, SlidersHorizontal, X, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
 import { fetchAllTransactions, fetchTransactionsBetween, type Transaction } from "@/lib/db";
@@ -21,7 +10,6 @@ import {
   formatILS,
   isCashflowOut,
   monthRangeFromKey,
-  parseMonthKey,
   shiftMonth,
   txTypeLabel,
 } from "@/lib/finance";
@@ -76,7 +64,7 @@ export const Route = createFileRoute("/transactions/")({
 
 type TypeFilter = "all" | "income" | "expense" | "fixed" | "investment";
 type Range = "month" | "3m" | "12m" | "year" | "all" | "custom";
-type Tab = "list" | "categories" | "insights";
+type Tab = "list" | "categories";
 
 const RANGES: [Range, string][] = [
   ["month", "חודש"],
@@ -273,99 +261,6 @@ function TransactionsList() {
     }
     return Array.from(m.values()).sort((a, b) => b.total - a.total);
   }, [filtered]);
-
-  // Insights tab — always compares real calendar months around the current
-  // MonthPicker selection, independent of whatever range/filters are active
-  // in the list/categories tabs. Fetched lazily, only when the tab is open.
-  const { data: trendTxs = [] } = useQuery({
-    queryKey: ["transactions", "insights-trend", month],
-    queryFn: () => {
-      const sixAgo = shiftMonth(month, -5);
-      const { start } = monthRangeFromKey(sixAgo);
-      const { end } = monthRangeFromKey(month);
-      return fetchTransactionsBetween(start, end);
-    },
-    enabled: tab === "insights",
-  });
-
-  const monthlyOut = useMemo(() => {
-    const buckets = new Map<
-      string,
-      { key: string; label: string; income: number; expense: number; fixed: number; investment: number; out: number }
-    >();
-    for (let i = 5; i >= 0; i--) {
-      const k = shiftMonth(month, -i);
-      buckets.set(k, {
-        key: k,
-        label: new Intl.DateTimeFormat("he-IL", { month: "short" }).format(parseMonthKey(k)),
-        income: 0,
-        expense: 0,
-        fixed: 0,
-        investment: 0,
-        out: 0,
-      });
-    }
-    for (const t of trendTxs) {
-      const k = t.occurred_at.slice(0, 7);
-      const b = buckets.get(k);
-      if (!b) continue;
-      const v = Number(t.amount_ils);
-      if (t.type === "income") b.income += v;
-      else if (t.type === "expense") b.expense += v;
-      else if (t.type === "fixed") b.fixed += v;
-      else if (t.type === "investment" || t.type === "savings") b.investment += v;
-      if (isCashflowOut(t.type)) b.out += v;
-    }
-    return Array.from(buckets.values());
-  }, [trendTxs, month]);
-
-  const thisVsLast = useMemo(() => {
-    const thisM = monthlyOut[monthlyOut.length - 1];
-    const lastM = monthlyOut[monthlyOut.length - 2];
-    if (!thisM || !lastM) return null;
-    const delta = thisM.out - lastM.out;
-    const pct = lastM.out > 0 ? (delta / lastM.out) * 100 : null;
-    return { thisOut: thisM.out, lastOut: lastM.out, delta, pct };
-  }, [monthlyOut]);
-
-  const categoryMovers = useMemo(() => {
-    if (monthlyOut.length < 2) return [];
-    const thisKey = monthlyOut[monthlyOut.length - 1].key;
-    const lastKey = monthlyOut[monthlyOut.length - 2].key;
-    const thisM = new Map<string, { name: string; emoji: string; total: number }>();
-    const lastM = new Map<string, number>();
-    for (const t of trendTxs) {
-      if (!isCashflowOut(t.type)) continue;
-      const k = t.occurred_at.slice(0, 7);
-      if (k !== thisKey && k !== lastKey) continue;
-      const id = t.category?.id ?? "none";
-      const v = Number(t.amount_ils);
-      if (k === thisKey) {
-        const prev = thisM.get(id);
-        if (prev) prev.total += v;
-        else thisM.set(id, { name: t.category?.name ?? "ללא קטגוריה", emoji: t.category?.emoji ?? "•", total: v });
-      } else {
-        lastM.set(id, (lastM.get(id) ?? 0) + v);
-      }
-    }
-    const ids = new Set([...thisM.keys(), ...lastM.keys()]);
-    return Array.from(ids)
-      .map((id) => {
-        const cur = thisM.get(id);
-        const thisTotal = cur?.total ?? 0;
-        const lastTotal = lastM.get(id) ?? 0;
-        return {
-          id,
-          name: cur?.name ?? "ללא קטגוריה",
-          emoji: cur?.emoji ?? "•",
-          thisTotal,
-          lastTotal,
-          delta: thisTotal - lastTotal,
-        };
-      })
-      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-      .slice(0, 5);
-  }, [trendTxs, monthlyOut]);
 
   const allCats = useMemo(() => {
     const m = new Map<string, { id: string; name: string; emoji: string }>();
@@ -622,7 +517,6 @@ function TransactionsList() {
           [
             ["list", "רשימה"],
             ["categories", "לפי קטגוריה"],
-            ["insights", "תובנות"],
           ] as [Tab, string][]
         ).map(([k, label]) => (
           <button
@@ -641,9 +535,7 @@ function TransactionsList() {
       </div>
 
       <div className="px-5 md:px-0 mt-4 pb-6">
-        {tab === "insights" ? (
-          <InsightsPanel monthlyOut={monthlyOut} thisVsLast={thisVsLast} categoryMovers={categoryMovers} />
-        ) : isLoading ? (
+        {isLoading ? (
           <p className="text-center text-sm text-muted-foreground py-10">טוען…</p>
         ) : filtered.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground py-10">לא נמצאו תנועות</p>
@@ -792,123 +684,3 @@ function Stat({ label, value, className }: { label: string; value: string; class
   );
 }
 
-function InsightsPanel({
-  monthlyOut,
-  thisVsLast,
-  categoryMovers,
-}: {
-  monthlyOut: {
-    key: string;
-    label: string;
-    income: number;
-    expense: number;
-    fixed: number;
-    investment: number;
-    out: number;
-  }[];
-  thisVsLast: { thisOut: number; lastOut: number; delta: number; pct: number | null } | null;
-  categoryMovers: { id: string; name: string; emoji: string; thisTotal: number; lastTotal: number; delta: number }[];
-}) {
-  const noData = monthlyOut.every((m) => m.out === 0 && m.income === 0);
-
-  return (
-    <div className="space-y-5">
-      {/* This month vs last month */}
-      {thisVsLast && (thisVsLast.thisOut > 0 || thisVsLast.lastOut > 0) && (
-        <div className="rounded-2xl bg-card border p-4">
-          <p className="text-xs text-muted-foreground mb-2">החודש לעומת החודש הקודם</p>
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-2xl font-bold tabular-nums">{formatILS(thisVsLast.thisOut)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
-                לעומת {formatILS(thisVsLast.lastOut)} בחודש הקודם
-              </p>
-            </div>
-            {thisVsLast.pct != null && (
-              <div
-                className={cn(
-                  "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-sm font-semibold shrink-0",
-                  thisVsLast.delta > 0
-                    ? "bg-rose-500/10 text-rose-500"
-                    : thisVsLast.delta < 0
-                      ? "bg-emerald-500/10 text-emerald-500"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                {thisVsLast.delta > 0 ? (
-                  <TrendingUp className="size-4" />
-                ) : thisVsLast.delta < 0 ? (
-                  <TrendingDown className="size-4" />
-                ) : (
-                  <Minus className="size-4" />
-                )}
-                {Math.abs(thisVsLast.pct).toFixed(0)}%
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 6-month trend */}
-      <div className="rounded-2xl bg-card border p-4">
-        <p className="text-sm font-semibold mb-3">6 חודשים אחרונים</p>
-        {noData ? (
-          <p className="text-center text-sm text-muted-foreground py-10">אין נתונים בטווח הזה</p>
-        ) : (
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyOut} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  formatter={(v: number) => formatILS(v)}
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: "1px solid var(--border)",
-                    background: "var(--card)",
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="income" name="הכנסות" fill="var(--income)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="expense" name="הוצאות" fill="var(--expense)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="fixed" name="קבועות" fill="var(--fixed)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="investment" name="השקעה" fill="#6366f1" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
-      {/* Biggest category movers vs last month */}
-      {categoryMovers.length > 0 && (
-        <div className="rounded-2xl bg-card border p-4">
-          <p className="text-sm font-semibold mb-3">השינויים הבולטים בקטגוריות</p>
-          <ul className="divide-y -mx-4">
-            {categoryMovers.map((c) => (
-              <li key={c.id} className="flex items-center gap-3 px-4 py-2.5">
-                <span className="text-lg shrink-0">{c.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    {formatILS(c.thisTotal)} · חודש קודם {formatILS(c.lastTotal)}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "flex items-center gap-1 text-xs font-semibold shrink-0 tabular-nums",
-                    c.delta > 0 ? "text-rose-500" : c.delta < 0 ? "text-emerald-500" : "text-muted-foreground",
-                  )}
-                >
-                  {c.delta > 0 ? <TrendingUp className="size-3.5" /> : c.delta < 0 ? <TrendingDown className="size-3.5" /> : null}
-                  {c.delta > 0 ? "+" : ""}
-                  {formatILS(c.delta)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}

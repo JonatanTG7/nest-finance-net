@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { DangerZoneSection } from "@/components/DangerZoneSection";
 
 export const Route = createFileRoute("/settings/danger")({
-  head: () => ({ meta: [{ title: "אזור מתקדם" }] }),
+  head: () => ({ meta: [{ title: "מחיקת חשבון" }] }),
   component: AdvancedSettings,
 });
 
@@ -16,7 +16,7 @@ function AdvancedSettings() {
           <ArrowLeft className="size-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">אזור מתקדם</h1>
+          <h1 className="text-2xl font-bold">מחיקת חשבון</h1>
           <p className="text-xs text-muted-foreground">
             פעולות בלתי הפיכות — קרא/י בעיון לפני שממשיכים
           </p>

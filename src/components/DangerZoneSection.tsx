@@ -23,8 +23,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 export function DangerZoneSection() {
-  const { data: profile } = useMyProfile();
-  const { data: household } = useMyHousehold();
+  const { data: profile, isLoading: profileLoading } = useMyProfile();
+  const { data: household, isLoading: householdLoading } = useMyHousehold();
   const invalidate = useInvalidateMe();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -36,6 +36,13 @@ export function DangerZoneSection() {
     enabled: !!profile?.household_id,
   });
 
+  if (profileLoading || householdLoading) {
+    return (
+      <section className="px-5 mt-8">
+        <p className="text-sm text-muted-foreground text-center py-6">טוען…</p>
+      </section>
+    );
+  }
   if (!profile?.household_id || !household) return null;
 
   const isSoleMember = members.length <= 1;
