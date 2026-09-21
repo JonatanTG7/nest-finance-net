@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 pb-24 md:pb-0">
+      <main className="flex-1 min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
         <div className="md:max-w-6xl md:mx-auto md:px-8 md:py-6">{children}</div>
       </main>
 
