@@ -20,6 +20,7 @@ import { Route as TravelTripIdRouteImport } from './routes/travel.$tripId'
 import { Route as TransactionsNewRouteImport } from './routes/transactions.new'
 import { Route as TransactionsIdRouteImport } from './routes/transactions.$id'
 import { Route as SettingsDangerRouteImport } from './routes/settings.danger'
+import { Route as SettingsCategoriesRouteImport } from './routes/settings.categories'
 import { Route as InvestmentsVouchersRouteImport } from './routes/investments.vouchers'
 import { Route as InvestmentsIbRouteImport } from './routes/investments.ib'
 import { Route as InvestmentsAccountIdRouteImport } from './routes/investments.$accountId'
@@ -81,6 +82,11 @@ const SettingsDangerRoute = SettingsDangerRouteImport.update({
   path: '/danger',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsCategoriesRoute = SettingsCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const InvestmentsVouchersRoute = InvestmentsVouchersRouteImport.update({
   id: '/vouchers',
   path: '/vouchers',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
+  '/settings/categories': typeof SettingsCategoriesRoute
   '/settings/danger': typeof SettingsDangerRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
+  '/settings/categories': typeof SettingsCategoriesRoute
   '/settings/danger': typeof SettingsDangerRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
+  '/settings/categories': typeof SettingsCategoriesRoute
   '/settings/danger': typeof SettingsDangerRoute
   '/transactions/$id': typeof TransactionsIdRoute
   '/transactions/new': typeof TransactionsNewRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
+    | '/settings/categories'
     | '/settings/danger'
     | '/transactions/$id'
     | '/transactions/new'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
+    | '/settings/categories'
     | '/settings/danger'
     | '/transactions/$id'
     | '/transactions/new'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
+    | '/settings/categories'
     | '/settings/danger'
     | '/transactions/$id'
     | '/transactions/new'
@@ -309,6 +321,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsDangerRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/categories': {
+      id: '/settings/categories'
+      path: '/categories'
+      fullPath: '/settings/categories'
+      preLoaderRoute: typeof SettingsCategoriesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/investments/vouchers': {
       id: '/investments/vouchers'
       path: '/vouchers'
@@ -366,10 +385,12 @@ const InvestmentsRouteWithChildren = InvestmentsRoute._addFileChildren(
 )
 
 interface SettingsRouteChildren {
+  SettingsCategoriesRoute: typeof SettingsCategoriesRoute
   SettingsDangerRoute: typeof SettingsDangerRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsCategoriesRoute: SettingsCategoriesRoute,
   SettingsDangerRoute: SettingsDangerRoute,
 }
 
