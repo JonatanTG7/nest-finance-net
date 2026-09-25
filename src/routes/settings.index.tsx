@@ -28,7 +28,7 @@ import {
   useInvalidateMe,
 } from "@/lib/household";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/settings/")({
   head: () => ({ meta: [{ title: "הגדרות" }] }),
   component: Settings,
 });
