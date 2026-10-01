@@ -345,11 +345,7 @@ function Dashboard() {
         >
           <StatCard label="הוצאות" value={totals.expense} className="bg-expense/15 text-expense" />
         </Link>
-        <Link
-          to="/transactions"
-          search={{ type: "fixed" }}
-          className="block active:scale-[0.98] transition-transform"
-        >
+        <Link to="/subscriptions" className="block active:scale-[0.98] transition-transform">
           <StatCard label="קבועות" value={totals.fixed} className="bg-fixed/15 text-fixed" />
         </Link>
         <Link to="/investments" className="block active:scale-[0.98] transition-transform">
