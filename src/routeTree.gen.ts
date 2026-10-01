@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
 import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TravelIndexRouteImport } from './routes/travel.index'
@@ -27,6 +28,11 @@ import { Route as InvestmentsAccountIdRouteImport } from './routes/investments.$
 import { Route as TravelTripIdEditRouteImport } from './routes/travel.$tripId.edit'
 import { Route as TransactionsEditIdRouteImport } from './routes/transactions.edit.$id'
 
+const SubscriptionsRoute = SubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InvestmentsRoute = InvestmentsRouteImport.update({
   id: '/investments',
   path: '/investments',
@@ -116,6 +122,7 @@ const TransactionsEditIdRoute = TransactionsEditIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/investments': typeof InvestmentsRouteWithChildren
+  '/subscriptions': typeof SubscriptionsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/subscriptions': typeof SubscriptionsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
@@ -154,6 +162,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/investments': typeof InvestmentsRouteWithChildren
+  '/subscriptions': typeof SubscriptionsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/investments'
+    | '/subscriptions'
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/subscriptions'
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/investments'
+    | '/subscriptions'
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
@@ -232,6 +244,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InvestmentsRoute: typeof InvestmentsRouteWithChildren
+  SubscriptionsRoute: typeof SubscriptionsRoute
   SettingsCategoriesRoute: typeof SettingsCategoriesRoute
   SettingsDangerRoute: typeof SettingsDangerRoute
   TransactionsIdRoute: typeof TransactionsIdRoute
@@ -246,6 +259,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/subscriptions': {
+      id: '/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/subscriptions'
+      preLoaderRoute: typeof SubscriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/investments': {
       id: '/investments'
       path: '/investments'
@@ -401,6 +421,7 @@ const TravelTripIdRouteWithChildren = TravelTripIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InvestmentsRoute: InvestmentsRouteWithChildren,
+  SubscriptionsRoute: SubscriptionsRoute,
   SettingsCategoriesRoute: SettingsCategoriesRoute,
   SettingsDangerRoute: SettingsDangerRoute,
   TransactionsIdRoute: TransactionsIdRoute,

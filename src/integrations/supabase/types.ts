@@ -514,6 +514,85 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          active: boolean
+          amount: number
+          billing_day: number
+          category_id: string | null
+          created_at: string
+          credit_card_id: string | null
+          currency: string
+          emoji: string
+          end_date: string | null
+          entered_by: Database["public"]["Enums"]["person"]
+          household_id: string
+          id: string
+          name: string
+          payment_method: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          billing_day?: number
+          category_id?: string | null
+          created_at?: string
+          credit_card_id?: string | null
+          currency?: string
+          emoji?: string
+          end_date?: string | null
+          entered_by?: Database["public"]["Enums"]["person"]
+          household_id: string
+          id?: string
+          name: string
+          payment_method?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          billing_day?: number
+          category_id?: string | null
+          created_at?: string
+          credit_card_id?: string | null
+          currency?: string
+          emoji?: string
+          end_date?: string | null
+          entered_by?: Database["public"]["Enums"]["person"]
+          household_id?: string
+          id?: string
+          name?: string
+          payment_method?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           created_at: string
@@ -591,6 +670,7 @@ export type Database = {
           occurred_at: string
           payment_method: string | null
           photo_url: string | null
+          subscription_id: string | null
           title: string
           trip_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
@@ -614,6 +694,7 @@ export type Database = {
           occurred_at?: string
           payment_method?: string | null
           photo_url?: string | null
+          subscription_id?: string | null
           title: string
           trip_id?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
@@ -637,6 +718,7 @@ export type Database = {
           occurred_at?: string
           payment_method?: string | null
           photo_url?: string | null
+          subscription_id?: string | null
           title?: string
           trip_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
@@ -670,6 +752,13 @@ export type Database = {
             columns: ["investment_account_id"]
             isOneToOne: false
             referencedRelation: "investment_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
           {
