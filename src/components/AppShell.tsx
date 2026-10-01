@@ -2,6 +2,9 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { Home, ListIcon, Plane, Plus, Settings as SettingsIcon, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMyHousehold } from "@/lib/household";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { syncSubscriptions } from "@/lib/subscriptions";
 
 type NavTo = "/" | "/transactions" | "/travel" | "/investments" | "/settings";
 type NavItem = { to: NavTo; label: string; icon: typeof Home; exact?: boolean };
@@ -14,9 +17,19 @@ const items: NavItem[] = [
   { to: "/settings", label: "הגדרות", icon: SettingsIcon },
 ];
 
+let subsSynced = false;
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { data: household } = useMyHousehold();
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!household?.id || subsSynced) return;
+    subsSynced = true;
+    syncSubscriptions()
+      .then((n) => n > 0 && qc.invalidateQueries())
+      .catch((e) => console.warn("subscription sync failed", e));
+  }, [household?.id, qc]);
   // The floating add-button only makes sense on the home screen — on other
   // screens (vouchers, investments, trip dashboards...) a generic "add
   // transaction" FAB is confusing since those screens have their own,
