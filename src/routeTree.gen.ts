@@ -9,28 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
-import { Route as InvestmentsIndexRouteImport } from './routes/investments.index'
-import { Route as InvestmentsAccountIdRouteImport } from './routes/investments.$accountId'
-import { Route as InvestmentsIbRouteImport } from './routes/investments.ib'
-import { Route as InvestmentsVouchersRouteImport } from './routes/investments.vouchers'
-import { Route as SettingsIndexRouteImport } from './routes/settings.index'
-import { Route as SettingsCategoriesRouteImport } from './routes/settings.categories'
-import { Route as SettingsDangerRouteImport } from './routes/settings.danger'
-import { Route as TransactionsIndexRouteImport } from './routes/transactions.index'
-import { Route as TransactionsIdRouteImport } from './routes/transactions.$id'
-import { Route as TransactionsNewRouteImport } from './routes/transactions.new'
+import { Route as InvestmentsRouteImport } from './routes/investments'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as TravelIndexRouteImport } from './routes/travel.index'
-import { Route as TravelTripIdRouteImport } from './routes/travel.$tripId'
+import { Route as TransactionsIndexRouteImport } from './routes/transactions.index'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as InvestmentsIndexRouteImport } from './routes/investments.index'
 import { Route as TravelNewRouteImport } from './routes/travel.new'
-import { Route as TransactionsEditIdRouteImport } from './routes/transactions.edit.$id'
+import { Route as TravelTripIdRouteImport } from './routes/travel.$tripId'
+import { Route as TransactionsNewRouteImport } from './routes/transactions.new'
+import { Route as TransactionsIdRouteImport } from './routes/transactions.$id'
+import { Route as SettingsDangerRouteImport } from './routes/settings.danger'
+import { Route as SettingsCategoriesRouteImport } from './routes/settings.categories'
+import { Route as InvestmentsVouchersRouteImport } from './routes/investments.vouchers'
+import { Route as InvestmentsIbRouteImport } from './routes/investments.ib'
+import { Route as InvestmentsAccountIdRouteImport } from './routes/investments.$accountId'
 import { Route as TravelTripIdEditRouteImport } from './routes/travel.$tripId.edit'
+import { Route as TransactionsEditIdRouteImport } from './routes/transactions.edit.$id'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const SubscriptionsRoute = SubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvestmentsRoute = InvestmentsRouteImport.update({
@@ -38,59 +38,9 @@ const InvestmentsRoute = InvestmentsRouteImport.update({
   path: '/investments',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SubscriptionsRoute = SubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InvestmentsIndexRoute = InvestmentsIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => InvestmentsRoute,
-} as any)
-const InvestmentsAccountIdRoute = InvestmentsAccountIdRouteImport.update({
-  id: '/$accountId',
-  path: '/$accountId',
-  getParentRoute: () => InvestmentsRoute,
-} as any)
-const InvestmentsIbRoute = InvestmentsIbRouteImport.update({
-  id: '/ib',
-  path: '/ib',
-  getParentRoute: () => InvestmentsRoute,
-} as any)
-const InvestmentsVouchersRoute = InvestmentsVouchersRouteImport.update({
-  id: '/vouchers',
-  path: '/vouchers',
-  getParentRoute: () => InvestmentsRoute,
-} as any)
-const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/settings/',
-  path: '/settings/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsCategoriesRoute = SettingsCategoriesRouteImport.update({
-  id: '/settings/categories',
-  path: '/settings/categories',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsDangerRoute = SettingsDangerRouteImport.update({
-  id: '/settings/danger',
-  path: '/settings/danger',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TransactionsIndexRoute = TransactionsIndexRouteImport.update({
-  id: '/transactions/',
-  path: '/transactions/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TransactionsIdRoute = TransactionsIdRouteImport.update({
-  id: '/transactions/$id',
-  path: '/transactions/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TransactionsNewRoute = TransactionsNewRouteImport.update({
-  id: '/transactions/new',
-  path: '/transactions/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TravelIndexRoute = TravelIndexRouteImport.update({
@@ -98,25 +48,75 @@ const TravelIndexRoute = TravelIndexRouteImport.update({
   path: '/travel/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TravelTripIdRoute = TravelTripIdRouteImport.update({
-  id: '/travel/$tripId',
-  path: '/travel/$tripId',
+const TransactionsIndexRoute = TransactionsIndexRouteImport.update({
+  id: '/transactions/',
+  path: '/transactions/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvestmentsIndexRoute = InvestmentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => InvestmentsRoute,
 } as any)
 const TravelNewRoute = TravelNewRouteImport.update({
   id: '/travel/new',
   path: '/travel/new',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TransactionsEditIdRoute = TransactionsEditIdRouteImport.update({
-  id: '/transactions/edit/$id',
-  path: '/transactions/edit/$id',
+const TravelTripIdRoute = TravelTripIdRouteImport.update({
+  id: '/travel/$tripId',
+  path: '/travel/$tripId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const TransactionsNewRoute = TransactionsNewRouteImport.update({
+  id: '/transactions/new',
+  path: '/transactions/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransactionsIdRoute = TransactionsIdRouteImport.update({
+  id: '/transactions/$id',
+  path: '/transactions/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsDangerRoute = SettingsDangerRouteImport.update({
+  id: '/settings/danger',
+  path: '/settings/danger',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsCategoriesRoute = SettingsCategoriesRouteImport.update({
+  id: '/settings/categories',
+  path: '/settings/categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvestmentsVouchersRoute = InvestmentsVouchersRouteImport.update({
+  id: '/vouchers',
+  path: '/vouchers',
+  getParentRoute: () => InvestmentsRoute,
+} as any)
+const InvestmentsIbRoute = InvestmentsIbRouteImport.update({
+  id: '/ib',
+  path: '/ib',
+  getParentRoute: () => InvestmentsRoute,
+} as any)
+const InvestmentsAccountIdRoute = InvestmentsAccountIdRouteImport.update({
+  id: '/$accountId',
+  path: '/$accountId',
+  getParentRoute: () => InvestmentsRoute,
 } as any)
 const TravelTripIdEditRoute = TravelTripIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
   getParentRoute: () => TravelTripIdRoute,
+} as any)
+const TransactionsEditIdRoute = TransactionsEditIdRouteImport.update({
+  id: '/transactions/edit/$id',
+  path: '/transactions/edit/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -259,11 +259,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/subscriptions': {
+      id: '/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/subscriptions'
+      preLoaderRoute: typeof SubscriptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/investments': {
@@ -273,81 +273,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvestmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/subscriptions': {
-      id: '/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/subscriptions'
-      preLoaderRoute: typeof SubscriptionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/investments/': {
-      id: '/investments/'
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/investments/'
-      preLoaderRoute: typeof InvestmentsIndexRouteImport
-      parentRoute: typeof InvestmentsRoute
-    }
-    '/investments/$accountId': {
-      id: '/investments/$accountId'
-      path: '/$accountId'
-      fullPath: '/investments/$accountId'
-      preLoaderRoute: typeof InvestmentsAccountIdRouteImport
-      parentRoute: typeof InvestmentsRoute
-    }
-    '/investments/ib': {
-      id: '/investments/ib'
-      path: '/ib'
-      fullPath: '/investments/ib'
-      preLoaderRoute: typeof InvestmentsIbRouteImport
-      parentRoute: typeof InvestmentsRoute
-    }
-    '/investments/vouchers': {
-      id: '/investments/vouchers'
-      path: '/vouchers'
-      fullPath: '/investments/vouchers'
-      preLoaderRoute: typeof InvestmentsVouchersRouteImport
-      parentRoute: typeof InvestmentsRoute
-    }
-    '/settings/': {
-      id: '/settings/'
-      path: '/settings'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/categories': {
-      id: '/settings/categories'
-      path: '/settings/categories'
-      fullPath: '/settings/categories'
-      preLoaderRoute: typeof SettingsCategoriesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/danger': {
-      id: '/settings/danger'
-      path: '/settings/danger'
-      fullPath: '/settings/danger'
-      preLoaderRoute: typeof SettingsDangerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/transactions/': {
-      id: '/transactions/'
-      path: '/transactions'
-      fullPath: '/transactions/'
-      preLoaderRoute: typeof TransactionsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/transactions/$id': {
-      id: '/transactions/$id'
-      path: '/transactions/$id'
-      fullPath: '/transactions/$id'
-      preLoaderRoute: typeof TransactionsIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/transactions/new': {
-      id: '/transactions/new'
-      path: '/transactions/new'
-      fullPath: '/transactions/new'
-      preLoaderRoute: typeof TransactionsNewRouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/travel/': {
@@ -357,12 +287,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TravelIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/travel/$tripId': {
-      id: '/travel/$tripId'
-      path: '/travel/$tripId'
-      fullPath: '/travel/$tripId'
-      preLoaderRoute: typeof TravelTripIdRouteImport
+    '/transactions/': {
+      id: '/transactions/'
+      path: '/transactions'
+      fullPath: '/transactions/'
+      preLoaderRoute: typeof TransactionsIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/investments/': {
+      id: '/investments/'
+      path: '/'
+      fullPath: '/investments/'
+      preLoaderRoute: typeof InvestmentsIndexRouteImport
+      parentRoute: typeof InvestmentsRoute
     }
     '/travel/new': {
       id: '/travel/new'
@@ -371,12 +315,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TravelNewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/transactions/edit/$id': {
-      id: '/transactions/edit/$id'
-      path: '/transactions/edit/$id'
-      fullPath: '/transactions/edit/$id'
-      preLoaderRoute: typeof TransactionsEditIdRouteImport
+    '/travel/$tripId': {
+      id: '/travel/$tripId'
+      path: '/travel/$tripId'
+      fullPath: '/travel/$tripId'
+      preLoaderRoute: typeof TravelTripIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/transactions/new': {
+      id: '/transactions/new'
+      path: '/transactions/new'
+      fullPath: '/transactions/new'
+      preLoaderRoute: typeof TransactionsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transactions/$id': {
+      id: '/transactions/$id'
+      path: '/transactions/$id'
+      fullPath: '/transactions/$id'
+      preLoaderRoute: typeof TransactionsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/danger': {
+      id: '/settings/danger'
+      path: '/settings/danger'
+      fullPath: '/settings/danger'
+      preLoaderRoute: typeof SettingsDangerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/categories': {
+      id: '/settings/categories'
+      path: '/settings/categories'
+      fullPath: '/settings/categories'
+      preLoaderRoute: typeof SettingsCategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/investments/vouchers': {
+      id: '/investments/vouchers'
+      path: '/vouchers'
+      fullPath: '/investments/vouchers'
+      preLoaderRoute: typeof InvestmentsVouchersRouteImport
+      parentRoute: typeof InvestmentsRoute
+    }
+    '/investments/ib': {
+      id: '/investments/ib'
+      path: '/ib'
+      fullPath: '/investments/ib'
+      preLoaderRoute: typeof InvestmentsIbRouteImport
+      parentRoute: typeof InvestmentsRoute
+    }
+    '/investments/$accountId': {
+      id: '/investments/$accountId'
+      path: '/$accountId'
+      fullPath: '/investments/$accountId'
+      preLoaderRoute: typeof InvestmentsAccountIdRouteImport
+      parentRoute: typeof InvestmentsRoute
     }
     '/travel/$tripId/edit': {
       id: '/travel/$tripId/edit'
@@ -384,6 +377,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/travel/$tripId/edit'
       preLoaderRoute: typeof TravelTripIdEditRouteImport
       parentRoute: typeof TravelTripIdRoute
+    }
+    '/transactions/edit/$id': {
+      id: '/transactions/edit/$id'
+      path: '/transactions/edit/$id'
+      fullPath: '/transactions/edit/$id'
+      preLoaderRoute: typeof TransactionsEditIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }

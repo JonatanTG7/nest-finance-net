@@ -27,7 +27,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!household?.id || subsSynced) return;
     subsSynced = true;
     syncSubscriptions()
-      .then((n) => n > 0 && qc.invalidateQueries())
+      .then((n) => {
+        if (n > 0) void qc.invalidateQueries();
+      })
       .catch((e) => console.warn("subscription sync failed", e));
   }, [household?.id, qc]);
   // The floating add-button only makes sense on the home screen — on other
