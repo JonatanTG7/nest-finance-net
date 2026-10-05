@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -338,11 +339,12 @@ export function TransactionForm({
 
   const { data: creditCards = [] } = useCreditCards();
   const currentPmLabel = paymentMethods.find((m) => m.key === paymentMethod)?.label;
-  const needsCard = type !== "income" && (isCreditMethod(paymentMethod) || isBitLabel(currentPmLabel));
+  const needsCard =
+    type !== "income" && (isCreditMethod(paymentMethod) || isBitLabel(currentPmLabel));
 
   function shiftMonthIso(iso: string, months: number) {
     const [y, m, dd] = iso.split("-").map(Number);
-    return isoLocal(new Date(y, (m - 1) + months, dd));
+    return isoLocal(new Date(y, m - 1 + months, dd));
   }
 
   // How many monthly occurrences from `date` through the chosen end month (inclusive).
@@ -395,7 +397,7 @@ export function TransactionForm({
 
     const repeatable = type === "expense" || type === "fixed";
     const canSplit = repeatable && repeatMode === "installments" && installments > 1;
-    const canRecur = repeatable && repeatMode === "recurring" && recurringMonths > 1;
+    const canRecur = false && repeatable && recurringMonths > 1;
 
     setSubmitting(true);
     try {
@@ -919,22 +921,14 @@ export function TransactionForm({
               )}
 
               {repeatMode === "recurring" && (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">עד חודש</span>
-                    <input
-                      type="month"
-                      value={recurringUntil}
-                      onChange={(e) => setRecurringUntil(e.target.value)}
-                      className="h-11 flex-1 rounded-xl border bg-background px-3 text-base outline-none"
-                      dir="ltr"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {amount
-                      ? `${recurringMonths} חודשים × ${parseFloat(amount || "0").toFixed(2)} ${currency} — בכל ${Number(date.slice(8, 10))} בחודש`
-                      : `יווצרו ${recurringMonths} תנועות, אחת בכל חודש באותו תאריך`}
+                <div className="mt-3 rounded-xl bg-fixed/10 p-3 text-xs space-y-2">
+                  <p>
+                    הוצאות קבועות ומנויים מנוהלים עכשיו במרכז המנויים — הם נרשמים אוטומטית רק ביום
+                    החיוב.
                   </p>
+                  <Link to="/subscriptions" className="font-semibold text-primary underline">
+                    מעבר למרכז המנויים
+                  </Link>
                 </div>
               )}
             </div>

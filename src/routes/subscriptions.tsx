@@ -56,7 +56,9 @@ function SubscriptionsPage() {
     () =>
       subs
         .map((s) => ({ s, st: monthStatus(s) }))
-        .sort((a, b) => Number(b.s.active) - Number(a.s.active) || a.st.date.localeCompare(b.st.date)),
+        .sort(
+          (a, b) => Number(b.s.active) - Number(a.s.active) || a.st.date.localeCompare(b.st.date),
+        ),
     [subs],
   );
   const live = rows.filter((r) => r.st.inRange);
@@ -91,7 +93,8 @@ function SubscriptionsPage() {
           <p className="text-muted-foreground text-sm">טוען…</p>
         ) : rows.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            עוד אין מנויים. הוסיפו שכר דירה, אינטרנט, ביטוחים ומנויים — והם יירשמו אוטומטית ביום החיוב.
+            עוד אין מנויים. הוסיפו שכר דירה, אינטרנט, ביטוחים ומנויים — והם יירשמו אוטומטית ביום
+            החיוב.
           </div>
         ) : (
           <ul className="space-y-2">
@@ -126,7 +129,9 @@ function SubscriptionsPage() {
                         <span
                           className={cn(
                             "text-[11px] rounded-full px-2 py-0.5",
-                            st.charged ? "bg-muted text-muted-foreground" : "bg-fixed/15 text-fixed",
+                            st.charged
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-fixed/15 text-fixed",
                           )}
                         >
                           {st.charged
@@ -200,7 +205,8 @@ function SubscriptionDialog({
   const [busy, setBusy] = useState(false);
   const invalidate = useInvalidateSubscriptions();
   useEffect(() => {
-    if (!isCreditMethod(f.payment_method) && f.credit_card_id) setF((p) => ({ ...p, credit_card_id: null }));
+    if (!isCreditMethod(f.payment_method) && f.credit_card_id)
+      setF((p) => ({ ...p, credit_card_id: null }));
   }, [f.payment_method, f.credit_card_id]);
 
   const set = <K extends keyof SubscriptionInput>(k: K, v: SubscriptionInput[K]) =>
@@ -240,7 +246,11 @@ function SubscriptionDialog({
               value={f.emoji}
               onChange={(e) => set("emoji", e.target.value)}
             />
-            <Input placeholder="שם (נטפליקס, שכר דירה…)" value={f.name} onChange={(e) => set("name", e.target.value)} />
+            <Input
+              placeholder="שם (נטפליקס, שכר דירה…)"
+              value={f.name}
+              onChange={(e) => set("name", e.target.value)}
+            />
           </div>
           <div className="flex gap-2">
             <Input
@@ -315,7 +325,11 @@ function SubscriptionDialog({
           <div className="grid grid-cols-2 gap-2 text-sm">
             <label>
               מתאריך
-              <Input type="date" value={f.start_date} onChange={(e) => set("start_date", e.target.value)} />
+              <Input
+                type="date"
+                value={f.start_date}
+                onChange={(e) => set("start_date", e.target.value)}
+              />
             </label>
             <label>
               עד (לא חובה)

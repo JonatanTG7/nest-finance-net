@@ -122,7 +122,8 @@ async function doSync(): Promise<number> {
   if (error) throw error;
   const have = new Set(
     (existing ?? []).map(
-      (r: { subscription_id: string; occurred_at: string }) => `${r.subscription_id}|${r.occurred_at}`,
+      (r: { subscription_id: string; occurred_at: string }) =>
+        `${r.subscription_id}|${r.occurred_at}`,
     ),
   );
   const { data: auth } = await supabase.auth.getUser();

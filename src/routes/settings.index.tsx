@@ -1,23 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  Sun,
-  Moon,
-  Copy,
-  LogOut,
-  Users,
-  Plus,
-  ArrowLeft,
-  ShieldAlert,
-  Coins,
-} from "lucide-react";
+import { Sun, Moon, Copy, LogOut, Users, Plus, ArrowLeft, ShieldAlert, Coins } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/MobileLayout";
 import { CreditCardsSection } from "@/components/CreditCardsSection";
 
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
-import { getDefaultCurrency, setDefaultCurrency } from "@/lib/personal_settings";
+import {
+  getDefaultCurrency,
+  setDefaultCurrency,
+  setCycleStartDay,
+  setPeriodMode,
+  usePeriodSettings,
+} from "@/lib/personal_settings";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -89,6 +85,8 @@ function Settings() {
           ערך זה ייבחר אוטומטית במסך הוספת תנועה. תמיד אפשר לשנות לפני שמירה.
         </p> */}
       </section>
+
+      <PeriodSection />
 
       <section className="px-5 mt-8">
         <h2 className="text-sm font-semibold mb-2">הגדרות אישיות</h2>
@@ -196,7 +194,6 @@ function Settings() {
       <CreditCardsSection />
 
       <HouseholdSection />
-
 
       <section className="px-5 mt-8">
         <button
@@ -358,6 +355,51 @@ function HouseholdSection() {
         <p className="text-xs text-muted-foreground">
           שתפו את הקוד עם מי שתרצו להוסיף למשק הבית. הם נכנסים עם Google ומזינים אותו במסך הראשון.
         </p>
+      </div>
+    </section>
+  );
+}
+
+function PeriodSection() {
+  const { mode, startDay } = usePeriodSettings();
+  return (
+    <section className="px-5 mt-8">
+      <h2 className="text-sm font-semibold mb-2">חודש כספי</h2>
+      <div className="rounded-2xl bg-card border p-4 space-y-3">
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">
+          {(
+            [
+              ["calendar", "חודש לוח (1–31)"],
+              ["cycle", "לפי יום משכורת"],
+            ] as const
+          ).map(([k, l]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setPeriodMode(k)}
+              className={
+                "h-10 rounded-xl text-xs font-semibold " +
+                (mode === k ? "bg-primary text-primary-foreground" : "text-muted-foreground")
+              }
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        {mode === "cycle" && (
+          <label className="flex items-center gap-2 text-sm">
+            החודש מתחיל ביום
+            <input
+              type="number"
+              min={1}
+              max={28}
+              value={startDay}
+              onChange={(e) => setCycleStartDay(Number(e.target.value) || 1)}
+              className="w-20 h-10 rounded-xl border bg-background px-3"
+              dir="ltr"
+            />
+          </label>
+        )}
       </div>
     </section>
   );

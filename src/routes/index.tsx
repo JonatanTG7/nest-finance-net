@@ -35,6 +35,7 @@ import { useSelectedMonth } from "@/lib/month-store";
 import { useMemberLabels } from "@/lib/person";
 import { useMyProfile } from "@/lib/household";
 import { usePeriodSettings } from "@/lib/personal_settings";
+import { billingDateIn, useSubscriptions } from "@/lib/subscriptions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -96,7 +97,6 @@ function Dashboard() {
     queryFn: () => fetchTransactionsBetween(prevRange.start, prevRange.end),
   });
 
-
   // 6-month rolling window for the trend chart
   const { data: trendTxs = [] } = useQuery({
     queryKey: ["dashboard", "trend", month],
@@ -142,14 +142,32 @@ function Dashboard() {
   const totals = useMemo(() => sumTotals(txs), [txs]);
 
   /** Only what has already happened — money actually in and out until today. */
-  const soFar = useMemo(
-    () => sumTotals(txs.filter((t) => t.occurred_at <= today)),
-    [txs, today],
-  );
+  const soFar = useMemo(() => sumTotals(txs.filter((t) => t.occurred_at <= today)), [txs, today]);
 
   /** Is "today" inside the displayed period at all? */
   const periodIsCurrent = today >= start && today < end;
 
+  const { data: subs = [] } = useSubscriptions();
+  /** Active subscriptions whose billing date in this period is still ahead. */
+  const pendingSubs = useMemo(() => {
+    let sum = 0;
+    for (const sb of subs) {
+      if (!sb.active || sb.currency !== "ILS") continue;
+      for (const d of [new Date(start + "T00:00"), new Date(end + "T00:00")]) {
+        const iso = billingDateIn(sb, d.getFullYear(), d.getMonth());
+        if (
+          iso > today &&
+          iso >= start &&
+          iso < end &&
+          iso >= sb.start_date &&
+          (!sb.end_date || iso <= sb.end_date)
+        )
+          sum += sb.amount;
+      }
+    }
+    return sum;
+  }, [subs, start, end, today]);
+  const forecast = totals.remaining - pendingSubs;
 
   // Pie: outflow per category, each slice in its own colour
   const pieData = useMemo(() => {
@@ -234,13 +252,19 @@ function Dashboard() {
     const spendTxs = txs.filter((t) => isCashflowOut(t.type));
     const largest =
       spendTxs.length > 0
-        ? spendTxs.reduce((max, t) => (Number(t.amount_ils) > Number(max.amount_ils) ? t : max), spendTxs[0])
+        ? spendTxs.reduce(
+            (max, t) => (Number(t.amount_ils) > Number(max.amount_ils) ? t : max),
+            spendTxs[0],
+          )
         : null;
 
     const daysElapsed = Math.max(
       1,
       Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000) -
-        Math.max(0, Math.round((new Date(end).getTime() - new Date(todayLocalISO()).getTime()) / 86_400_000)),
+        Math.max(
+          0,
+          Math.round((new Date(end).getTime() - new Date(todayLocalISO()).getTime()) / 86_400_000),
+        ),
     );
     const avgDaily = outTotal / daysElapsed;
 
@@ -313,20 +337,42 @@ function Dashboard() {
 
       <section className="px-5 md:px-0">
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground p-6 shadow-lg shadow-primary/20">
-          <p className="text-sm opacity-90">פנוי לחודש (אחרי הוצאות, קבועות והשקעה)</p>
-          <p className="text-4xl font-bold mt-2 tabular-nums">{formatILS(totals.remaining)}</p>
+          <p className="text-sm opacity-90">
+            {periodIsCurrent ? "נשאר בפועל עד היום" : "פנוי בתקופה"}
+            {mode === "cycle" ? ` · תקופה מ-${start.slice(8, 10)}/${start.slice(5, 7)}` : ""}
+          </p>
+          <p className="text-4xl font-bold mt-2 tabular-nums">
+            {formatILS(periodIsCurrent ? soFar.remaining : totals.remaining)}
+          </p>
           <div className="mt-4 flex gap-4 text-sm flex-wrap">
             <div>
-              <p className="opacity-80">הכנסות</p>
-              <p className="font-semibold tabular-nums">{formatILS(totals.income)}</p>
+              <p className="opacity-80">נכנס</p>
+              <p className="font-semibold tabular-nums">
+                {formatILS(periodIsCurrent ? soFar.income : totals.income)}
+              </p>
             </div>
             <div>
-              <p className="opacity-80">סך יוצא</p>
+              <p className="opacity-80">יצא</p>
               <p className="font-semibold tabular-nums">
-                {formatILS(totals.expense + totals.fixed + totals.investment)}
+                {formatILS(
+                  periodIsCurrent
+                    ? soFar.expense + soFar.fixed + soFar.investment
+                    : totals.expense + totals.fixed + totals.investment,
+                )}
               </p>
             </div>
           </div>
+          {periodIsCurrent && (
+            <div className="mt-4 rounded-2xl bg-primary-foreground/15 p-3 text-sm">
+              <p className="opacity-90">תחזית לסוף התקופה</p>
+              <p className="text-xl font-bold tabular-nums">{formatILS(forecast)}</p>
+              {pendingSubs > 0 && (
+                <p className="text-xs opacity-80">
+                  כולל {formatILS(pendingSubs)} מנויים שעוד לא ירדו
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -381,7 +427,10 @@ function Dashboard() {
             <ul className="divide-y -mx-4">
               {categoryMovers.map((c) => (
                 <li key={c.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="size-2.5 rounded-full shrink-0" style={{ background: c.color }} />
+                  <span
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ background: c.color }}
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{c.name}</p>
                     <p className="text-xs text-muted-foreground tabular-nums">
@@ -414,7 +463,6 @@ function Dashboard() {
       )}
 
       <div className="grid md:grid-cols-2 gap-4 mt-6 px-5 md:px-0">
-
         <Card title="הוצאות לפי קטגוריה">
           {pieData.length === 0 ? (
             <Empty>אין עדיין הוצאות בחודש זה</Empty>
@@ -463,7 +511,10 @@ function Dashboard() {
                   const total = pieData.reduce((s, d) => s + d.value, 0);
                   return pieData.slice(0, 8).map((d) => (
                     <li key={d.key} className="flex items-center gap-2">
-                      <span className="size-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                      <span
+                        className="size-2.5 rounded-full shrink-0"
+                        style={{ background: d.color }}
+                      />
                       <span className="truncate flex-1">{d.name}</span>
                       <span className="text-muted-foreground tabular-nums shrink-0">
                         {total > 0 ? Math.round((d.value / total) * 100) : 0}%
@@ -501,9 +552,9 @@ function Dashboard() {
                       border: "1px solid var(--border)",
                       background: "var(--card)",
                       color: "var(--foreground)",
-                      }}
-                      itemStyle={{ color: "var(--foreground)" }}
-                      labelStyle={{ color: "var(--foreground)" }}
+                    }}
+                    itemStyle={{ color: "var(--foreground)" }}
+                    labelStyle={{ color: "var(--foreground)" }}
                   />
                   <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={48}>
                     {topCats.map((d) => (
@@ -529,7 +580,8 @@ function Dashboard() {
                   />
                   <span>
                     הקטגוריה המובילה היא <b>{quickInsights.topCategory.name}</b> —{" "}
-                    {formatILS(quickInsights.topCategory.value)} ({quickInsights.topCategory.pct}% מההוצאות)
+                    {formatILS(quickInsights.topCategory.value)} ({quickInsights.topCategory.pct}%
+                    מההוצאות)
                   </span>
                 </li>
               )}
@@ -642,7 +694,11 @@ function ComparisonCard({
           <span
             className={cn(
               "flex items-center gap-0.5 text-xs font-semibold shrink-0",
-              isGood == null ? "text-muted-foreground" : isGood ? "text-emerald-500" : "text-rose-500",
+              isGood == null
+                ? "text-muted-foreground"
+                : isGood
+                  ? "text-emerald-500"
+                  : "text-rose-500",
             )}
           >
             {direction === "up" ? (
