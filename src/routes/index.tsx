@@ -35,7 +35,6 @@ import { useSelectedMonth } from "@/lib/month-store";
 import { useMemberLabels } from "@/lib/person";
 import { useMyProfile } from "@/lib/household";
 import { usePeriodSettings } from "@/lib/personal_settings";
-import { billingDateIn, useSubscriptions } from "@/lib/subscriptions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -62,7 +61,16 @@ const CATEGORY_PALETTE = [
 ];
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "ControlFlow-Finance" }] }),
+  head: () => ({
+    meta: [
+      { title: "סיכום חודשי — Family Spend" },
+      { name: "description", content: "סיכום ההכנסות, ההוצאות והתנועות האחרונות של משק הבית." },
+      { property: "og:title", content: "סיכום חודשי — Family Spend" },
+      { property: "og:description", content: "ההכנסות, ההוצאות והתנועות האחרונות של המשפחה במקום אחד." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Dashboard,
 });
 
@@ -138,7 +146,7 @@ function Dashboard() {
     return { income, expense, fixed, investment, remaining };
   };
 
-  /** Full period (everything recorded in the period) — used for the forecast. */
+  /** Everything recorded in the displayed period. */
   const totals = useMemo(() => sumTotals(txs), [txs]);
 
   /** Only what has already happened — money actually in and out until today. */
@@ -146,28 +154,6 @@ function Dashboard() {
 
   /** Is "today" inside the displayed period at all? */
   const periodIsCurrent = today >= start && today < end;
-
-  const { data: subs = [] } = useSubscriptions();
-  /** Active subscriptions whose billing date in this period is still ahead. */
-  const pendingSubs = useMemo(() => {
-    let sum = 0;
-    for (const sb of subs) {
-      if (!sb.active || sb.currency !== "ILS") continue;
-      for (const d of [new Date(start + "T00:00"), new Date(end + "T00:00")]) {
-        const iso = billingDateIn(sb, d.getFullYear(), d.getMonth());
-        if (
-          iso > today &&
-          iso >= start &&
-          iso < end &&
-          iso >= sb.start_date &&
-          (!sb.end_date || iso <= sb.end_date)
-        )
-          sum += sb.amount;
-      }
-    }
-    return sum;
-  }, [subs, start, end, today]);
-  const forecast = totals.remaining - pendingSubs;
 
   // Pie: outflow per category, each slice in its own colour
   const pieData = useMemo(() => {
@@ -362,17 +348,7 @@ function Dashboard() {
               </p>
             </div>
           </div>
-          {periodIsCurrent && (
-            <div className="mt-4 rounded-2xl bg-primary-foreground/15 p-3 text-sm">
-              <p className="opacity-90">תחזית לסוף התקופה</p>
-              <p className="text-xl font-bold tabular-nums">{formatILS(forecast)}</p>
-              {pendingSubs > 0 && (
-                <p className="text-xs opacity-80">
-                  כולל {formatILS(pendingSubs)} מנויים שעוד לא ירדו
-                </p>
-              )}
-            </div>
-          )}
+
         </div>
       </section>
 
@@ -404,6 +380,26 @@ function Dashboard() {
       </section>
 
       <UpcomingCharges />
+
+      <section className="px-5 md:px-0 mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold">פעולות אחרונות</h2>
+          <Link to="/transactions" className="text-xs text-primary">
+            הצג הכל
+          </Link>
+        </div>
+        <div className="rounded-2xl bg-card border divide-y">
+          {isLoading ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">טוען…</div>
+          ) : txs.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              אין עדיין תנועות בחודש זה.
+            </div>
+          ) : (
+            txs.slice(0, 8).map((t) => <TxRow key={t.id} tx={t} />)
+          )}
+        </div>
+      </section>
 
       {/* This period vs the one before it */}
       <section className="px-5 md:px-0 mt-4 grid grid-cols-2 gap-3">
@@ -632,25 +628,7 @@ function Dashboard() {
         </Card>
       </section>
 
-      <section className="px-5 md:px-0 mt-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold">פעולות אחרונות</h2>
-          <Link to="/transactions" className="text-xs text-primary">
-            הצג הכל
-          </Link>
-        </div>
-        <div className="rounded-2xl bg-card border divide-y">
-          {isLoading ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">טוען…</div>
-          ) : txs.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              אין עדיין תנועות בחודש זה.
-            </div>
-          ) : (
-            txs.slice(0, 8).map((t) => <TxRow key={t.id} tx={t} />)
-          )}
-        </div>
-      </section>
+
     </AppShell>
   );
 }
