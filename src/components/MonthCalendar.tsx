@@ -92,9 +92,9 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
                     {Math.round(d.out).toLocaleString()}
                   </span>
                 ) : noSpend ? (
-                  <span className="text-[10px] text-success">✓</span>
+                  <span className="text-[10px] text-income">✓</span>
                 ) : null}
-                {d?.inc ? <span className="size-1.5 rounded-full bg-success mt-0.5" /> : null}
+                {d?.inc ? <span className="size-1.5 rounded-full bg-income mt-0.5" /> : null}
               </button>
             );
           })}
@@ -120,7 +120,7 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
                     <Link to="/transactions/$id" params={{ id: t.id }} className="flex items-center gap-3 py-3">
                       <span className="text-xl">{t.category?.emoji ?? "💸"}</span>
                       <span className="flex-1 truncate text-sm">{t.title}</span>
-                      <span className={cn("text-sm font-semibold", t.type === "income" ? "text-success" : "")}>
+                      <span className={cn("text-sm font-semibold", t.type === "income" ? "text-income" : "")}>
                         {formatILS(t.type === "income" ? Number(t.amount_ils) : -Number(t.amount_ils))}
                       </span>
                     </Link>
@@ -132,7 +132,7 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
             )}
             <Link
               to="/transactions/new"
-              search={{ date: selected } as never}
+              search={{ date: selected }}
               className="block text-center h-11 leading-[2.75rem] rounded-xl bg-primary text-primary-foreground font-semibold text-sm"
             >
               + הוסף תנועה ביום זה
