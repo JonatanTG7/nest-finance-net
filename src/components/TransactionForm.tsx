@@ -67,7 +67,6 @@ import { fetchTrips } from "@/lib/trips";
 import { getDefaultCurrency } from "@/lib/personal_settings";
 import { todayISO, isoLocal } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { evalExpression, hasOperator } from "@/lib/calc";
 import type { TxType } from "@/lib/finance";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
@@ -361,7 +360,7 @@ export function TransactionForm({
   }, [recurringUntil, date]);
 
   async function handleSubmit() {
-    const amt = evalExpression(amount) ?? NaN;
+    const amt = parseFloat(amount);
     if (!amt || amt <= 0) {
       toast.error("נא להזין סכום תקין");
       return;
@@ -654,18 +653,12 @@ export function TransactionForm({
             </button>
 
             <input
-              type="text"
+              type="number"
               inputMode="decimal"
-              autoComplete="off"
+              step="0.01"
               autoFocus={!existing}
               value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^0-9+\-*/×÷x().,\s]/gi, ""))}
-              onBlur={() => {
-                if (hasOperator(amount)) {
-                  const v = evalExpression(amount);
-                  if (v !== null) setAmount(String(v));
-                }
-              }}
+              onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
               className="flex-1 min-w-0 bg-transparent text-4xl font-extrabold tabular-nums outline-none text-center"
               style={{ color: headerBg }}
@@ -697,33 +690,6 @@ export function TransactionForm({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-
-          <div className="mt-2 flex items-center justify-center gap-2" dir="ltr">
-            {(["+", "−", "×", "÷"] as const).map((op) => (
-              <button
-                key={op}
-                type="button"
-                onClick={() => setAmount((a) => (a ? `${a}${op}` : a))}
-                className="size-9 rounded-xl bg-muted text-lg font-bold active:scale-95"
-                aria-label={`פעולה ${op}`}
-              >
-                {op}
-              </button>
-            ))}
-            {hasOperator(amount) && (
-              <button
-                type="button"
-                onClick={() => {
-                  const v = evalExpression(amount);
-                  if (v !== null) setAmount(String(v));
-                }}
-                className="h-9 px-3 rounded-xl text-sm font-bold text-white tabular-nums"
-                style={{ background: headerBg }}
-              >
-                = {evalExpression(amount) ?? "?"}
-              </button>
-            )}
           </div>
 
           <p className="mt-1 text-xs text-center text-muted-foreground">
@@ -950,7 +916,7 @@ export function TransactionForm({
                   />
                   <p className="text-xs text-muted-foreground">
                     {installments > 1 && amount
-                      ? `${installments} × ${((evalExpression(amount) ?? 0) / installments).toFixed(2)} ${currency} — תנועות נפרדות לחודשים עוקבים`
+                      ? `${installments} × ${(parseFloat(amount) / installments).toFixed(2)} ${currency} — תנועות נפרדות לחודשים עוקבים`
                       : "פיצול הסכום לחודשים עוקבים"}
                   </p>
                 </div>
