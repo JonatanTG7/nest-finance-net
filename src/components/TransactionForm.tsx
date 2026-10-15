@@ -92,10 +92,12 @@ export function TransactionForm({
   existing,
   onDone,
   defaultTripId,
+  defaultDate,
 }: {
   existing?: Transaction;
   onDone?: () => void;
   defaultTripId?: string | null;
+  defaultDate?: string;
 }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -164,7 +166,7 @@ export function TransactionForm({
   const [title, setTitle] = useState(existing?.title ?? "");
   const [note, setNote] = useState(existing?.note ?? "");
   const [showNote, setShowNote] = useState(!!existing?.note);
-  const [date, setDate] = useState(existing?.occurred_at ?? todayISO());
+  const [date, setDate] = useState(existing?.occurred_at ?? defaultDate ?? todayISO());
   const [enteredBy, setEnteredBy] = useState<Person>(existing?.entered_by ?? getDefaultPerson());
   const [paymentMethod, setPaymentMethod] = useState<string | null>(
     existing?.payment_method ?? getLastPaymentMethod() ?? "credit",

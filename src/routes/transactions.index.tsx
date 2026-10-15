@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
+import { MonthCalendar } from "@/components/MonthCalendar";
 import { fetchAllTransactions, fetchTransactionsBetween, type Transaction } from "@/lib/db";
 import {
   categoryShade,
@@ -64,7 +65,7 @@ export const Route = createFileRoute("/transactions/")({
 
 type TypeFilter = "all" | "income" | "expense" | "fixed" | "investment";
 type Range = "month" | "3m" | "12m" | "year" | "all" | "custom";
-type Tab = "list" | "categories";
+type Tab = "list" | "categories" | "calendar";
 
 const RANGES: [Range, string][] = [
   ["month", "חודש"],
@@ -517,11 +518,15 @@ function TransactionsList() {
           [
             ["list", "רשימה"],
             ["categories", "לפי קטגוריה"],
+            ["calendar", "📅 לוח שנה"],
           ] as [Tab, string][]
         ).map(([k, label]) => (
           <button
             key={k}
-            onClick={() => setTab(k)}
+            onClick={() => {
+              setTab(k);
+              if (k === "calendar") setRange("month");
+            }}
             className={cn(
               "flex-1 h-10 rounded-xl text-sm font-semibold border transition",
               tab === k
@@ -537,6 +542,8 @@ function TransactionsList() {
       <div className="px-5 md:px-0 mt-4 pb-6">
         {isLoading ? (
           <p className="text-center text-sm text-muted-foreground py-10">טוען…</p>
+        ) : tab === "calendar" ? (
+          <MonthCalendar month={month} txs={filtered} />
         ) : filtered.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground py-10">לא נמצאו תנועות</p>
         ) : tab === "categories" ? (
