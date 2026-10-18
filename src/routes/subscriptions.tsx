@@ -29,6 +29,9 @@ import { cardLabel, isCreditMethod, useCreditCards } from "@/lib/credit_cards";
 import { formatILS } from "@/lib/finance";
 import { todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { fetchRateToIls } from "@/lib/fx";
+import { convertedSubscriptionTotals } from "@/lib/finance-rules";
 
 export const Route = createFileRoute("/subscriptions")({
   head: () => ({
@@ -62,8 +65,13 @@ function SubscriptionsPage() {
     [subs],
   );
   const live = rows.filter((r) => r.st.inRange);
-  const total = live.reduce((a, r) => a + r.s.amount, 0);
-  const charged = live.filter((r) => r.st.charged).reduce((a, r) => a + r.s.amount, 0);
+  const currencies = [...new Set(live.map((r) => r.s.currency))].sort();
+  const rates = useQuery({
+    queryKey: ["fx", "subscriptions", currencies],
+    queryFn: async () => Object.fromEntries(await Promise.all(currencies.map(async (c) => [c, await fetchRateToIls(c)] as const))),
+    staleTime: 60 * 60 * 1000,
+  });
+  const totals = rates.data ? convertedSubscriptionTotals(live.map((r) => ({ ...r.s, charged: r.st.charged })), rates.data) : null;
 
   const toggle = async (s: Subscription) => {
     await saveSubscription({ ...s, active: !s.active }, s.id);
@@ -84,10 +92,11 @@ function SubscriptionsPage() {
         <h1 className="text-2xl font-bold">מנויים והוראות קבע</h1>
 
         <div className="grid grid-cols-3 gap-2">
-          <Stat label="סה״כ בחודש" value={total} />
-          <Stat label="כבר ירד" value={charged} />
-          <Stat label="ממתין" value={total - charged} />
+          <Stat label="סה״כ בחודש · ₪" value={totals?.total ?? null} />
+          <Stat label="כבר ירד · ₪" value={totals?.charged ?? null} />
+          <Stat label="ממתין · ₪" value={totals?.pending ?? null} />
         </div>
+        {rates.isError && <div role="alert" className="text-sm text-destructive">לא הצלחנו לטעון שערי מט״ח. <Button variant="ghost" size="sm" onClick={() => rates.refetch()}>נסה שוב</Button></div>}
 
         {isLoading ? (
           <p className="text-muted-foreground text-sm">טוען…</p>
@@ -165,11 +174,11 @@ function SubscriptionsPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-2xl bg-fixed/10 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-bold tabular-nums text-sm">{formatILS(value)}</p>
+      <p className="font-bold tabular-nums text-sm">{value === null ? "—" : formatILS(value)}</p>
     </div>
   );
 }
