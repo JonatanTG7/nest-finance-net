@@ -17,6 +17,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
 import { UpcomingCharges } from "@/components/UpcomingCharges";
+import { CategoryBudgets } from "@/components/CategoryBudgets";
 import { Plane, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 import { fetchTrips, tripStatus } from "@/lib/trips";
@@ -400,6 +401,8 @@ function Dashboard() {
           )}
         </div>
       </section>
+
+      <CategoryBudgets month={month} />
 
       {/* This period vs the one before it */}
       <section className="px-5 md:px-0 mt-4 grid grid-cols-2 gap-3">

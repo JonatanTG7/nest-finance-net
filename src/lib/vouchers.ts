@@ -3,6 +3,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { Person } from "@/lib/person";
 import { todayISO } from "@/lib/dates";
 import { getMyHouseholdId } from "@/lib/household";
+import { mediaPath, signMedia, uploadPrivateMedia } from "@/lib/private-media";
 
 export type Voucher = Database["public"]["Tables"]["vouchers"]["Row"];
 
@@ -13,7 +14,7 @@ export async function fetchVouchers(): Promise<Voucher[]> {
     .order("occurred_at", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return data ?? [];
+  return Promise.all((data ?? []).map(async (v) => ({ ...v, image_url: await signMedia(v.image_url, "voucher-photos") })));
 }
 
 export interface VoucherInput {
@@ -33,7 +34,7 @@ export async function createVoucher(input: VoucherInput): Promise<Voucher> {
   const household_id = await getMyHouseholdId();
   const { data, error } = await supabase
     .from("vouchers")
-    .insert({ ...input, household_id })
+    .insert({ ...input, image_url: input.image_url ? mediaPath(input.image_url, "voucher-photos") : null, household_id })
     .select("*")
     .single();
   if (error) throw error;
@@ -61,16 +62,7 @@ export async function deleteVoucher(id: string): Promise<void> {
 }
 
 export async function uploadVoucherPhoto(file: File): Promise<string> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage
-    .from("voucher-photos")
-    .upload(path, file, { contentType: file.type, upsert: false });
-  if (error) throw error;
-  const { data } = await supabase.storage
-    .from("voucher-photos")
-    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-  return data?.signedUrl ?? path;
+  return uploadPrivateMedia(file, "voucher-photos");
 }
 
 export function isExpired(v: Voucher): boolean {

@@ -27,6 +27,10 @@ import {
 } from "@/lib/credit_cards";
 
 import { cn } from "@/lib/utils";
+import { amountInRange } from "@/lib/finance-rules";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/transactions/")({
   validateSearch: (
@@ -96,6 +100,10 @@ function TransactionsList() {
   const [draftCats, setDraftCats] = useState<string[]>(cats);
   const [draftMethod, setDraftMethod] = useState<string>(method);
   const [draftCard, setDraftCard] = useState<string>(card);
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [draftMin, setDraftMin] = useState("");
+  const [draftMax, setDraftMax] = useState("");
 
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -124,10 +132,16 @@ function TransactionsList() {
     setDraftCats(cats);
     setDraftMethod(method);
     setDraftCard(card);
+    setDraftMin(minAmount);
+    setDraftMax(maxAmount);
     setShowFilters(true);
   }
 
   function applyFilters() {
+    if ((draftMin && (!Number.isFinite(Number(draftMin)) || Number(draftMin) < 0)) || (draftMax && (!Number.isFinite(Number(draftMax)) || Number(draftMax) < 0)) || (draftMin && draftMax && Number(draftMin) > Number(draftMax))) {
+      toast.error("בחר טווח סכומים תקין"); return;
+    }
+    setMinAmount(draftMin); setMaxAmount(draftMax);
     setTypeFilter(draftTypeFilter);
     setPayers(draftPayers);
     setCats(draftCats);
@@ -178,6 +192,7 @@ function TransactionsList() {
       if (cats.length && !cats.includes(t.category?.id ?? "none")) return false;
       if (method && t.payment_method !== method) return false;
       if (card && t.credit_card_id !== card) return false;
+      if (!amountInRange(Number(t.amount_ils), minAmount, maxAmount)) return false;
       if (needle) {
         const tagsHay = (t.transaction_tags ?? []).map((tt) => tt.tag.name).join(" ");
         const methodLabel =
@@ -199,7 +214,7 @@ function TransactionsList() {
       }
       return true;
     });
-  }, [txs, typeFilter, payers, cats, method, card, q, memberLabels, paymentMethods, creditCards]);
+  }, [txs, typeFilter, payers, cats, method, card, minAmount, maxAmount, q, memberLabels, paymentMethods, creditCards]);
 
   // When a specific card is selected, break the total down by the date the
   // bank actually charges it, instead of showing one lump sum.
@@ -288,13 +303,14 @@ function TransactionsList() {
     payers.length +
     cats.length +
     (method ? 1 : 0) +
-    (card ? 1 : 0);
+    (card ? 1 : 0) + (minAmount || maxAmount ? 1 : 0);
 
   function toggle<T>(arr: T[], v: T, set: (next: T[]) => void) {
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   }
 
   function clearFilters() {
+    setMinAmount(""); setMaxAmount(""); setDraftMin(""); setDraftMax("");
     setTypeFilter("all");
     setPayers([]);
     setCats([]);
@@ -398,6 +414,10 @@ function TransactionsList() {
 
         {showFilters && (
           <div className="mt-3 rounded-2xl border bg-card p-3 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs text-muted-foreground">מסכום (₪)<Input aria-label="מסכום (₪)" type="number" min="0" step="0.01" inputMode="decimal" value={draftMin} onChange={(e) => setDraftMin(e.target.value)} /></label>
+              <label className="text-xs text-muted-foreground">עד סכום (₪)<Input aria-label="עד סכום (₪)" type="number" min="0" step="0.01" inputMode="decimal" value={draftMax} onChange={(e) => setDraftMax(e.target.value)} /></label>
+            </div>
             <FilterRow label="סוג">
               {(["all", "income", "expense", "fixed", "investment"] as TypeFilter[]).map((k) => (
                 <Chip key={k} active={draftTypeFilter === k} onClick={() => setDraftTypeFilter(k)}>

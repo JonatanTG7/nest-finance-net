@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { getMyHouseholdId } from "@/lib/household";
 import { todayISO } from "@/lib/dates";
+import { mediaPath, signMedia, uploadPrivateMedia } from "@/lib/private-media";
 
 export type Trip = Database["public"]["Tables"]["trips"]["Row"];
 export type TripStatus = "upcoming" | "active" | "completed";
@@ -25,13 +26,13 @@ export async function fetchTrips(): Promise<Trip[]> {
     .select("*")
     .order("start_date", { ascending: false });
   if (error) throw error;
-  return data ?? [];
+  return Promise.all((data ?? []).map(async (t) => ({ ...t, cover_image: await signMedia(t.cover_image, "trip-covers") })));
 }
 
 export async function fetchTrip(id: string): Promise<Trip> {
   const { data, error } = await supabase.from("trips").select("*").eq("id", id).single();
   if (error) throw error;
-  return data;
+  return { ...data, cover_image: await signMedia(data.cover_image, "trip-covers") };
 }
 
 export interface TripInput {
@@ -49,7 +50,7 @@ export async function createTrip(input: TripInput): Promise<string> {
   const household_id = await getMyHouseholdId();
   const { data, error } = await supabase
     .from("trips")
-    .insert({ ...input, household_id })
+    .insert({ ...input, cover_image: input.cover_image ? mediaPath(input.cover_image, "trip-covers") : null, household_id })
     .select("id")
     .single();
   if (error) throw error;
@@ -59,7 +60,7 @@ export async function createTrip(input: TripInput): Promise<string> {
 export async function updateTrip(id: string, input: TripInput): Promise<void> {
   const { error } = await supabase
     .from("trips")
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...input, cover_image: input.cover_image ? mediaPath(input.cover_image, "trip-covers") : null, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
 }
@@ -72,16 +73,7 @@ export async function deleteTrip(id: string): Promise<void> {
 }
 
 export async function uploadTripCover(file: File): Promise<string> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage
-    .from("trip-covers")
-    .upload(path, file, { contentType: file.type, upsert: false });
-  if (error) throw error;
-  const { data } = await supabase.storage
-    .from("trip-covers")
-    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-  return data?.signedUrl ?? path;
+  return uploadPrivateMedia(file, "trip-covers");
 }
 
 export interface TripSpending {

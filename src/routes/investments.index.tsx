@@ -1,8 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { createInvestmentAccount } from "@/lib/investment-accounts";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { fetchInvestmentAccounts, fetchInvestmentTransactions } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
@@ -12,11 +17,29 @@ import { fetchUsdIlsRate } from "@/lib/fx";
 import { fetchVouchers } from "@/lib/vouchers";
 
 export const Route = createFileRoute("/investments/")({
-  head: () => ({ meta: [{ title: "השקעות" }] }),
+  head: () => ({ meta: [{ title: "השקעות וחיסכון — Family Spend" }, { name: "description", content: "חשבונות ההשקעה והחיסכון של משק הבית." }, { property: "og:title", content: "השקעות וחיסכון — Family Spend" }, { property: "og:description", content: "יתרות חשבונות ההשקעה והחיסכון." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Investments,
 });
 
 function Investments() {
+  const qc = useQueryClient();
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState("savings");
+  const [balance, setBalance] = useState("");
+  const [currency, setCurrency] = useState("ILS");
+  const [busy, setBusy] = useState(false);
+  async function addAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await createInvestmentAccount({ name, kind, balance: Number(balance || 0), currency });
+      await qc.invalidateQueries({ queryKey: ["investment_accounts"] });
+      setAdding(false); setName(""); setBalance("");
+      toast.success("החשבון נוסף");
+    } catch { toast.error("לא הצלחנו להוסיף את החשבון. בדוק את הפרטים ונסה שוב."); }
+    finally { setBusy(false); }
+  }
   const getQuotesFn = useServerFn(getQuotes);
 
   const { data: accounts = [] } = useQuery({
@@ -109,7 +132,7 @@ function Investments() {
   return (
     <AppShell>
       <header className="px-5 md:px-0 pt-6 pb-3">
-        <h1 className="text-2xl font-bold">השקעות וחיסכון</h1>
+        <div className="flex items-center justify-between gap-2 flex-wrap"><h1 className="text-2xl font-bold">השקעות וחיסכון</h1><Button size="sm" onClick={() => setAdding(true)}><Plus className="size-4" />חשבון חדש</Button></div>
         <p className="text-sm text-muted-foreground mt-1">
           לחץ על כל חשבון כדי לעדכן את הסכום ולראות את היסטוריית השינויים.
         </p>
@@ -185,6 +208,17 @@ function Investments() {
           </div>
         </Link>
       </section>
+      <Dialog open={adding} onOpenChange={setAdding}>
+        <DialogContent dir="rtl" className="max-w-md"><DialogHeader><DialogTitle>חשבון חדש</DialogTitle></DialogHeader>
+          <form onSubmit={addAccount} className="space-y-4">
+            <label className="block text-sm">שם החשבון<Input aria-label="שם החשבון" value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} /></label>
+            <label className="block text-sm">סוג חשבון<select aria-label="סוג חשבון" value={kind} onChange={(e) => setKind(e.target.value)} className="w-full h-10 border rounded-md bg-background px-3"><option value="savings">חיסכון / פיקדון</option><option value="investment">השקעה</option><option value="pension">פנסיה</option><option value="provident">קופת גמל / השתלמות</option></select></label>
+            <label className="block text-sm">מטבע<select aria-label="מטבע" value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full h-10 border rounded-md bg-background px-3">{["ILS", "USD"].map((c) => <option key={c}>{c}</option>)}</select></label>
+            <label className="block text-sm">יתרה התחלתית<Input aria-label="יתרה התחלתית" type="number" min="0" step="0.01" inputMode="decimal" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="0" /></label>
+            <Button type="submit" disabled={busy} className="w-full">{busy ? "שומר…" : "הוסף חשבון"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

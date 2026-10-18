@@ -128,6 +128,42 @@ export type Database = {
           },
         ]
       }
+      category_budgets: {
+        Row: {
+          amount_ils: number
+          category_id: string
+          household_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_ils: number
+          category_id: string
+          household_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_ils?: number
+          category_id?: string
+          household_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_budgets_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_cards: {
         Row: {
           billing_day: number
@@ -236,6 +272,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "household_invites_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      household_media: {
+        Row: {
+          bucket_id: string
+          household_id: string
+          object_name: string
+        }
+        Insert: {
+          bucket_id: string
+          household_id: string
+          object_name: string
+        }
+        Update: {
+          bucket_id?: string
+          household_id?: string
+          object_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_media_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
