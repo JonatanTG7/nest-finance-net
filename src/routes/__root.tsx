@@ -96,16 +96,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "A smart platform for couples to manage household finances, track spending, and monitor investments.",
       },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7fb18978-d2ca-49ad-951d-5342cd2096c5/id-preview-a581730d--bb2356da-1231-44ad-8b96-47330b0e3ee6.lovable.app-1785937595497.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7fb18978-d2ca-49ad-951d-5342cd2096c5/id-preview-a581730d--bb2356da-1231-44ad-8b96-47330b0e3ee6.lovable.app-1785937595497.png",
-      },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
@@ -146,6 +136,8 @@ function RealtimeSync() {
       .on("postgres_changes", { event: "*", schema: "public", table: "transaction_tags" }, () =>
         qc.invalidateQueries({ queryKey: ["transactions"] }),
       )
+      .on("postgres_changes", { event: "*", schema: "public", table: "category_budgets" }, () => qc.invalidateQueries({ queryKey: ["category_budgets"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "investment_accounts" }, () => qc.invalidateQueries({ queryKey: ["investment_accounts"] }))
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
