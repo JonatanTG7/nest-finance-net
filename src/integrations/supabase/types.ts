@@ -279,6 +279,32 @@ export type Database = {
           },
         ]
       }
+      household_media: {
+        Row: {
+          bucket_id: string
+          household_id: string
+          object_name: string
+        }
+        Insert: {
+          bucket_id: string
+          household_id: string
+          object_name: string
+        }
+        Update: {
+          bucket_id?: string
+          household_id?: string
+          object_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_media_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       households: {
         Row: {
           created_at: string
