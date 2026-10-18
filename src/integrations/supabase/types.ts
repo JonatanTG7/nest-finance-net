@@ -128,6 +128,42 @@ export type Database = {
           },
         ]
       }
+      category_budgets: {
+        Row: {
+          amount_ils: number
+          category_id: string
+          household_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_ils: number
+          category_id: string
+          household_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_ils?: number
+          category_id?: string
+          household_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_budgets_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_cards: {
         Row: {
           billing_day: number
