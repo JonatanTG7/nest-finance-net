@@ -3,6 +3,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { Person } from "@/lib/person";
 import type { TxType } from "@/lib/finance";
 import { getMyHouseholdId } from "@/lib/household";
+import { mediaPath, signMedia, uploadPrivateMedia } from "@/lib/private-media";
 
 export type Category = Database["public"]["Tables"]["categories"]["Row"];
 export type Tag = Database["public"]["Tables"]["tags"]["Row"];
@@ -151,7 +152,8 @@ export async function fetchTransaction(id: string) {
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  return data as unknown as Transaction | null;
+  if (!data) return null;
+  return { ...data, photo_url: await signMedia(data.photo_url, "transaction-photos") } as unknown as Transaction;
 }
 
 export async function fetchInvestmentTransactions() {
@@ -232,7 +234,7 @@ async function rowFromInput(input: TransactionInput) {
     payment_method: input.payment_method ?? null,
     credit_card_id: input.credit_card_id ?? null,
 
-    photo_url: input.photo_url ?? null,
+    photo_url: input.photo_url ? mediaPath(input.photo_url, "transaction-photos") : null,
     location: input.location ?? null,
     trip_id: input.trip_id ?? null,
     household_id: householdId,
@@ -241,16 +243,7 @@ async function rowFromInput(input: TransactionInput) {
 }
 
 export async function uploadTransactionPhoto(file: File): Promise<string> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage
-    .from("transaction-photos")
-    .upload(path, file, { contentType: file.type, upsert: false });
-  if (error) throw error;
-  const { data } = await supabase.storage
-    .from("transaction-photos")
-    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-  return data?.signedUrl ?? path;
+  return uploadPrivateMedia(file, "transaction-photos");
 }
 
 export async function createTransaction(input: TransactionInput) {
