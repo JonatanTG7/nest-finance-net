@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Add total-amount installment entry and verify that only due monthly payments become transactions.
 - [x] Replace the striped fixed-expense marker with a clear icon.
 - [x] Add finite subscription payment counts without an end date, with tests and signed-in verification.
 - [x] Remove the end-of-period forecast from the home screen.

@@ -1,3 +1,14 @@
+export function installmentAmount(total: number, count: number): number {
+  if (!Number.isFinite(total) || total <= 0 || !Number.isInteger(count) || count < 1) {
+    throw new Error("צריך סכום חיובי ומספר תשלומים שלם גדול מאפס");
+  }
+  const cents = Math.round(total * 100);
+  if (cents % count !== 0) {
+    throw new Error("הסכום לא מתחלק לתשלומים שווים באגורות; בחר סכום לכל תשלום");
+  }
+  return cents / count / 100;
+}
+
 export function amountInRange(amountIls: number, min: string, max: string): boolean {
   return (min === "" || amountIls >= Number(min)) && (max === "" || amountIls <= Number(max));
 }
