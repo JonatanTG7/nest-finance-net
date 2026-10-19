@@ -591,6 +591,7 @@ export type Database = {
           household_id: string
           id: string
           name: string
+          payment_count: number | null
           payment_method: string | null
           start_date: string
           updated_at: string
@@ -609,6 +610,7 @@ export type Database = {
           household_id: string
           id?: string
           name: string
+          payment_count?: number | null
           payment_method?: string | null
           start_date?: string
           updated_at?: string
@@ -627,6 +629,7 @@ export type Database = {
           household_id?: string
           id?: string
           name?: string
+          payment_count?: number | null
           payment_method?: string | null
           start_date?: string
           updated_at?: string
