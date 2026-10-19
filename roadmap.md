@@ -1,6 +1,6 @@
 # Tasks
-- [ ] Replace the striped fixed-expense marker with a clear icon.
-- [ ] Add finite subscription payment counts without an end date, with tests and signed-in verification.
+- [x] Replace the striped fixed-expense marker with a clear icon.
+- [x] Add finite subscription payment counts without an end date, with tests and signed-in verification.
 - [x] Remove the end-of-period forecast from the home screen.
 - [x] Move recent transactions above insights and charts.
 - [x] Verify the home screen with the requesting user's signed-in account.

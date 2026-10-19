@@ -10,7 +10,14 @@ import { useMemberLabels } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
 
 export const Route = createFileRoute("/transactions/$id")({
-  head: () => ({ meta: [{ title: "פרטי תנועה" }] }),
+  head: () => ({ meta: [
+    { title: "פרטי תנועה — Family Spend" },
+    { name: "description", content: "פרטי התשלום, הסכום והקטגוריה של תנועה במשק הבית." },
+    { property: "og:title", content: "פרטי תנועה — Family Spend" },
+    { property: "og:description", content: "פרטי התשלום, הסכום והקטגוריה של תנועה במשק הבית." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ViewTx,
 });
 
