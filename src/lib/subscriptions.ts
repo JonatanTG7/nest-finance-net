@@ -2,7 +2,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyHouseholdId } from "@/lib/household";
 import { fetchRateToIls } from "@/lib/fx";
-import { isoLocal, todayISO } from "@/lib/dates";
+import { todayISO } from "@/lib/dates";
+import { dueDates } from "@/lib/subscription-schedule";
+export { billingDateIn, monthStatus } from "@/lib/subscription-schedule";
 import type { Person } from "@/lib/person";
 
 export type Subscription = {
@@ -18,6 +20,7 @@ export type Subscription = {
   credit_card_id: string | null;
   start_date: string;
   end_date: string | null;
+  payment_count: number | null;
   active: boolean;
 };
 
@@ -50,6 +53,12 @@ export function useInvalidateSubscriptions() {
 }
 
 export async function saveSubscription(input: SubscriptionInput, id?: string) {
+  if (input.payment_count != null && (!Number.isInteger(input.payment_count) || input.payment_count < 1)) {
+    throw new Error("מספר התשלומים חייב להיות מספר שלם גדול מאפס");
+  }
+  if (!input.start_date || (input.end_date && input.end_date < input.start_date)) {
+    throw new Error("תאריך הסיום חייב להיות אחרי תאריך ההתחלה");
+  }
   const household_id = await getMyHouseholdId();
   const row = { ...input, billing_day: Math.max(1, Math.min(31, Math.round(input.billing_day))) };
   if (id) {
@@ -64,35 +73,6 @@ export async function saveSubscription(input: SubscriptionInput, id?: string) {
 export async function deleteSubscription(id: string) {
   const { error } = await db.from("subscriptions").delete().eq("id", id);
   if (error) throw error;
-}
-
-function daysInMonth(y: number, m0: number) {
-  return new Date(y, m0 + 1, 0).getDate();
-}
-
-/** Billing date for a subscription within a given year/month. */
-export function billingDateIn(sub: Pick<Subscription, "billing_day">, y: number, m0: number) {
-  return isoLocal(new Date(y, m0, Math.min(sub.billing_day, daysInMonth(y, m0))));
-}
-
-/** All billing dates from start through `until` (inclusive). */
-function dueDates(sub: Subscription, until: string): string[] {
-  const out: string[] = [];
-  const [sy, sm] = sub.start_date.split("-").map(Number);
-  let y = sy;
-  let m = sm - 1;
-  const stop = sub.end_date && sub.end_date < until ? sub.end_date : until;
-  for (let i = 0; i < 600; i++) {
-    const d = billingDateIn(sub, y, m);
-    if (d > stop) break;
-    if (d >= sub.start_date) out.push(d);
-    m++;
-    if (m > 11) {
-      m = 0;
-      y++;
-    }
-  }
-  return out;
 }
 
 let syncing: Promise<number> | null = null;
@@ -160,14 +140,3 @@ async function doSync(): Promise<number> {
   return created;
 }
 
-/** Status of a subscription for the current calendar month. */
-export function monthStatus(sub: Subscription, now = new Date()) {
-  const date = billingDateIn(sub, now.getFullYear(), now.getMonth());
-  const today = isoLocal(now);
-  const inRange = date >= sub.start_date && (!sub.end_date || date <= sub.end_date);
-  const charged = date <= today;
-  const daysLeft = Math.round(
-    (new Date(date + "T00:00").getTime() - new Date(today + "T00:00").getTime()) / 86400000,
-  );
-  return { date, inRange: sub.active && inRange, charged, daysLeft };
-}
