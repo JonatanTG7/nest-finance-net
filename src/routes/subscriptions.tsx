@@ -31,7 +31,7 @@ import { todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRateToIls } from "@/lib/fx";
-import { convertedSubscriptionTotals } from "@/lib/finance-rules";
+import { convertedSubscriptionTotals, installmentAmount } from "@/lib/finance-rules";
 
 export const Route = createFileRoute("/subscriptions")({
   head: () => ({
@@ -215,6 +215,13 @@ function SubscriptionDialog({
   );
   const [busy, setBusy] = useState(false);
   const [duration, setDuration] = useState<"unlimited" | "count" | "date">(sub?.payment_count != null ? "count" : sub?.end_date ? "date" : "unlimited");
+  const [amountMode, setAmountMode] = useState<"payment" | "total">("payment");
+  let paymentAmount = f.amount;
+  let splitError = "";
+  if (duration === "count" && amountMode === "total") {
+    try { paymentAmount = installmentAmount(f.amount, f.payment_count ?? 0); }
+    catch (e) { splitError = (e as Error).message; }
+  }
   const invalidate = useInvalidateSubscriptions();
   useEffect(() => {
     if (!isCreditMethod(f.payment_method) && f.credit_card_id)
@@ -226,9 +233,10 @@ function SubscriptionDialog({
 
   const save = async () => {
     if (!f.name.trim() || !(f.amount > 0)) return toast.error("צריך שם וסכום");
+    if (splitError) return toast.error(splitError);
     setBusy(true);
     try {
-      await saveSubscription({ ...f, name: f.name.trim(), payment_count: duration === "count" ? f.payment_count ?? 0 : null, end_date: duration === "date" ? f.end_date : null }, sub?.id);
+      await saveSubscription({ ...f, amount: paymentAmount, name: f.name.trim(), payment_count: duration === "count" ? f.payment_count ?? 0 : null, end_date: duration === "date" ? f.end_date : null }, sub?.id);
       toast.success("נשמר");
       onSaved();
     } catch (e) {
@@ -268,8 +276,8 @@ function SubscriptionDialog({
             <Input
               type="number"
               inputMode="decimal"
-              placeholder="סכום"
-              aria-label="סכום לכל תשלום"
+              placeholder={duration === "count" && amountMode === "total" ? "סכום כולל" : "סכום לכל תשלום"}
+              aria-label={duration === "count" && amountMode === "total" ? "סכום כולל" : "סכום לכל תשלום"}
               value={f.amount || ""}
               onChange={(e) => set("amount", Number(e.target.value))}
             />
@@ -353,6 +361,13 @@ function SubscriptionDialog({
               מספר תשלומים
               <Input type="number" min={1} step={1} value={f.payment_count ?? ""} onChange={(e) => set("payment_count", e.target.value === "" ? null : Number(e.target.value))} />
             </label>}
+            {duration === "count" && <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="סוג הסכום">
+                <Button type="button" size="sm" variant={amountMode === "payment" ? "default" : "outline"} aria-pressed={amountMode === "payment"} onClick={() => { if (amountMode === "total" && !splitError) set("amount", paymentAmount); setAmountMode("payment"); }}>סכום לכל תשלום</Button>
+                <Button type="button" size="sm" variant={amountMode === "total" ? "default" : "outline"} aria-pressed={amountMode === "total"} onClick={() => { if (amountMode === "payment") set("amount", Math.round(f.amount * (f.payment_count ?? 1) * 100) / 100); setAmountMode("total"); }}>סכום כולל</Button>
+              </div>
+              {amountMode === "total" && f.amount > 0 && <p className={splitError ? "text-destructive" : "text-muted-foreground"} role="status">{splitError || `${f.payment_count} תשלומים × ${new Intl.NumberFormat("he-IL", { style: "currency", currency: f.currency }).format(paymentAmount)}`}</p>}
+            </div>}
             {duration === "date" && <label className="block">
               תאריך סיום
               <Input

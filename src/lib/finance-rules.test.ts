@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { amountInRange, budgetProgress, categorySpent, convertedSubscriptionTotals } from "./finance-rules";
+import { amountInRange, budgetProgress, categorySpent, convertedSubscriptionTotals, installmentAmount } from "./finance-rules";
 
 describe("household finance rules", () => {
+  it("splits a total of 2000 into five monthly payments of 400", () => {
+    expect(installmentAmount(2000, 5)).toBe(400);
+  });
+  it("rejects invalid counts and totals that cannot split equally into cents", () => {
+    expect(() => installmentAmount(2000, 0)).toThrow();
+    expect(() => installmentAmount(2000, 2.5)).toThrow();
+    expect(() => installmentAmount(10, 3)).toThrow();
+  });
   it("converts USD subscriptions to ILS before summing", () => {
     expect(convertedSubscriptionTotals([{ amount: 15, currency: "USD", charged: true }, { amount: 100, currency: "ILS", charged: false }], { USD: 3.7 })).toEqual({ total: 155.5, charged: 55.5, pending: 100 });
   });
