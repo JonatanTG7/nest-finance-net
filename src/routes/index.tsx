@@ -18,7 +18,7 @@ import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
 import { UpcomingCharges } from "@/components/UpcomingCharges";
 import { CategoryBudgets } from "@/components/CategoryBudgets";
-import { Plane, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Plane, TrendingUp, TrendingDown, Minus, Repeat2, ReceiptText } from "lucide-react";
 
 import { fetchTrips, tripStatus } from "@/lib/trips";
 import { fetchAllTransactions, fetchTransactionsBetween, type Transaction } from "@/lib/db";
@@ -724,10 +724,9 @@ function TxRow({ tx }: { tx: Transaction }) {
       className="flex items-center gap-3 p-4 hover:bg-accent/50 active:bg-accent/50"
     >
       <div
-        className="size-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-        style={{ background: tx.category?.color ?? "#888" }}
+        className={cn("size-10 rounded-full flex items-center justify-center text-xl shrink-0", tx.type === "fixed" ? "bg-fixed/15 text-fixed" : "bg-muted text-muted-foreground")}
       >
-        {tx.title.slice(0, 1)}
+        {tx.type === "fixed" ? <Repeat2 className="size-5" aria-label="חיוב קבוע" /> : tx.category?.emoji ?? <ReceiptText className="size-5" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{tx.title}</p>

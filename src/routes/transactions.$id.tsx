@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Pencil, Trash2, ArrowRight } from "lucide-react";
+import { Pencil, Trash2, ArrowRight, Repeat2, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { deleteTransaction, fetchTransaction } from "@/lib/db";
@@ -10,7 +10,14 @@ import { useMemberLabels } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
 
 export const Route = createFileRoute("/transactions/$id")({
-  head: () => ({ meta: [{ title: "פרטי תנועה" }] }),
+  head: () => ({ meta: [
+    { title: "פרטי תנועה — Family Spend" },
+    { name: "description", content: "פרטי התשלום, הסכום והקטגוריה של תנועה במשק הבית." },
+    { property: "og:title", content: "פרטי תנועה — Family Spend" },
+    { property: "og:description", content: "פרטי התשלום, הסכום והקטגוריה של תנועה במשק הבית." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ViewTx,
 });
 
@@ -91,7 +98,7 @@ function ViewTx() {
             className="mx-auto size-16 rounded-2xl flex items-center justify-center text-3xl mb-3"
             style={{ background: color + "22" }}
           >
-            {tx.category?.emoji ?? tx.title.slice(0, 1)}
+            {tx.type === "fixed" ? <Repeat2 className="size-7 text-fixed" aria-label="חיוב קבוע" /> : tx.category?.emoji ?? <ReceiptText className="size-7" />}
           </div>
           <h1 className="text-xl font-semibold">{tx.title}</h1>
           <p

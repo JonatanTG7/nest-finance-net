@@ -129,6 +129,7 @@ function SubscriptionsPage() {
                         כל {s.billing_day} לחודש · {labels[s.entered_by]}
                         {card ? ` · ${cardLabel(card)}` : method ? ` · ${method}` : ""}
                       </p>
+                      {s.payment_count != null && <p className="text-xs text-muted-foreground">{st.completed ? "הסתיימו התשלומים" : st.paymentNumber > 0 ? `תשלום ${st.paymentNumber} מתוך ${s.payment_count}` : `${s.payment_count} תשלומים`}</p>}
                     </div>
                     <div className="text-end shrink-0">
                       <p className="font-bold tabular-nums">
@@ -208,10 +209,12 @@ function SubscriptionDialog({
       credit_card_id: null,
       start_date: todayISO(),
       end_date: null,
+      payment_count: null,
       active: true,
     },
   );
   const [busy, setBusy] = useState(false);
+  const [duration, setDuration] = useState<"unlimited" | "count" | "date">(sub?.payment_count != null ? "count" : sub?.end_date ? "date" : "unlimited");
   const invalidate = useInvalidateSubscriptions();
   useEffect(() => {
     if (!isCreditMethod(f.payment_method) && f.credit_card_id)
@@ -225,7 +228,7 @@ function SubscriptionDialog({
     if (!f.name.trim() || !(f.amount > 0)) return toast.error("צריך שם וסכום");
     setBusy(true);
     try {
-      await saveSubscription({ ...f, name: f.name.trim() }, sub?.id);
+      await saveSubscription({ ...f, name: f.name.trim(), payment_count: duration === "count" ? f.payment_count ?? 0 : null, end_date: duration === "date" ? f.end_date : null }, sub?.id);
       toast.success("נשמר");
       onSaved();
     } catch (e) {
@@ -244,7 +247,7 @@ function SubscriptionDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent dir="rtl" className="max-w-md">
+      <DialogContent dir="rtl" className="max-w-md max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{sub ? "עריכת מנוי" : "מנוי חדש"}</DialogTitle>
         </DialogHeader>
@@ -266,6 +269,7 @@ function SubscriptionDialog({
               type="number"
               inputMode="decimal"
               placeholder="סכום"
+              aria-label="סכום לכל תשלום"
               value={f.amount || ""}
               onChange={(e) => set("amount", Number(e.target.value))}
             />
@@ -331,23 +335,32 @@ function SubscriptionDialog({
               ))}
             </select>
           )}
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="space-y-3 text-sm">
             <label>
-              מתאריך
+              תחילת המנוי
               <Input
                 type="date"
                 value={f.start_date}
                 onChange={(e) => set("start_date", e.target.value)}
               />
             </label>
-            <label>
-              עד (לא חובה)
+            <div className="grid grid-cols-3 gap-1" role="group" aria-label="משך המנוי">
+              {([{ key: "unlimited", label: "ללא הגבלה" }, { key: "count", label: "מס׳ תשלומים" }, { key: "date", label: "תאריך סיום" }] as const).map(({ key, label }) => (
+                <Button key={key} type="button" size="sm" variant={duration === key ? "default" : "outline"} aria-pressed={duration === key} onClick={() => { setDuration(key); if (key === "count" && f.payment_count == null) set("payment_count", 5); }}>{label}</Button>
+              ))}
+            </div>
+            {duration === "count" && <label className="block">
+              מספר תשלומים
+              <Input type="number" min={1} step={1} value={f.payment_count ?? ""} onChange={(e) => set("payment_count", e.target.value === "" ? null : Number(e.target.value))} />
+            </label>}
+            {duration === "date" && <label className="block">
+              תאריך סיום
               <Input
                 type="date"
                 value={f.end_date ?? ""}
                 onChange={(e) => set("end_date", e.target.value || null)}
               />
-            </label>
+            </label>}
           </div>
           <p className="text-xs text-muted-foreground">
             התנועה תירשם אוטומטית רק ביום החיוב עצמו. שינוי סכום חל מעכשיו והלאה.

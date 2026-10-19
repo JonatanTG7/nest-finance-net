@@ -15,6 +15,13 @@
       "when": 1792306091787,
       "tag": "0001_isolate_household_media",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792395735688,
+      "tag": "0002_subscription_payment_count",
+      "breakpoints": true
     }
   ]
 }
