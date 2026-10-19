@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, Repeat2, ReceiptText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
 import { MonthCalendar } from "@/components/MonthCalendar";
@@ -635,10 +635,9 @@ function TransactionsList() {
                       className="flex items-center gap-3 p-4 hover:bg-accent/50 active:bg-accent/50"
                     >
                       <div
-                        className="size-10 rounded-full flex items-center justify-center text-lg shrink-0"
-                        style={{ background: (t.category?.color ?? "#888") + "22" }}
+                        className={cn("size-10 rounded-full flex items-center justify-center text-lg shrink-0", t.type === "fixed" ? "bg-fixed/15 text-fixed" : "bg-muted text-muted-foreground")}
                       >
-                        {t.category?.emoji ?? t.title.slice(0, 1)}
+                        {t.type === "fixed" ? <Repeat2 className="size-5" aria-label="חיוב קבוע" /> : t.category?.emoji ?? <ReceiptText className="size-5" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{t.title}</p>
