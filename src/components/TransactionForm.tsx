@@ -8,6 +8,7 @@ import {
   X,
   MapPin,
   Camera,
+  ImagePlus,
   Calendar as CalIcon,
   Pencil,
   Loader2,
@@ -69,6 +70,8 @@ import { todayISO, isoLocal } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
 import { scanReceipt } from "@/lib/receipts.functions";
+import { matchReceiptCard, receiptTitle } from "@/lib/receipt-rules";
+import { Button } from "@/components/ui/button";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
 const CURRENCIES = [
@@ -261,6 +264,8 @@ export function TransactionForm({
   }
 
   const [scanning, setScanning] = useState(false);
+  const scanCamera = useRef<HTMLInputElement>(null);
+  const scanGallery = useRef<HTMLInputElement>(null);
   async function handleScan(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -273,7 +278,10 @@ export function TransactionForm({
       const cv = document.createElement("canvas");
       cv.width = Math.round(bmp.width * scale);
       cv.height = Math.round(bmp.height * scale);
-      cv.getContext("2d")!.drawImage(bmp, 0, 0, cv.width, cv.height);
+      const ctx = cv.getContext("2d");
+      if (!ctx) { bmp.close(); throw new Error("לא ניתן לקרוא את התמונה"); }
+      ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
+      bmp.close();
       const dataUrl = cv.toDataURL("image/jpeg", 0.8);
       const expenseCats = categories.filter((c) => c.type === "expense");
       const res = await scanReceipt({
@@ -289,12 +297,22 @@ export function TransactionForm({
       }
       setType("expense");
       if (res.amount != null) setAmount(String(res.amount));
-      if (res.merchant) setTitle(res.merchant);
+      const scannedTitle = receiptTitle(res.merchant, res.area);
+      if (scannedTitle) setTitle(scannedTitle);
+      if (res.area) setLocation(res.area);
       if (res.date) setDate(res.date);
+      setPaymentMethod(res.paymentMethod);
+      const scannedCard = res.paymentMethod === "credit" ? matchReceiptCard(res.cardLastFour, creditCards) : null;
+      setCreditCardId(scannedCard?.id ?? null);
       const cat = expenseCats.find((c) => c.name === res.category);
       if (cat) setCategoryId(cat.id);
       setStep(2);
       toast.success("החשבונית נקראה — בדוק את הפרטים ושמור");
+      if (res.paymentMethod === "credit" && !scannedCard) {
+        toast.info(`בחר את הכרטיס ומי שילם${res.cardBrand ? ` · ${res.cardBrand}` : ""}${res.cardLastFour ? ` · ${res.cardLastFour}` : ""}`);
+      } else if (!res.paymentMethod) {
+        toast.info("אמצעי התשלום לא זוהה — בחר אותו ומי שילם");
+      }
     } catch (err) {
       console.error(err);
       toast.error("לא הצלחנו לקרוא את התמונה");
@@ -528,21 +546,15 @@ export function TransactionForm({
           </header>
 
           {!existing && (
-            <label
-              className={cn(
-                "mb-4 flex items-center justify-center gap-2 h-12 rounded-2xl border border-dashed bg-card text-sm font-medium cursor-pointer",
-                scanning && "opacity-60 pointer-events-none",
-              )}
-            >
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleScan}
-              />
-              {scanning ? "מפענח חשבונית..." : "📸 סרוק חשבונית"}
-            </label>
+            <div className="mb-4">
+              <input ref={scanCamera} type="file" accept="image/*" capture="environment" aria-label="צילום חשבונית" className="hidden" onChange={handleScan} disabled={scanning} />
+              <input ref={scanGallery} type="file" accept="image/*" aria-label="חשבונית מהגלריה" className="hidden" onChange={handleScan} disabled={scanning} />
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" className="h-12" disabled={scanning} onClick={() => scanCamera.current?.click()}><Camera />צילום חשבונית</Button>
+                <Button type="button" variant="outline" className="h-12" disabled={scanning} onClick={() => scanGallery.current?.click()}><ImagePlus />מהגלריה</Button>
+              </div>
+              {scanning && <p role="status" className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />מפענח חשבונית…</p>}
+            </div>
           )}
 
 
