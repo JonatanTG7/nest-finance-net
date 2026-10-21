@@ -68,6 +68,7 @@ import { getDefaultCurrency } from "@/lib/personal_settings";
 import { todayISO, isoLocal } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
+import { scanReceipt } from "@/lib/receipts.functions";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
 const CURRENCIES = [

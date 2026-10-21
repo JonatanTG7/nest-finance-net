@@ -33,7 +33,7 @@ export const scanReceipt = createServerFn({ method: "POST" })
         method: "POST",
         headers: { "content-type": "application/json", Authorization: `Bearer ${key}` },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-3.8-flash",
           max_tokens: 300,
           messages: [
             { role: "system", content: prompt },
