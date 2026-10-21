@@ -9,7 +9,14 @@ export const Route = createFileRoute("/transactions/new")({
         ? search.date
         : undefined,
   }),
-  head: () => ({ meta: [{ title: "תנועה חדשה" }] }),
+  head: () => ({ meta: [
+    { title: "תנועה חדשה וסריקת חשבונית — Family Spend" },
+    { name: "description", content: "הוספת תנועה משפחתית מצילום חשבונית או מהגלריה, עם פרטי העסק והתשלום." },
+    { property: "og:title", content: "תנועה חדשה — Family Spend" },
+    { property: "og:description", content: "סריקת חשבונית והוספת הוצאה למשק הבית." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: NewTransaction,
 });
 
