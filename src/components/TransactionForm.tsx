@@ -68,6 +68,7 @@ import { getDefaultCurrency } from "@/lib/personal_settings";
 import { todayISO, isoLocal } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TxType } from "@/lib/finance";
+import { scanReceipt } from "@/lib/receipts.functions";
 
 const TYPES: TxType[] = ["expense", "income", "fixed", "investment"];
 const CURRENCIES = [
@@ -257,6 +258,49 @@ export function TransactionForm({
   function chooseCategory(c: Category) {
     setCategoryId(c.id);
     setStep(2);
+  }
+
+  const [scanning, setScanning] = useState(false);
+  async function handleScan(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setScanning(true);
+    try {
+      // Shrink in memory only — the photo is never uploaded to storage.
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(bmp.width * scale);
+      cv.height = Math.round(bmp.height * scale);
+      cv.getContext("2d")!.drawImage(bmp, 0, 0, cv.width, cv.height);
+      const dataUrl = cv.toDataURL("image/jpeg", 0.8);
+      const expenseCats = categories.filter((c) => c.type === "expense");
+      const res = await scanReceipt({
+        data: {
+          imageBase64: dataUrl,
+          mediaType: "image/jpeg",
+          categories: expenseCats.map((c) => c.name),
+        },
+      });
+      if (!res.ok) {
+        toast.error(res.error ?? "הסריקה נכשלה");
+        return;
+      }
+      setType("expense");
+      if (res.amount != null) setAmount(String(res.amount));
+      if (res.merchant) setTitle(res.merchant);
+      if (res.date) setDate(res.date);
+      const cat = expenseCats.find((c) => c.name === res.category);
+      if (cat) setCategoryId(cat.id);
+      setStep(2);
+      toast.success("החשבונית נקראה — בדוק את הפרטים ושמור");
+    } catch (err) {
+      console.error(err);
+      toast.error("לא הצלחנו לקרוא את התמונה");
+    } finally {
+      setScanning(false);
+    }
   }
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -482,6 +526,25 @@ export function TransactionForm({
             <h1 className="text-xl font-bold">בחר קטגוריה</h1>
             <div className="w-10" />
           </header>
+
+          {!existing && (
+            <label
+              className={cn(
+                "mb-4 flex items-center justify-center gap-2 h-12 rounded-2xl border border-dashed bg-card text-sm font-medium cursor-pointer",
+                scanning && "opacity-60 pointer-events-none",
+              )}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleScan}
+              />
+              {scanning ? "מפענח חשבונית..." : "📸 סרוק חשבונית"}
+            </label>
+          )}
+
 
           <div className="flex gap-2 overflow-x-auto -mx-5 md:mx-0 px-5 md:px-0 pb-3">
             {TYPES.map((t) => (
