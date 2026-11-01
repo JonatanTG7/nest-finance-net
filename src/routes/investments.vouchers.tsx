@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { Plus, Search, ChevronRight, X } from "lucide-react";
+import { Plus, Search, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { VoucherUploadDialog } from "@/components/vouchers/VoucherUploadDialog";
 import { VoucherDetailDialog } from "@/components/vouchers/VoucherDetailDialog";
+import { VoucherCashierView } from "@/components/vouchers/VoucherCashierView";
 import { fetchVouchers, isExpired, type Voucher } from "@/lib/vouchers";
 import { formatILS } from "@/lib/finance";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,7 @@ function VouchersPage() {
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Voucher | null>(null);
-  const [zoomedImage, setZoomedImage] = useState<{ url: string; label: string } | null>(null);
+  const [cashierStart, setCashierStart] = useState<number | null>(null);
 
   const { data: vouchers = [], isLoading } = useQuery({
     queryKey: ["vouchers"],
@@ -59,6 +59,11 @@ function VouchersPage() {
     const needle = q.trim();
     return needle ? vouchers.filter((v) => matches(v.label, needle)) : vouchers;
   }, [vouchers, q]);
+
+  const active = useMemo(
+    () => filtered.filter((v) => Number(v.remaining_value) > 0 && !isExpired(v)),
+    [filtered],
+  );
 
   const totals = useMemo(() => {
     const remaining = filtered.reduce((a, v) => a + Number(v.remaining_value), 0);
@@ -146,6 +151,17 @@ function VouchersPage() {
         </section>
       )}
 
+      {active.length > 0 && (
+        <div className="px-5 md:px-0 mt-3">
+          <button
+            onClick={() => setCashierStart(0)}
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold"
+          >
+            הצג בקופה ({active.length}) ⚡
+          </button>
+        </div>
+      )}
+
       <div className="px-5 md:px-0 mt-4 pb-6 space-y-5">
         {isLoading ? (
           <p className="text-center text-sm text-muted-foreground py-10">טוען…</p>
@@ -165,9 +181,12 @@ function VouchersPage() {
                       {v.image_url ? (
                         <button
                           type="button"
-                          onClick={() => setZoomedImage({ url: v.image_url!, label: v.label })}
+                          onClick={() => {
+                            const i = active.findIndex((a) => a.id === v.id);
+                            if (i >= 0) setCashierStart(i);
+                          }}
                           className="shrink-0 active:scale-95 transition-transform"
-                          aria-label="הגדל תמונה"
+                          aria-label="פתח בקופה"
                         >
                           <img
                             src={v.image_url}
@@ -230,30 +249,14 @@ function VouchersPage() {
         onChanged={invalidate}
       />
 
-      {/* תצוגת זום לתמונה */}
-      {zoomedImage &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
-            onClick={() => setZoomedImage(null)}
-          >
-            <button
-              type="button"
-              onClick={() => setZoomedImage(null)}
-              className="absolute top-4 left-4 size-10 rounded-full bg-white/10 text-white flex items-center justify-center"
-              aria-label="סגור"
-            >
-              <X className="size-5" />
-            </button>
-            <img
-              src={zoomedImage.url}
-              alt={zoomedImage.label}
-              className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>,
-          document.body,
-        )}
+      {cashierStart !== null && (
+        <VoucherCashierView
+          vouchers={active}
+          startIndex={cashierStart}
+          onClose={() => setCashierStart(null)}
+          onChanged={invalidate}
+        />
+      )}
     </AppShell>
   );
 }

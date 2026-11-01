@@ -56,23 +56,39 @@ export function VoucherUploadDialog({
     setBusy(false);
   }, [open]);
 
-  async function onPickFile(file: File) {
+  async function shrink(file: File): Promise<File> {
+    try {
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(bmp.width * scale);
+      cv.height = Math.round(bmp.height * scale);
+      cv.getContext("2d")!.drawImage(bmp, 0, 0, cv.width, cv.height);
+      const blob = await new Promise<Blob | null>((r) => cv.toBlob(r, "image/jpeg", 0.88));
+      return blob ? new File([blob], "voucher.jpg", { type: "image/jpeg" }) : file;
+    } catch {
+      return file;
+    }
+  }
+
+  async function onPickFile(original: File) {
     setScanning(true);
     setNote(null);
-    try {
-      const [url, base64] = await Promise.all([
-        uploadVoucherPhoto(file),
-        new Promise<string>((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(String(fr.result).split(",")[1] ?? "");
-          fr.onerror = () => reject(fr.error);
-          fr.readAsDataURL(file);
-        }),
-      ]);
-      setImageUrl(url);
-      const res = await extract({
-        data: { imageBase64: base64, mediaType: file.type || "image/jpeg" },
+    const file = await shrink(original);
+    const upload = uploadVoucherPhoto(file)
+      .then((url) => setImageUrl(url))
+      .catch((e) => {
+        console.error(e);
+        setNote("שמירת התמונה נכשלה — נסה שוב.");
       });
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result).split(",")[1] ?? "");
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(file);
+      });
+      const res = await extract({ data: { imageBase64: base64, mediaType: file.type || "image/jpeg" } });
       if (res.label) setLabel(res.label);
       if (res.amount != null) setAmount(String(res.amount));
       if (res.barcode) setBarcode(res.barcode);
@@ -86,8 +102,9 @@ export function VoucherUploadDialog({
       );
     } catch (e) {
       console.error(e);
-      setNote("שגיאה בהעלאת התמונה, אפשר למלא ידנית.");
+      setNote("קריאת השובר נכשלה, אפשר למלא ידנית.");
     } finally {
+      await upload;
       setScanning(false);
     }
   }

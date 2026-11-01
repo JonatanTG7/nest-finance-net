@@ -69,3 +69,13 @@ export function isExpired(v: Voucher): boolean {
   if (!v.expiry_date) return false;
   return v.expiry_date < todayISO();
 }
+
+/** Marks a voucher fully used and deletes its photo from storage; the record stays for history. */
+export async function markVoucherUsed(v: Voucher): Promise<void> {
+  const { error } = await supabase.from("vouchers").update({ remaining_value: 0, image_url: null }).eq("id", v.id);
+  if (error) throw error;
+  if (v.image_url) {
+    const { error: rmError } = await supabase.storage.from("voucher-photos").remove([mediaPath(v.image_url, "voucher-photos")]);
+    if (rmError) console.error("[vouchers] photo delete failed", rmError);
+  }
+}
