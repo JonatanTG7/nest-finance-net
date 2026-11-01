@@ -23,11 +23,11 @@ const PROMPT = `You read photos of gift cards / vouchers (Israeli: תן ביס, 
 Return ONLY a JSON object matching this schema, no prose, no markdown fences.
 If a field is not visible, use null.
 {
-  "label": string | null,        // merchant / voucher name, in Hebrew if the voucher is Hebrew
-  "amount": number | null,       // face value as a number, e.g. 30.00
+  "label": string | null,        // the store chain the voucher is redeemable at, as printed (e.g. "רמי לוי בשכונה", "בי פארם"). Ignore issuer words like "כלל ארצי", "תו קניה", "שובר".
+  "amount": number | null,       // face value or current balance ("יתרה עדכנית", "סכום עסקה"), e.g. 30.00
   "currency": string,            // "ILS" if not detected
-  "barcode": string | null,      // digits only
-  "expiry_date": string | null,  // ISO yyyy-mm-dd
+  "barcode": string | null,      // the code printed under the barcode or on the card, digits and dashes only, e.g. "150279833-9292"
+  "expiry_date": string | null,  // ISO yyyy-mm-dd; Israeli dates are dd.mm.yy. Null if only a relative period like "5 years" is given.
   "confidence": "high" | "low"
 }`;
 
@@ -48,7 +48,7 @@ function parseExtraction(raw: string): VoucherExtraction {
         : typeof o.amount === "string" && o.amount.trim() !== "" && !isNaN(Number(o.amount))
           ? Number(o.amount)
           : null;
-    const barcode = typeof o.barcode === "string" ? o.barcode.replace(/\D/g, "") || null : null;
+    const barcode = typeof o.barcode === "string" ? o.barcode.replace(/[^\d-]/g, "").replace(/^-+|-+$/g, "") || null : null;
     const expiry =
       typeof o.expiry_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.expiry_date)
         ? o.expiry_date
@@ -81,7 +81,7 @@ async function viaAnthropic(
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
-      max_tokens: 300,
+      max_tokens: 1500,
       system: PROMPT,
       messages: [
         {
@@ -114,8 +114,8 @@ async function viaLovableGateway(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      max_tokens: 300,
+      model: "google/gemini-3.8-flash",
+      max_tokens: 1500,
       messages: [
         { role: "system", content: PROMPT },
         {
