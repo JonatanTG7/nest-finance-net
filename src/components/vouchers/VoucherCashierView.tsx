@@ -107,3 +107,65 @@ export function VoucherCashierView({
     document.body,
   );
 }
+
+function ZoomImage({ src, alt }: { src: string; alt: string }) {
+  const [t, setT] = useState({ s: 1, x: 0, y: 0 });
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  const start = useRef<{ d: number; s: number; cx: number; cy: number; x: number; y: number } | null>(null);
+  const lastTap = useRef(0);
+
+  const snapshot = () => {
+    const p = [...pts.current.values()];
+    if (p.length === 2) {
+      const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+      start.current = { d, s: t.s, cx: (p[0].x + p[1].x) / 2, cy: (p[0].y + p[1].y) / 2, x: t.x, y: t.y };
+    } else if (p.length === 1) {
+      start.current = { d: 0, s: t.s, cx: p[0].x, cy: p[0].y, x: t.x, y: t.y };
+    } else start.current = null;
+  };
+  const release = (id: number) => {
+    pts.current.delete(id);
+    snapshot();
+  };
+
+  return (
+    <div
+      className="w-full h-full flex items-center justify-center touch-none select-none"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pts.current.size === 1) {
+          const now = Date.now();
+          if (now - lastTap.current < 300) setT((c) => (c.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2.5, x: 0, y: 0 }));
+          lastTap.current = now;
+        }
+        snapshot();
+      }}
+      onPointerMove={(e) => {
+        const st = start.current;
+        if (!pts.current.has(e.pointerId) || !st) return;
+        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const p = [...pts.current.values()];
+        if (p.length === 2 && st.d > 0) {
+          const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+          const cx = (p[0].x + p[1].x) / 2;
+          const cy = (p[0].y + p[1].y) / 2;
+          const s = Math.min(5, Math.max(1, (st.s * d) / st.d));
+          setT(s === 1 ? { s: 1, x: 0, y: 0 } : { s, x: st.x + cx - st.cx, y: st.y + cy - st.cy });
+        } else if (p.length === 1 && t.s > 1) {
+          setT((c) => ({ ...c, x: st.x + p[0].x - st.cx, y: st.y + p[0].y - st.cy }));
+        }
+      }}
+      onPointerUp={(e) => release(e.pointerId)}
+      onPointerCancel={(e) => release(e.pointerId)}
+    >
+      <img
+        src={src}
+        alt={alt}
+        draggable={false}
+        className="w-full h-full object-contain rounded-xl"
+        style={{ transform: `translate(${t.x}px, ${t.y}px) scale(${t.s})` }}
+      />
+    </div>
+  );
+}
