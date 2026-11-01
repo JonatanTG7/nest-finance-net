@@ -19,7 +19,6 @@ export function VoucherCashierView({
   const [index, setIndex] = useState(startIndex);
   const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
-  const touchX = useRef<number | null>(null);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
