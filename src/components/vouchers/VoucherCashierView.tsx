@@ -51,17 +51,7 @@ export function VoucherCashierView({
   const isUsed = usedIds.has(v.id) || Number(v.remaining_value) <= 0;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] bg-background flex flex-col"
-      dir="rtl"
-      onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
-      onTouchEnd={(e) => {
-        if (touchX.current == null) return;
-        const dx = e.changedTouches[0].clientX - touchX.current;
-        touchX.current = null;
-        if (Math.abs(dx) > 50) go(dx > 0 ? 1 : -1);
-      }}
-    >
+    <div className="fixed inset-0 z-[100] bg-background flex flex-col" dir="rtl">
       <header className="flex items-center gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 border-b">
         <button onClick={onClose} className="size-10 rounded-full bg-muted flex items-center justify-center" aria-label="סגור">
           <X className="size-5" />
@@ -83,9 +73,9 @@ export function VoucherCashierView({
         </div>
       ) : (
         <>
-          <div className="flex-1 min-h-0 relative flex items-center justify-center p-3">
+          <div className="flex-1 min-h-0 relative flex items-center justify-center p-2 overflow-hidden">
             {v.image_url && !usedIds.has(v.id) ? (
-              <img src={v.image_url} alt={v.label} className="max-w-full max-h-full object-contain rounded-xl bg-white" />
+              <ZoomImage key={v.id} src={v.image_url} alt={v.label} />
             ) : (
               <p className="text-muted-foreground text-sm">{isUsed ? "השובר נוצל" : "אין תמונה לשובר זה"}</p>
             )}
