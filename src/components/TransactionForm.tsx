@@ -273,15 +273,24 @@ export function TransactionForm({
     setScanning(true);
     try {
       // Shrink in memory only — the photo is never uploaded to storage.
-      const bmp = await createImageBitmap(file);
-      const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      // Fallback to <img> decoding for formats createImageBitmap rejects (e.g. iPhone HEIC).
+      const src: { el: CanvasImageSource; w: number; h: number; done: () => void } = await createImageBitmap(file)
+        .then((b) => ({ el: b as CanvasImageSource, w: b.width, h: b.height, done: () => b.close() }))
+        .catch(async () => {
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.src = url;
+          await img.decode();
+          return { el: img as CanvasImageSource, w: img.naturalWidth, h: img.naturalHeight, done: () => URL.revokeObjectURL(url) };
+        });
+      const scale = Math.min(1, 1600 / Math.max(src.w, src.h));
       const cv = document.createElement("canvas");
-      cv.width = Math.round(bmp.width * scale);
-      cv.height = Math.round(bmp.height * scale);
+      cv.width = Math.round(src.w * scale);
+      cv.height = Math.round(src.h * scale);
       const ctx = cv.getContext("2d");
-      if (!ctx) { bmp.close(); throw new Error("לא ניתן לקרוא את התמונה"); }
-      ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
-      bmp.close();
+      if (!ctx) { src.done(); throw new Error("לא ניתן לקרוא את התמונה"); }
+      ctx.drawImage(src.el, 0, 0, cv.width, cv.height);
+      src.done();
       const dataUrl = cv.toDataURL("image/jpeg", 0.8);
       const expenseCats = categories.filter((c) => c.type === "expense");
       const res = await scanReceipt({

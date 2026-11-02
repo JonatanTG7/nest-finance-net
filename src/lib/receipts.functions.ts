@@ -41,7 +41,7 @@ Never guess absent fields or who owns a card. Prefer Hebrew place names as print
         headers: { "content-type": "application/json", Authorization: `Bearer ${key}`, "X-Lovable-AIG-SDK": "fetch" },
         body: JSON.stringify({
           model: "google/gemini-3.8-flash",
-          max_tokens: 300,
+          max_tokens: 1500,
           messages: [
             { role: "system", content: prompt },
             {
