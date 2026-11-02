@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Sun, Moon, Copy, LogOut, Users, Plus, ArrowLeft, ShieldAlert, Coins } from "lucide-react";
 import { toast } from "sonner";
-import { MobileLayout } from "@/components/MobileLayout";
+import { AppShell } from "@/components/AppShell";
 import { CreditCardsSection } from "@/components/CreditCardsSection";
 
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
@@ -58,7 +58,7 @@ function Settings() {
   }
 
   return (
-    <MobileLayout>
+    <AppShell>
       <header className="px-5 pt-6 pb-3">
         <h1 className="text-2xl font-bold">הגדרות</h1>
       </header>
@@ -220,7 +220,7 @@ function Settings() {
           התנתק
         </button>
       </section>
-    </MobileLayout>
+    </AppShell>
   );
 }
 
