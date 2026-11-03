@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Review selected trip CSV expenses individually, complete missing fields, and verify saving and progression.
 - [x] Extend receipt scan with camera/gallery, location, payment method and reliable card/payer matching; verify extraction and tests.
 - [x] Add total-amount installment entry and verify that only due monthly payments become transactions.
 - [x] Replace the striped fixed-expense marker with a clear icon.

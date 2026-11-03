@@ -5,3 +5,4 @@
 - Centralize currency-summary, installment splitting, amount-filter and budget arithmetic in pure finance rules with tests; save subscription amounts per charge, not as purchase totals, so generation and summaries retain the same monetary rules.
 - Create accounts through the existing investment_accounts model and convert their initial balance before insertion; this preserves existing account screens and totals.
 - Store private media by household-prefixed object path and sign it only for display; this enforces household isolation without durable bearer links.
+- Review trip CSV expenses as independent drafts and save each completed row before advancing; this preserves per-transaction details and avoids re-importing successful rows after a failure.
