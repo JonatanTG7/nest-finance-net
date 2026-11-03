@@ -117,7 +117,7 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
                 <option value="">ללא קטגוריה</option>
                 {expenseCats.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.icon} {c.name}
+                    {c.emoji ?? ""} {c.name}
                   </option>
                 ))}
               </select>
