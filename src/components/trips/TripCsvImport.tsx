@@ -1,152 +1,128 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FileUp } from "lucide-react";
+import { FileUp, ArrowRight, ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { parseExpenseCsv, type CsvExpenseRow } from "@/lib/csv-import";
+import { parseExpenseCsv } from "@/lib/csv-import";
+import { draftError, tripCsvDrafts, type TripCsvDraft } from "@/lib/trip-csv-review";
 import { createTransaction, fetchCategories } from "@/lib/db";
 import { fetchRateToIls } from "@/lib/fx";
 import { getDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
-import { cn } from "@/lib/utils";
+import { usePaymentMethods } from "@/lib/payment_methods";
+import { cardLabel, isBitLabel, isCreditMethod, useCreditCards } from "@/lib/credit_cards";
 
 export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCurrency: string }) {
   const qc = useQueryClient();
   const labels = useMemberLabels();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [rows, setRows] = useState<(CsvExpenseRow & { on: boolean })[] | null>(null);
-  const [person, setPerson] = useState<Person>(getDefaultPerson());
-  const [categoryId, setCategoryId] = useState<string>("");
+  const busy = useRef(false);
+  const rates = useRef(new Map<string, number>());
+  const [rows, setRows] = useState<TripCsvDraft[] | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [saved, setSaved] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
+  const { data: paymentMethods = [] } = usePaymentMethods();
+  const { data: cards = [] } = useCreditCards();
   const expenseCats = categories.filter((c) => c.type === "expense");
+  const chosen = rows?.filter((r) => r.on) ?? [];
+  const current = chosen[index];
+  const needsCard = current && (isCreditMethod(current.paymentMethod) || isBitLabel(paymentMethods.find((p) => p.key === current.paymentMethod)?.label));
 
   async function onFile(f: File | undefined) {
     if (!f) return;
-    const parsed = parseExpenseCsv(await f.text());
-    if (parsed.length === 0) {
-      toast.error("לא נמצאו שורות עם תאריך וסכום בקובץ");
-      return;
-    }
-    setRows(parsed.map((r) => ({ ...r, currency: r.currency ?? tripCurrency, on: true })));
-  }
-
-  async function save() {
-    if (!rows) return;
-    const chosen = rows.filter((r) => r.on);
-    setSaving(true);
     try {
-      const rates = new Map<string, number>();
-      for (const c of new Set(chosen.map((r) => r.currency!))) rates.set(c, await fetchRateToIls(c));
-      for (const r of chosen) {
-        await createTransaction({
-          type: "expense",
-          amount: r.amount,
-          currency: r.currency!,
-          fx_rate_to_ils: rates.get(r.currency!)!,
-          category_id: categoryId || null,
-          title: r.title,
-          note: "יובא מ-CSV",
-          occurred_at: r.date,
-          entered_by: person,
-          tag_names: [],
-          trip_id: tripId,
-        });
-      }
-      await qc.invalidateQueries({ queryKey: ["trip", tripId] });
-      await qc.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(`נוספו ${chosen.length} הוצאות לטיול`);
-      setRows(null);
-    } catch (e) {
-      console.error(e);
-      toast.error("שגיאה בשמירה");
-    } finally {
-      setSaving(false);
-    }
+      const parsed = parseExpenseCsv(await f.text());
+      if (!parsed.length) { toast.error("לא נמצאו שורות עם תאריך וסכום בקובץ"); return; }
+      setRows(tripCsvDrafts(parsed, tripCurrency, getDefaultPerson()));
+      setReviewing(false); setIndex(0); setSaved(0); setError(null); rates.current.clear();
+    } catch { toast.error("לא ניתן לקרוא את הקובץ"); }
   }
 
-  const count = rows?.filter((r) => r.on).length ?? 0;
+  function update(patch: Partial<TripCsvDraft>) {
+    if (!current || saving) return;
+    setRows((rs) => rs?.map((r) => r.id === current.id ? { ...r, ...patch } : r) ?? null);
+    setError(null);
+  }
 
-  return (
-    <>
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".csv,text/csv"
-        className="hidden"
-        onChange={(e) => {
-          onFile(e.target.files?.[0]);
-          e.target.value = "";
-        }}
-      />
-      <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-        <FileUp className="size-4" /> ייבוא מ-CSV
-      </Button>
+  async function saveCurrent() {
+    if (!current || busy.current) return;
+    const validation = draftError(current) ?? (needsCard && cards.length > 0 && !current.creditCardId ? "בחר כרטיס אשראי" : null);
+    if (validation) { setError(validation); return; }
+    busy.current = true; setSaving(true); setError(null);
+    try {
+      const rate = rates.current.get(current.currency) ?? await fetchRateToIls(current.currency);
+      rates.current.set(current.currency, rate);
+      await createTransaction({
+        type: "expense", amount: Number(current.amount), currency: current.currency,
+        fx_rate_to_ils: rate, category_id: current.categoryId, title: current.title.trim(),
+        note: ["יובא מ-CSV", current.note.trim()].filter(Boolean).join("\n"),
+        occurred_at: current.date, entered_by: current.person, tag_names: [], trip_id: tripId,
+        payment_method: current.paymentMethod, credit_card_id: needsCard ? current.creditCardId || null : null,
+        location: current.location.trim() || null,
+      });
+      // Remove committed rows immediately: retry and backwards navigation cannot import them again.
+      setRows((rs) => rs?.filter((r) => r.id !== current.id) ?? null);
+      setSaved((n) => n + 1);
+      setIndex(Math.min(index, chosen.length - 2));
+      void qc.invalidateQueries({ queryKey: ["trip", tripId] });
+      void qc.invalidateQueries({ queryKey: ["transactions"] });
+      if (chosen.length === 1) {
+        toast.success(`נוספו ${saved + 1} הוצאות לטיול`);
+        setRows(null); setReviewing(false); setIndex(0);
+      }
+    } catch {
+      setError("התנועה לא נשמרה. הפרטים נשארו כאן — אפשר לנסות שוב.");
+    } finally { busy.current = false; setSaving(false); }
+  }
 
-      <Dialog open={!!rows} onOpenChange={(o) => !o && setRows(null)}>
-        <DialogContent className="max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>ייבוא הוצאות לטיול</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">מי שילם</p>
-              <div className="flex gap-2">
-                {(["yonatan", "shiri", "shared"] as Person[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPerson(p)}
-                    className={cn(
-                      "flex-1 rounded-lg border py-1.5 text-sm",
-                      person === p && "bg-primary text-primary-foreground border-primary",
-                    )}
-                  >
-                    {labels[p]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">קטגוריה לכל השורות</p>
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">ללא קטגוריה</option>
-                {expenseCats.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.emoji ?? ""} {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+  const selectClass = "w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm";
+  return <>
+    <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ""; }} />
+    <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><FileUp className="size-4" /> ייבוא מ-CSV</Button>
+    <Dialog open={rows !== null} onOpenChange={(open) => { if (!open && !busy.current) setRows(null); }}>
+      <DialogContent className="max-h-[90dvh] flex flex-col overflow-hidden" dir="rtl" onInteractOutside={(e) => { if (saving) e.preventDefault(); }} onEscapeKeyDown={(e) => { if (saving) e.preventDefault(); }}>
+        <DialogHeader><DialogTitle>{reviewing ? "השלמת תנועה מהייבוא" : "ייבוא הוצאות לטיול"}</DialogTitle></DialogHeader>
+        {!reviewing ? <>
+          <div className="min-h-0 overflow-y-auto rounded-lg border divide-y">
+            {rows?.map((r) => <label key={r.id} className="flex items-center gap-3 px-3 py-3 text-sm">
+              <Checkbox checked={r.on} onCheckedChange={(v) => setRows((rs) => rs?.map((x) => x.id === r.id ? { ...x, on: v === true } : x) ?? null)} />
+              <div className="flex-1 min-w-0"><p className="truncate">{r.title}</p><p className="text-xs text-muted-foreground">{r.date}</p></div>
+              <span className="tabular-nums shrink-0" dir="ltr">{Number(r.amount).toLocaleString()} {r.currency}</span>
+            </label>)}
           </div>
-          <div className="flex-1 overflow-y-auto rounded-xl border divide-y">
-            {rows?.map((r, i) => (
-              <label key={i} className="flex items-center gap-3 px-3 py-2 text-sm">
-                <Checkbox
-                  checked={r.on}
-                  onCheckedChange={(v) =>
-                    setRows((rs) => rs!.map((x, j) => (j === i ? { ...x, on: !!v } : x)))
-                  }
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="truncate">{r.title}</p>
-                  <p className="text-xs text-muted-foreground">{r.date}</p>
-                </div>
-                <span className="tabular-nums" dir="ltr">
-                  {r.amount.toLocaleString()} {r.currency}
-                </span>
-              </label>
-            ))}
+          <Button disabled={!chosen.length} onClick={() => { setIndex(0); setReviewing(true); }}>השלמת {chosen.length} תנועות</Button>
+        </> : current ? <>
+          <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+            <span>תנועה {index + 1} מתוך {chosen.length} שנותרו</span><span>{saved} נשמרו</span>
           </div>
-          <Button onClick={save} disabled={saving || count === 0}>
-            {saving ? "שומר…" : `הוסף ${count} הוצאות לטיול`}
-          </Button>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+          <fieldset disabled={saving} className="min-h-0 overflow-y-auto space-y-4 px-1 pb-2">
+            <label className="block space-y-1 text-sm"><span>שם התנועה</span><Input value={current.title} onChange={(e) => update({ title: e.target.value })} /></label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block space-y-1 text-sm"><span>תאריך</span><Input type="date" value={current.date} onChange={(e) => update({ date: e.target.value })} className="min-w-0" /></label>
+              <label className="block space-y-1 text-sm"><span>סכום</span><Input type="number" min="0.01" step="0.01" inputMode="decimal" dir="ltr" value={current.amount} onChange={(e) => update({ amount: e.target.value })} /></label>
+            </div>
+            <label className="block space-y-1 text-sm"><span>מטבע</span><Input value={current.currency} maxLength={3} dir="ltr" onChange={(e) => update({ currency: e.target.value.toUpperCase() })} /></label>
+            <label className="block space-y-1 text-sm"><span>קטגוריה</span><select className={selectClass} value={current.categoryId} onChange={(e) => update({ categoryId: e.target.value })}><option value="">בחר קטגוריה</option>{expenseCats.map((c) => <option key={c.id} value={c.id}>{c.emoji ?? ""} {c.name}</option>)}</select></label>
+            <div className="space-y-1 text-sm"><span>מי שילם</span><div className="flex gap-2">{(["yonatan", "shiri", "shared"] as Person[]).map((p) => <Button key={p} variant={current.person === p ? "default" : "outline"} className="flex-1 min-w-0" aria-pressed={current.person === p} onClick={() => update({ person: p })}>{labels[p]}</Button>)}</div></div>
+            <label className="block space-y-1 text-sm"><span>אמצעי תשלום</span><select className={selectClass} value={current.paymentMethod} onChange={(e) => update({ paymentMethod: e.target.value, creditCardId: "" })}><option value="">בחר אמצעי תשלום</option>{paymentMethods.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></label>
+            {needsCard && <label className="block space-y-1 text-sm"><span>כרטיס אשראי</span><select className={selectClass} value={current.creditCardId} onChange={(e) => update({ creditCardId: e.target.value })}><option value="">בחר כרטיס אשראי</option>{cards.map((c) => <option key={c.id} value={c.id}>{cardLabel(c)}</option>)}</select></label>}
+            <label className="block space-y-1 text-sm"><span>עיר / אזור</span><Input value={current.location} onChange={(e) => update({ location: e.target.value })} /></label>
+            <label className="block space-y-1 text-sm"><span>הערה</span><Input value={current.note} onChange={(e) => update({ note: e.target.value })} /></label>
+          </fieldset>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <div className="flex gap-2 items-center">
+            <Button variant="outline" size="icon" aria-label="התנועה הקודמת" disabled={saving || index === 0} onClick={() => { setIndex((i) => i - 1); setError(null); }}><ArrowRight className="size-4" /></Button>
+            <Button className="flex-1" disabled={saving} onClick={() => void saveCurrent()}>{saving ? "שומר…" : chosen.length === 1 ? "שמור וסיים" : "שמור והמשך לתנועה הבאה"}</Button>
+            <Button variant="outline" size="icon" aria-label="התנועה הבאה" disabled={saving || index >= chosen.length - 1} onClick={() => { setIndex((i) => i + 1); setError(null); }}><ArrowLeft className="size-4" /></Button>
+          </div>
+        </> : null}
+      </DialogContent>
+    </Dialog>
+  </>;
 }
