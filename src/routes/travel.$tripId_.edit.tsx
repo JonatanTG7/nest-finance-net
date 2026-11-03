@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { TripForm } from "@/components/trips/TripForm";
 import { fetchTrip } from "@/lib/trips";
 
-export const Route = createFileRoute("/travel/$tripId/edit")({
+export const Route = createFileRoute("/travel/$tripId_/edit")({
   head: () => ({ meta: [{ title: "עריכת טיול" }] }),
   component: EditTrip,
 });

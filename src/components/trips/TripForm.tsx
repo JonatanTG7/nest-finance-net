@@ -88,6 +88,7 @@ export function TripForm({ existing }: { existing?: Trip }) {
         toast.success("הטיול נוצר");
       }
       qc.invalidateQueries({ queryKey: ["trips"] });
+      qc.invalidateQueries({ queryKey: ["trip"] });
       navigate({ to: "/travel" });
     } catch (e) {
       console.error(e);
