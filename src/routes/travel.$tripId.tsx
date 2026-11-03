@@ -37,6 +37,7 @@ import { txTypeLabel } from "@/lib/finance";
 import { usePaymentMethods } from "@/lib/payment_methods";
 import { useMemberLabels } from "@/lib/person";
 import { cn } from "@/lib/utils";
+import { TripCsvImport } from "@/components/trips/TripCsvImport";
 
 export const Route = createFileRoute("/travel/$tripId")({
   head: () => ({ meta: [{ title: "טיול" }] }),
@@ -177,7 +178,10 @@ function TripDashboard() {
 
         {/* Timeline */}
         <div>
-          <h2 className="text-sm font-semibold mb-2">תנועות הטיול</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold">תנועות הטיול</h2>
+            <TripCsvImport tripId={tripId} tripCurrency={trip.currency} />
+          </div>
           <div className="rounded-2xl bg-card border divide-y overflow-hidden">
             {txLoading ? (
               <p className="text-center text-sm text-muted-foreground py-10">טוען…</p>
