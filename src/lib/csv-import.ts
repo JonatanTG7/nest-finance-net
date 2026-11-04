@@ -5,6 +5,9 @@ export interface CsvExpenseRow {
   title: string;
   amount: number; // positive
   currency: string | null; // ISO code if detected
+  category?: string; // source category name (e.g. TravelSpend "Restaurants")
+  paymentMethod?: "cash" | "credit";
+  location?: string;
 }
 
 export function parseCsv(text: string): string[][] {
@@ -84,10 +87,38 @@ export function detectColumns(header: string[]) {
   };
 }
 
+/** TravelSpend exports carry category/payment/place columns; detect them by exact header names. */
+function parseTravelSpend(rows: string[][]): CsvExpenseRow[] | null {
+  const h = rows[0].map((c) => c.trim());
+  const ix = (n: string) => h.indexOf(n);
+  const c = { amount: ix("amount"), date: ix("datePaid"), cur: ix("localCurrency"), notes: ix("notes"), desc: ix("description"), cat: ix("category"), pay: ix("paymentMethod"), place: ix("place"), type: ix("type") };
+  if (c.amount < 0 || c.date < 0 || c.cur < 0 || c.cat < 0) return null;
+  const out: CsvExpenseRow[] = [];
+  for (const r of rows.slice(1)) {
+    if (c.type >= 0 && r[c.type] && r[c.type] !== "Expense") continue;
+    const date = parseDate(r[c.date] ?? "");
+    const amt = parseAmount(r[c.amount] ?? "");
+    if (!date || !amt) continue;
+    const category = (r[c.cat] ?? "").trim();
+    const title = (r[c.notes] ?? "").trim() || (c.desc >= 0 ? (r[c.desc] ?? "").trim() : "") || category || "הוצאה מיובאת";
+    const pay = (c.pay >= 0 ? r[c.pay] : "")?.trim().toLowerCase();
+    out.push({
+      date, title, amount: amt.amount,
+      currency: (r[c.cur] ?? "").trim().toUpperCase() || null,
+      category: category || undefined,
+      paymentMethod: pay === "cash" ? "cash" : pay?.includes("credit") ? "credit" : undefined,
+      location: (c.place >= 0 ? r[c.place] : "")?.trim() || undefined,
+    });
+  }
+  return out;
+}
+
 /** Parses CSV text into expense rows; skips rows without a valid date or amount. */
 export function parseExpenseCsv(text: string): CsvExpenseRow[] {
   const rows = parseCsv(text);
   if (rows.length === 0) return [];
+  const ts = parseTravelSpend(rows);
+  if (ts) return ts;
   let cols = detectColumns(rows[0]);
   let body = rows.slice(1);
   if (cols.date < 0 || cols.amount < 0) {

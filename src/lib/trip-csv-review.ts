@@ -17,11 +17,39 @@ export type TripCsvDraft = {
   location: string;
 };
 
-export function tripCsvDrafts(rows: CsvExpenseRow[], currency: string, person: Person): TripCsvDraft[] {
+/** Source (TravelSpend) category → candidate Hebrew category names, first existing match wins. */
+export const SOURCE_CATEGORY_NAMES: Record<string, string[]> = {
+  flights: ["טיסות"],
+  restaurants: ["מסעדות"],
+  transportation: ["תחבורה ציבורית", "תחבורה"],
+  accommodation: ["לינה"],
+  groceries: ["סופר"],
+  shopping: ["קניות"],
+  drinks: ["שתייה"],
+  coffee: ["קפה"],
+  entertainment: ["בילויים"],
+  "fees & charges": ["עמלות"],
+  general: ["הוצאות כללי", "כללי"],
+};
+
+export function matchCategoryId(source: string | undefined, cats: { id: string; name: string }[]): string {
+  if (!source) return "";
+  const s = source.trim().toLowerCase();
+  for (const name of SOURCE_CATEGORY_NAMES[s] ?? []) {
+    const hit = cats.find((c) => c.name.trim() === name);
+    if (hit) return hit.id;
+  }
+  return cats.find((c) => c.name.trim().toLowerCase() === s)?.id ?? "";
+}
+
+export function tripCsvDrafts(
+  rows: CsvExpenseRow[], currency: string, person: Person,
+  cats: { id: string; name: string }[] = [],
+): TripCsvDraft[] {
   return rows.map((row, id) => ({
     id, on: true, title: row.title, date: row.date, amount: String(row.amount),
-    currency: row.currency ?? currency, categoryId: "", person,
-    paymentMethod: "", creditCardId: "", note: "", location: "",
+    currency: row.currency ?? currency, categoryId: matchCategoryId(row.category, cats), person,
+    paymentMethod: row.paymentMethod ?? "", creditCardId: "", note: "", location: row.location ?? "",
   }));
 }
 
