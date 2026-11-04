@@ -10,7 +10,7 @@ import { parseExpenseCsv } from "@/lib/csv-import";
 import { draftError, tripCsvDrafts, type TripCsvDraft } from "@/lib/trip-csv-review";
 import { createTransaction, fetchCategories } from "@/lib/db";
 import { fetchRateToIls } from "@/lib/fx";
-import { getDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
+import { useMemberLabels, type Person } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
 import { cardLabel, isBitLabel, isCreditMethod, useCreditCards } from "@/lib/credit_cards";
 
