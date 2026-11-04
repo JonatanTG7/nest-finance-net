@@ -12,7 +12,7 @@ import { createTransaction, fetchCategories } from "@/lib/db";
 import { fetchRateToIls } from "@/lib/fx";
 import { useMemberLabels, type Person } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
-import { cardLabel, isBitLabel, isCreditMethod, useCreditCards } from "@/lib/credit_cards";
+import { useCreditCards } from "@/lib/credit_cards";
 
 export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCurrency: string }) {
   const qc = useQueryClient();
