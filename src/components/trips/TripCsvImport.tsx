@@ -107,7 +107,7 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
             <label className="block space-y-1 text-sm"><span>שם התנועה</span><Input value={current.title} onChange={(e) => update({ title: e.target.value })} /></label>
             <div className="grid grid-cols-2 gap-3">
               <label className="block space-y-1 text-sm"><span>תאריך</span><Input type="date" value={current.date} onChange={(e) => update({ date: e.target.value })} className="min-w-0" /></label>
-              <label className="block space-y-1 text-sm"><span>סכום</span><Input type="number" min="0.01" step="0.01" inputMode="decimal" dir="ltr" value={current.amount} onChange={(e) => update({ amount: e.target.value })} /></label>
+              <label className="block space-y-1 text-sm"><span>סכום</span><Input type="number" min="0" step="0.01" inputMode="decimal" dir="ltr" value={current.amount} onChange={(e) => update({ amount: e.target.value })} /></label>
             </div>
             <label className="block space-y-1 text-sm"><span>מטבע</span><Input value={current.currency} maxLength={3} dir="ltr" onChange={(e) => update({ currency: e.target.value.toUpperCase() })} /></label>
             <label className="block space-y-1 text-sm"><span>קטגוריה</span><select className={selectClass} value={current.categoryId} onChange={(e) => update({ categoryId: e.target.value })}><option value="">בחר קטגוריה</option>{expenseCats.map((c) => <option key={c.id} value={c.id}>{c.emoji ?? ""} {c.name}</option>)}</select></label>
