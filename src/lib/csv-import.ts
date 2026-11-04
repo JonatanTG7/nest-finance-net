@@ -66,7 +66,7 @@ export function parseAmount(s: string): { amount: number; currency: string | nul
   if (code) currency = code[1];
   const num = s.replace(/[^\d.,-]/g, "").replace(/,(?=\d{3}(\D|$))/g, "").replace(",", ".");
   const n = Number(num);
-  if (!num || !Number.isFinite(n) || n === 0) return null;
+  if (!num || !Number.isFinite(n)) return null;
   return { amount: Math.abs(Number(n.toFixed(2))), currency };
 }
 

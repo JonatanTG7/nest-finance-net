@@ -32,7 +32,8 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
   const expenseCats = categories.filter((c) => c.type === "expense");
   const chosen = rows?.filter((r) => r.on) ?? [];
   const current = chosen[index];
-  const needsCard = current && (isCreditMethod(current.paymentMethod) || isBitLabel(paymentMethods.find((p) => p.key === current.paymentMethod)?.label));
+  // Old trips: credit imports never require picking a specific card.
+  const needsCard = false;
 
   async function onFile(f: File | undefined) {
     if (!f) return;
