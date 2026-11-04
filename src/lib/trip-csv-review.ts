@@ -59,7 +59,7 @@ export function draftError(row: TripCsvDraft): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date) || parseDate(row.date) !== row.date) return "בחר תאריך תקין";
   const date = new Date(`${row.date}T12:00:00Z`);
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== row.date) return "בחר תאריך תקין";
-  if (!Number.isFinite(Number(row.amount)) || Number(row.amount) <= 0) return "הזן סכום גדול מאפס";
+  if (!Number.isFinite(Number(row.amount)) || Number(row.amount) < 0) return "הזן סכום תקין (0 ומעלה)";
   if (!/^[A-Z]{3}$/.test(row.currency)) return "הזן קוד מטבע תקין, למשל ILS";
   if (!row.paymentMethod) return "בחר אמצעי תשלום";
   return null;

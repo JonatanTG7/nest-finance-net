@@ -12,7 +12,6 @@ import { createTransaction, fetchCategories } from "@/lib/db";
 import { fetchRateToIls } from "@/lib/fx";
 import { useMemberLabels, type Person } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
-import { cardLabel, isBitLabel, isCreditMethod, useCreditCards } from "@/lib/credit_cards";
 
 export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCurrency: string }) {
   const qc = useQueryClient();
@@ -28,11 +27,11 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
   const [error, setError] = useState<string | null>(null);
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
   const { data: paymentMethods = [] } = usePaymentMethods();
-  const { data: cards = [] } = useCreditCards();
   const expenseCats = categories.filter((c) => c.type === "expense");
   const chosen = rows?.filter((r) => r.on) ?? [];
   const current = chosen[index];
-  const needsCard = current && (isCreditMethod(current.paymentMethod) || isBitLabel(paymentMethods.find((p) => p.key === current.paymentMethod)?.label));
+  // Old trips: credit imports never require picking a specific card.
+  const needsCard = false;
 
   async function onFile(f: File | undefined) {
     if (!f) return;
@@ -53,7 +52,7 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
 
   async function saveCurrent() {
     if (!current || busy.current) return;
-    const validation = draftError(current) ?? (needsCard && cards.length > 0 && !current.creditCardId ? "בחר כרטיס אשראי" : null);
+    const validation = draftError(current);
     if (validation) { setError(validation); return; }
     busy.current = true; setSaving(true); setError(null);
     try {
@@ -106,13 +105,12 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
             <label className="block space-y-1 text-sm"><span>שם התנועה</span><Input value={current.title} onChange={(e) => update({ title: e.target.value })} /></label>
             <div className="grid grid-cols-2 gap-3">
               <label className="block space-y-1 text-sm"><span>תאריך</span><Input type="date" value={current.date} onChange={(e) => update({ date: e.target.value })} className="min-w-0" /></label>
-              <label className="block space-y-1 text-sm"><span>סכום</span><Input type="number" min="0.01" step="0.01" inputMode="decimal" dir="ltr" value={current.amount} onChange={(e) => update({ amount: e.target.value })} /></label>
+              <label className="block space-y-1 text-sm"><span>סכום</span><Input type="number" min="0" step="0.01" inputMode="decimal" dir="ltr" value={current.amount} onChange={(e) => update({ amount: e.target.value })} /></label>
             </div>
             <label className="block space-y-1 text-sm"><span>מטבע</span><Input value={current.currency} maxLength={3} dir="ltr" onChange={(e) => update({ currency: e.target.value.toUpperCase() })} /></label>
             <label className="block space-y-1 text-sm"><span>קטגוריה</span><select className={selectClass} value={current.categoryId} onChange={(e) => update({ categoryId: e.target.value })}><option value="">בחר קטגוריה</option>{expenseCats.map((c) => <option key={c.id} value={c.id}>{c.emoji ?? ""} {c.name}</option>)}</select></label>
             <div className="space-y-1 text-sm"><span>מי שילם</span><div className="flex gap-2">{(["yonatan", "shiri", "shared"] as Person[]).map((p) => <Button key={p} variant={current.person === p ? "default" : "outline"} className="flex-1 min-w-0" aria-pressed={current.person === p} onClick={() => update({ person: p })}>{labels[p]}</Button>)}</div></div>
             <label className="block space-y-1 text-sm"><span>אמצעי תשלום</span><select className={selectClass} value={current.paymentMethod} onChange={(e) => update({ paymentMethod: e.target.value, creditCardId: "" })}><option value="">בחר אמצעי תשלום</option>{paymentMethods.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></label>
-            {needsCard && <label className="block space-y-1 text-sm"><span>כרטיס אשראי</span><select className={selectClass} value={current.creditCardId} onChange={(e) => update({ creditCardId: e.target.value })}><option value="">בחר כרטיס אשראי</option>{cards.map((c) => <option key={c.id} value={c.id}>{cardLabel(c)}</option>)}</select></label>}
             <label className="block space-y-1 text-sm"><span>עיר / אזור</span><Input value={current.location} onChange={(e) => update({ location: e.target.value })} /></label>
             <label className="block space-y-1 text-sm"><span>הערה</span><Input value={current.note} onChange={(e) => update({ note: e.target.value })} /></label>
           </fieldset>
