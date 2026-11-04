@@ -39,7 +39,8 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
     try {
       const parsed = parseExpenseCsv(await f.text());
       if (!parsed.length) { toast.error("לא נמצאו שורות עם תאריך וסכום בקובץ"); return; }
-      setRows(tripCsvDrafts(parsed, tripCurrency, getDefaultPerson()));
+      // Trips are always shared between the partners.
+      setRows(tripCsvDrafts(parsed, tripCurrency, "shared", expenseCats));
       setReviewing(false); setIndex(0); setSaved(0); setError(null); rates.current.clear();
     } catch { toast.error("לא ניתן לקרוא את הקובץ"); }
   }
