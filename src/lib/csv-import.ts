@@ -91,7 +91,9 @@ export function detectColumns(header: string[]) {
 function parseTravelSpend(rows: string[][]): CsvExpenseRow[] | null {
   const h = rows[0].map((c) => c.trim());
   const ix = (n: string) => h.indexOf(n);
-  const c = { amount: ix("amount"), date: ix("datePaid"), cur: ix("localCurrency"), notes: ix("notes"), desc: ix("description"), cat: ix("category"), pay: ix("paymentMethod"), place: ix("place"), type: ix("type") };
+  // Amounts come from the home-currency columns: the trip's own recorded conversion, never a fresh rate.
+  const home = ix("homeCurrency") >= 0 && ix("amountInHomeCurrency") >= 0;
+  const c = { amount: ix(home ? "amountInHomeCurrency" : "amount"), date: ix("datePaid"), cur: ix(home ? "homeCurrency" : "localCurrency"), notes: ix("notes"), desc: ix("description"), cat: ix("category"), pay: ix("paymentMethod"), place: ix("place"), type: ix("type") };
   if (c.amount < 0 || c.date < 0 || c.cur < 0 || c.cat < 0) return null;
   const out: CsvExpenseRow[] = [];
   for (const r of rows.slice(1)) {

@@ -56,7 +56,7 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
     if (validation) { setError(validation); return; }
     busy.current = true; setSaving(true); setError(null);
     try {
-      const rate = rates.current.get(current.currency) ?? await fetchRateToIls(current.currency);
+      const rate = current.currency === "ILS" ? 1 : rates.current.get(current.currency) ?? await fetchRateToIls(current.currency);
       rates.current.set(current.currency, rate);
       await createTransaction({
         type: "expense", amount: Number(current.amount), currency: current.currency,
