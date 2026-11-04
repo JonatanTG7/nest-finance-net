@@ -52,7 +52,7 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
 
   async function saveCurrent() {
     if (!current || busy.current) return;
-    const validation = draftError(current) ?? (needsCard && cards.length > 0 && !current.creditCardId ? "בחר כרטיס אשראי" : null);
+    const validation = draftError(current);
     if (validation) { setError(validation); return; }
     busy.current = true; setSaving(true); setError(null);
     try {
