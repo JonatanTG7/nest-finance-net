@@ -28,7 +28,6 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
   const [error, setError] = useState<string | null>(null);
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
   const { data: paymentMethods = [] } = usePaymentMethods();
-  const { data: cards = [] } = useCreditCards();
   const expenseCats = categories.filter((c) => c.type === "expense");
   const chosen = rows?.filter((r) => r.on) ?? [];
   const current = chosen[index];
