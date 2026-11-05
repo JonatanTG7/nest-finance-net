@@ -37,6 +37,7 @@ import { txTypeLabel } from "@/lib/finance";
 import { usePaymentMethods } from "@/lib/payment_methods";
 import { useMemberLabels } from "@/lib/person";
 import { cn } from "@/lib/utils";
+import { amountInTripCurrency, updateTripCurrency } from "@/lib/trips";
 import { TripCsvImport } from "@/components/trips/TripCsvImport";
 
 export const Route = createFileRoute("/travel/$tripId")({
@@ -44,10 +45,10 @@ export const Route = createFileRoute("/travel/$tripId")({
   component: TripDashboard,
 });
 
-function ils(n: number) {
+function money(n: number, currency = "ILS") {
   return n.toLocaleString("he-IL", {
     style: "currency",
-    currency: "ILS",
+    currency,
     maximumFractionDigits: 0,
   });
 }
@@ -106,11 +107,16 @@ function TripDashboard() {
 
   const status = tripStatus(trip);
   const durationDays = tripDurationDays(trip);
-  const spentIls = spending?.totalIls ?? 0;
+  void spending;
+  const cur = trip.currency;
+  const ils = (n: number) => money(n, cur);
+  const spentIls = txs.reduce((s, t) => s + (amountInTripCurrency(t, cur, rate) ?? 0), 0);
   const hasBudget = trip.budget > 0;
-  const budgetIls = hasBudget && rate != null ? trip.budget * rate : null;
+  const budgetIls = hasBudget ? trip.budget : null;
   const remainingIls = budgetIls != null ? budgetIls - spentIls : null;
   const avgDaily = durationDays > 0 ? spentIls / durationDays : 0;
+  const txCurs = new Set(txs.map((t) => t.currency));
+  const mismatch = txCurs.size === 1 && !txCurs.has(cur) ? [...txCurs][0] : null;
 
   const dateFmt = (d: string) =>
     new Date(d + "T00:00:00").toLocaleDateString("he-IL", {
@@ -136,6 +142,18 @@ function TripDashboard() {
           <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
             הטיול נשמר ב{trip.currency === "ILS" ? "שקלים ₪" : trip.currency === "EUR" ? "יורו €" : trip.currency === "USD" ? "דולר $" : `-${trip.currency}`}
           </span>
+          {mismatch && (
+            <button
+              onClick={async () => {
+                await updateTripCurrency(tripId, mismatch);
+                qc.invalidateQueries({ queryKey: ["trip", tripId] });
+                toast.success(`הטיול עודכן ל-${mismatch}`);
+              }}
+              className="mt-1 ms-2 inline-block rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
+            >
+              התנועות ב-{mismatch} · עדכן את הטיול
+            </button>
+          )}
         </div>
         <Link
           to="/travel/$tripId/edit"
@@ -160,7 +178,6 @@ function TripDashboard() {
               icon={Wallet}
               label="תקציב"
               value={budgetIls != null ? ils(budgetIls) : "…"}
-              sub={`${trip.budget.toLocaleString()} ${trip.currency}`}
             />
           )}
           <StatBox icon={TrendingUp} label="הוצא בפועל" value={ils(spentIls)} />
@@ -204,6 +221,8 @@ function TripDashboard() {
                 <TripTxRow
                   key={tx.id}
                   tx={tx}
+                  tripCurrency={cur}
+                  rate={rate}
                   memberLabels={memberLabels}
                   paymentMethods={paymentMethods}
                 />
@@ -268,10 +287,14 @@ function StatBox({
 
 function TripTxRow({
   tx,
+  tripCurrency,
+  rate,
   memberLabels,
   paymentMethods,
 }: {
   tx: Transaction;
+  tripCurrency: string;
+  rate: number | undefined;
   memberLabels: Record<string, string>;
   paymentMethods: { key: string; label: string }[];
 }) {
@@ -305,7 +328,7 @@ function TripTxRow({
         className={cn("font-bold tabular-nums shrink-0", isIn ? "text-income" : "text-foreground")}
       >
         {isIn ? "+" : "−"}
-        {ils(Number(tx.amount_ils))}
+        {money(amountInTripCurrency(tx, tripCurrency, rate) ?? Number(tx.amount_ils), amountInTripCurrency(tx, tripCurrency, rate) == null ? "ILS" : tripCurrency)}
       </p>
     </Link>
   );
