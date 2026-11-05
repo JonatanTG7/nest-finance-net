@@ -14,3 +14,11 @@ describe("csv import", () => {
     expect(rows).toEqual([{ date: "2026-08-01", title: "Cafe, Rome", amount: 12.5, currency: "EUR" }]);
   });
 });
+
+describe("TravelSpend home currency", () => {
+  it("uses amountInHomeCurrency and homeCurrency", () => {
+    const csv = 'amount,amountInHomeCurrency,category,datePaid,homeCurrency,localCurrency,notes\n"500.00","70.25","Restaurants","07/05/2026","ILS","CZK","בירות"\n"3,127.00","783.80","Flights","07/10/2022","EUR","ILS","מלונות"';
+    const rows = parseExpenseCsv(csv);
+    expect(rows.map((r) => [r.amount, r.currency])).toEqual([[70.25, "ILS"], [783.8, "EUR"]]);
+  });
+});

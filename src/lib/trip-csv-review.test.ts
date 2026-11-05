@@ -36,12 +36,12 @@ describe("TravelSpend export import", () => {
 "7,300.00","7,300.00","General","1","Israel","IL","25/06/2026","ILS","ILS","","חבילה","a","a","7300","Credit Card","","Holon, Israel","","","Expense"
 "0.00","0.00","Shopping","0.292","Germany","DE","07/05/2026","ILS","EUR","","zero","a","a","0","Cash","","","","","Expense"`;
   const cats = [{ id: "r", name: "מסעדות" }, { id: "g", name: "הוצאות כללי" }];
-  it("reads local amount, currency, notes title, payment and place; keeps zero rows", () => {
+  it("reads home-currency amount, notes title, payment and place; keeps zero rows", () => {
     const rows = parseExpenseCsv(csv);
     expect(rows).toHaveLength(3);
-    expect(rows[0]).toMatchObject({ amount: 500, currency: "CZK", title: "2 בירות ונקניקיה", date: "2026-05-07", paymentMethod: "cash", location: "Prague 6, Czechia", category: "Restaurants" });
+    expect(rows[0]).toMatchObject({ amount: 70.25, currency: "ILS", title: "2 בירות ונקניקיה", date: "2026-05-07", paymentMethod: "cash", location: "Prague 6, Czechia", category: "Restaurants" });
     expect(rows[1]).toMatchObject({ amount: 7300, currency: "ILS", paymentMethod: "credit" });
-    expect(rows[2]).toMatchObject({ amount: 0, currency: "EUR", title: "zero" });
+    expect(rows[2]).toMatchObject({ amount: 0, currency: "ILS", title: "zero" });
   });
   it("maps categories and marks every row shared", () => {
     const d = tripCsvDrafts(parseExpenseCsv(csv), "ILS", "shared", cats);

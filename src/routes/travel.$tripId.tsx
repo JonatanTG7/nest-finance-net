@@ -133,6 +133,9 @@ function TripDashboard() {
           <p className="text-xs text-muted-foreground">
             {dateFmt(trip.start_date)} – {dateFmt(trip.end_date)} · {tripStatusLabel[status]}
           </p>
+          <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+            הטיול נשמר ב{trip.currency === "ILS" ? "שקלים ₪" : trip.currency === "EUR" ? "יורו €" : trip.currency === "USD" ? "דולר $" : `-${trip.currency}`}
+          </span>
         </div>
         <Link
           to="/travel/$tripId/edit"
