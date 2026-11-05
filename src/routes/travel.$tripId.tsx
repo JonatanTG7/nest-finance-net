@@ -83,6 +83,17 @@ function TripDashboard() {
     staleTime: 60 * 60 * 1000,
   });
 
+  // A trip always follows the single currency its expenses were recorded in (e.g. EUR home-currency import).
+  const txCurs = new Set(txs.map((t) => t.currency));
+  const mismatch = trip && txCurs.size === 1 && !txCurs.has(trip.currency) ? [...txCurs][0]! : null;
+  useEffect(() => {
+    if (!mismatch) return;
+    void updateTripCurrency(tripId, mismatch)
+      .then(() => qc.invalidateQueries({ queryKey: ["trip", tripId] }))
+      .catch((e) => console.error(e));
+  }, [mismatch, tripId, qc]);
+  const cur = mismatch ?? trip?.currency ?? "ILS";
+
   const deleteMutation = useMutation({
     mutationFn: () => deleteTrip(tripId),
     onSuccess: () => {
@@ -108,15 +119,12 @@ function TripDashboard() {
   const status = tripStatus(trip);
   const durationDays = tripDurationDays(trip);
   void spending;
-  const cur = trip.currency;
   const ils = (n: number) => money(n, cur);
   const spentIls = txs.reduce((s, t) => s + (amountInTripCurrency(t, cur, rate) ?? 0), 0);
   const hasBudget = trip.budget > 0;
   const budgetIls = hasBudget ? trip.budget : null;
   const remainingIls = budgetIls != null ? budgetIls - spentIls : null;
   const avgDaily = durationDays > 0 ? spentIls / durationDays : 0;
-  const txCurs = new Set(txs.map((t) => t.currency));
-  const mismatch = txCurs.size === 1 && !txCurs.has(cur) ? [...txCurs][0] : null;
 
   const dateFmt = (d: string) =>
     new Date(d + "T00:00:00").toLocaleDateString("he-IL", {
@@ -140,20 +148,9 @@ function TripDashboard() {
             {dateFmt(trip.start_date)} – {dateFmt(trip.end_date)} · {tripStatusLabel[status]}
           </p>
           <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-            הטיול נשמר ב{trip.currency === "ILS" ? "שקלים ₪" : trip.currency === "EUR" ? "יורו €" : trip.currency === "USD" ? "דולר $" : `-${trip.currency}`}
+            הטיול נשמר ב{cur === "ILS" ? "שקלים ₪" : cur === "EUR" ? "יורו €" : cur === "USD" ? "דולר $" : `-${cur}`}
           </span>
-          {mismatch && (
-            <button
-              onClick={async () => {
-                await updateTripCurrency(tripId, mismatch);
-                qc.invalidateQueries({ queryKey: ["trip", tripId] });
-                toast.success(`הטיול עודכן ל-${mismatch}`);
-              }}
-              className="mt-1 ms-2 inline-block rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
-            >
-              התנועות ב-{mismatch} · עדכן את הטיול
-            </button>
-          )}
+
         </div>
         <Link
           to="/travel/$tripId/edit"
