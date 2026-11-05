@@ -65,6 +65,18 @@ export async function updateTrip(id: string, input: TripInput): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateTripCurrency(id: string, currency: string): Promise<void> {
+  const { error } = await supabase.from("trips").update({ currency, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Amount of a transaction in the trip's currency: original amount when currencies match, else converted from ILS. */
+export function amountInTripCurrency(tx: { amount: number | string; currency: string; amount_ils: number | string }, tripCurrency: string, rateToIls: number | undefined): number | null {
+  if (tx.currency === tripCurrency) return Number(tx.amount);
+  if (tripCurrency === "ILS") return Number(tx.amount_ils);
+  return rateToIls ? Number(tx.amount_ils) / rateToIls : null;
+}
+
 export async function deleteTrip(id: string): Promise<void> {
   // transactions.trip_id is ON DELETE SET NULL — linked transactions stay,
   // they just stop being tagged to this trip.
