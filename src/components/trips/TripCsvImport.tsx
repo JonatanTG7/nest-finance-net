@@ -10,6 +10,7 @@ import { parseExpenseCsv } from "@/lib/csv-import";
 import { draftError, tripCsvDrafts, type TripCsvDraft } from "@/lib/trip-csv-review";
 import { createTransaction, fetchCategories } from "@/lib/db";
 import { fetchRateToIls } from "@/lib/fx";
+import { updateTripCurrency } from "@/lib/trips";
 import { useMemberLabels, type Person } from "@/lib/person";
 import { usePaymentMethods } from "@/lib/payment_methods";
 
@@ -40,6 +41,14 @@ export function TripCsvImport({ tripId, tripCurrency }: { tripId: string; tripCu
       if (!parsed.length) { toast.error("לא נמצאו שורות עם תאריך וסכום בקובץ"); return; }
       // Trips are always shared between the partners.
       setRows(tripCsvDrafts(parsed, tripCurrency, "shared", expenseCats));
+      // The file's home currency defines the trip currency (e.g. EUR file → EUR trip).
+      const fileCurs = new Set(parsed.map((r) => r.currency).filter(Boolean));
+      const fileCur = fileCurs.size === 1 ? [...fileCurs][0]! : null;
+      if (fileCur && fileCur !== tripCurrency) {
+        await updateTripCurrency(tripId, fileCur);
+        void qc.invalidateQueries({ queryKey: ["trip", tripId] });
+        toast.success(`מטבע הטיול עודכן ל-${fileCur} לפי הקובץ`);
+      }
       setReviewing(false); setIndex(0); setSaved(0); setError(null); rates.current.clear();
     } catch { toast.error("לא ניתן לקרוא את הקובץ"); }
   }
