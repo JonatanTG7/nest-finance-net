@@ -11,8 +11,8 @@ export async function fetchVouchers(): Promise<Voucher[]> {
   const { data, error } = await supabase
     .from("vouchers")
     .select("*")
-    .order("occurred_at", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("occurred_at", { ascending: true })
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return Promise.all((data ?? []).map(async (v) => ({ ...v, image_url: await signMedia(v.image_url, "voucher-photos") })));
 }
