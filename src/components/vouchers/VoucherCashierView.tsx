@@ -58,7 +58,7 @@ export function VoucherCashierView({
         <div className="flex-1 min-w-0 text-center">
           <p className="font-bold truncate">{v.label}</p>
           <p className="text-xs text-muted-foreground tabular-nums">
-            שובר {index + 1} מתוך {list.length} · {isUsed ? "נוצל" : `${Number(v.remaining_value)} ₪`}
+            שובר {index + 1} מתוך {list.length} · {isUsed ? "נוצל" : `${Number(v.remaining_value)} ₪`} · נקנה ב-{new Date(v.occurred_at + "T00:00:00").toLocaleDateString("he-IL")}
           </p>
         </div>
         <span className="size-10" />

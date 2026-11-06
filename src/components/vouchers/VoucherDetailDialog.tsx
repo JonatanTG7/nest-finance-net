@@ -159,7 +159,7 @@ export function VoucherDetailDialog({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="vd-date">תאריך</Label>
+              <Label htmlFor="vd-date">תאריך רכישה</Label>
               <Input
                 id="vd-date"
                 type="date"

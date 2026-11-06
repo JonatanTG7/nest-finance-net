@@ -222,7 +222,7 @@ export function VoucherUploadDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="v-date">תאריך</Label>
+              <Label htmlFor="v-date">תאריך רכישה</Label>
               <Input
                 id="v-date"
                 type="date"

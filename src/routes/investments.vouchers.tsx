@@ -170,7 +170,7 @@ function VouchersPage() {
         ) : (
           grouped.map(([date, items]) => (
             <div key={date}>
-              <p className="text-xs text-muted-foreground mb-2">{formatDate(date)}</p>
+              <p className="text-xs text-muted-foreground mb-2">נקנה ב-{formatDate(date)}</p>
               <ul className="rounded-2xl bg-card border divide-y">
                 {items.map((v) => {
                   const used = Number(v.remaining_value) <= 0;
