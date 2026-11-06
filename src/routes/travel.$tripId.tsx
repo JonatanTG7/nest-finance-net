@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchTransactionsForTrip, type Transaction } from "@/lib/db";
 import {
   deleteTrip,
