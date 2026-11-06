@@ -91,19 +91,21 @@ export async function uploadTripCover(file: File): Promise<string> {
 export interface TripSpending {
   totalIls: number;
   count: number;
+  amounts: { amount: number; currency: string; amount_ils: number }[];
 }
 
 /** Sum of amount_ils for every transaction tagged to this trip. */
 export async function fetchTripSpending(tripId: string): Promise<TripSpending> {
   const { data, error } = await supabase
     .from("transactions")
-    .select("amount_ils")
+    .select("amount, currency, amount_ils")
     .eq("trip_id", tripId);
   if (error) throw error;
   const rows = data ?? [];
   return {
     totalIls: rows.reduce((s, r) => s + Number(r.amount_ils), 0),
     count: rows.length,
+    amounts: rows,
   };
 }
 

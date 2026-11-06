@@ -6,3 +6,4 @@
 - Create accounts through the existing investment_accounts model and convert their initial balance before insertion; this preserves existing account screens and totals.
 - Store private media by household-prefixed object path and sign it only for display; this enforces household isolation without durable bearer links.
 - Review trip CSV expenses as independent drafts and save each completed row before advancing; this preserves per-transaction details and avoids re-importing successful rows after a failure.
+- Trip list totals use tested currency rules and original amounts when currencies match; this prevents current FX rates from altering historical home-currency totals.

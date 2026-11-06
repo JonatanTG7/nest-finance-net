@@ -13,9 +13,17 @@ import {
 import { fetchRateToIls } from "@/lib/fx";
 import { countryFlag } from "@/lib/flags";
 import { cn } from "@/lib/utils";
+import { tripCurrencyLabel, tripSpendingInCurrency } from "@/lib/trip-currency-rules";
 
 export const Route = createFileRoute("/travel/")({
-  head: () => ({ meta: [{ title: "טיולים" }] }),
+  head: () => ({ meta: [
+    { title: "טיולים והוצאות במטבע המקורי | Family Spend" },
+    { name: "description", content: "הטיולים המשפחתיים, התקציבים וההוצאות במטבע שבו נשמר כל טיול." },
+    { property: "og:title", content: "הטיולים שלנו | Family Spend" },
+    { property: "og:description", content: "סיכום הוצאות ותקציבים לכל טיול במטבע המקורי." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: TravelHub,
 });
 
@@ -26,10 +34,10 @@ const FALLBACK_GRADIENTS = [
   "linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)",
 ];
 
-function ilsFmt(n: number) {
+function money(n: number, currency: string) {
   return n.toLocaleString("he-IL", {
     style: "currency",
-    currency: "ILS",
+    currency,
     maximumFractionDigits: 0,
   });
 }
@@ -89,15 +97,16 @@ function TripCard({ trip, fallbackGradient }: { trip: Trip; fallbackGradient: st
     queryKey: ["fx", trip.currency],
     queryFn: () => fetchRateToIls(trip.currency),
     staleTime: 60 * 60 * 1000,
+    enabled: !!spending && spending.amounts.some((row) => row.currency !== trip.currency) && trip.currency !== "ILS",
   });
 
   const status = tripStatus(trip);
   const hasBudget = trip.budget > 0;
-  const budgetIls = hasBudget && rate != null ? trip.budget * rate : null;
-  const spentIls = spending?.totalIls ?? 0;
+  const budget = hasBudget ? trip.budget : null;
+  const spent = spending ? tripSpendingInCurrency(spending.amounts, trip.currency, rate) : null;
   const pct =
-    budgetIls && budgetIls > 0 ? Math.min(100, Math.round((spentIls / budgetIls) * 100)) : 0;
-  const overBudget = budgetIls != null && spentIls > budgetIls;
+    budget && spent != null ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+  const overBudget = budget != null && spent != null && spent > budget;
 
   const dateFmt = (d: string) =>
     new Date(d + "T00:00:00").toLocaleDateString("he-IL", { day: "numeric", month: "short" });
@@ -137,6 +146,7 @@ function TripCard({ trip, fallbackGradient }: { trip: Trip; fallbackGradient: st
             <span>{countryFlag(trip.country)}</span>
             {trip.name}
           </h3>
+          <p className="text-xs text-white/90 mt-0.5">{tripCurrencyLabel(trip.currency)}</p>
           <p className="text-xs text-white/80 mt-0.5">
             {dateFmt(trip.start_date)} – {dateFmt(trip.end_date)} · {tripDurationDays(trip)} ימים
           </p>
@@ -151,9 +161,9 @@ function TripCard({ trip, fallbackGradient }: { trip: Trip; fallbackGradient: st
               </div>
             )}
             <p className="text-xs text-white/90 mt-1.5 tabular-nums">
-              {budgetIls != null
-                ? `${ilsFmt(spentIls)} / ${ilsFmt(budgetIls)}`
-                : `הוצא: ${ilsFmt(spentIls)}`}
+              {spent == null ? "טוען סכום…" : budget != null
+                ? `${money(spent, trip.currency)} / ${money(budget, trip.currency)}`
+                : `הוצא: ${money(spent, trip.currency)}`}
             </p>
           </div>
         </div>

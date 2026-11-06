@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Show original trip-currency totals and currency labels on the trip list; verify Italy and Wedding in euros.
 - [ ] Review selected trip CSV expenses individually, complete missing fields, and verify saving and progression.
 - [x] Extend receipt scan with camera/gallery, location, payment method and reliable card/payer matching; verify extraction and tests.
 - [x] Add total-amount installment entry and verify that only due monthly payments become transactions.
