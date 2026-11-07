@@ -1,5 +1,4 @@
 import { billingDateIn, isScheduledBilling, type SubscriptionSchedule } from "./subscription-schedule";
-import { chargeDateFor } from "./credit_cards";
 
 export type CalendarEvent =
   | { kind: "card"; date: string; label: string; amount: number }
@@ -33,4 +32,12 @@ export function monthEvents(year: number, month: number, cards: Card[], subs: Su
     if (isScheduledBilling(s, date)) out.push({ kind: "sub", date, label: s.name, emoji: s.emoji, amount: s.amount, currency: s.currency });
   }
   return out;
+}
+
+function chargeDateFor(iso: string, billingDay: number): string {
+  const y = Number(iso.slice(0, 4));
+  const m = Number(iso.slice(5, 7)) - 1;
+  const d = Number(iso.slice(8, 10));
+  const day = Math.max(1, Math.min(31, billingDay));
+  return d > day ? billingDateIn({ billing_day: day }, y, m + 1) : billingDateIn({ billing_day: day }, y, m);
 }
