@@ -2,16 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  ArrowLeft,
-  ArrowUpDown,
-  Camera,
-  History,
-  Plus,
-  Wallet,
-  RefreshCw,
-  WifiOff,
-} from "lucide-react";
+import { ArrowLeft, Camera, History, Plus, Wallet, RefreshCw, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -29,7 +20,11 @@ import { CashDialog } from "@/components/ib/CashDialog";
 import { BuyDialog } from "@/components/ib/BuyDialog";
 import { SellDialog } from "@/components/ib/SellDialog";
 import { PositionHistoryDialog } from "@/components/ib/PositionHistoryDialog";
-import { PositionCard, type PositionCardData } from "@/components/ib/PositionCard";
+import {
+  PositionsTable,
+  type PositionRowData,
+  type PositionSortKey,
+} from "@/components/ib/PositionsTable";
 import { PortfolioSyncDialog } from "@/components/ib/PortfolioSyncDialog";
 import { NewPortfolioDialog } from "@/components/ib/NewPortfolioDialog";
 import { BalanceHistoryList } from "@/components/investments/BalanceHistoryList";
@@ -51,13 +46,12 @@ import { useUsdIlsRate } from "@/lib/fx";
 import { formatMoney, formatILS } from "@/lib/finance";
 import {
   portfolioTotals,
+  positionCostBasis,
   positionMarketValue,
-  positionWeight,
   toIls,
   unrealizedPct,
   unrealizedPnl,
 } from "@/lib/ib-rules";
-import { todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/investments/ib")({
@@ -68,7 +62,6 @@ export const Route = createFileRoute("/investments/ib")({
   component: IbPortfolio,
 });
 
-type SortKey = "symbol" | "marketValue" | "unrealized";
 type MarketPhase = "REGULAR" | "PRE" | "POST" | "CLOSED";
 type CachedQuote = {
   last: number | null;
@@ -110,7 +103,7 @@ function IbPortfolio() {
   const [activePosition, setActivePosition] = useState<IbPosition | null>(null);
   const [historySymbol, setHistorySymbol] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IbPosition | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("marketValue");
+  const [sortKey, setSortKey] = useState<PositionSortKey>("marketValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [quoteCache, setQuoteCache] = useState<Record<string, CachedQuote>>({});
 
@@ -206,8 +199,8 @@ function IbPortfolio() {
 
   const cash = Number(holdings?.cash_usd ?? 0);
 
-  const cards = useMemo<PositionCardData[]>(() => {
-    const rows = positions.map((p) => {
+  const rows = useMemo<PositionRowData[]>(() => {
+    return positions.map((p) => {
       const cached = quoteCache[p.symbol];
       const last = cached?.last ?? null;
       const prevClose = cached?.prevClose ?? null;
@@ -240,31 +233,24 @@ function IbPortfolio() {
         unrealizedPct: pct,
         dailyChangeAbs,
         dailyChangePct,
-        weight: null as number | null,
       };
     });
-    const totals = portfolioTotals(
-      rows.map((r) => ({
-        marketValue: r.marketValue,
-        unrealized: r.unrealized,
-        dailyChangeAbs: r.dailyChangeAbs,
-      })),
-    );
-    const portfolioUsd = cash + totals.marketValue;
-    for (const r of rows) r.weight = positionWeight(r.marketValue, portfolioUsd);
-    return rows;
-  }, [positions, quoteCache, cash]);
+  }, [positions, quoteCache]);
 
   const totals = useMemo(
     () =>
       portfolioTotals(
-        cards.map((r) => ({
+        rows.map((r) => ({
           marketValue: r.marketValue,
           unrealized: r.unrealized,
           dailyChangeAbs: r.dailyChangeAbs,
         })),
       ),
-    [cards],
+    [rows],
+  );
+  const totalCostBasis = useMemo(
+    () => rows.reduce((s, r) => s + positionCostBasis(r.quantity, r.avgPrice), 0),
+    [rows],
   );
   const totalMarket = totals.marketValue;
   const totalUnrealized = totals.unrealized;
@@ -281,8 +267,8 @@ function IbPortfolio() {
     return sum;
   }, [transactions]);
 
-  const sortedCards = useMemo(() => {
-    const arr = [...cards];
+  const sortedRows = useMemo(() => {
+    const arr = [...rows];
     arr.sort((a, b) => {
       let av: number | string = 0;
       let bv: number | string = 0;
@@ -301,9 +287,9 @@ function IbPortfolio() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return arr;
-  }, [cards, sortKey, sortDir]);
+  }, [rows, sortKey, sortDir]);
 
-  const toggleSort = (k: SortKey) => {
+  const toggleSort = (k: PositionSortKey) => {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
       setSortKey(k);
@@ -381,39 +367,6 @@ function IbPortfolio() {
       toast.error("שגיאה ביצירת התיק");
     },
   });
-
-  const quickTradeBusy = buyMutation.isPending || sellMutation.isPending;
-
-  /** Quick +/- : trade exactly 1 share at the live price, recorded in the
-   *  ledger like a normal trade (cash adjusted). Disabled without a price. */
-  const quickBuy = (row: PositionCardData) => {
-    if (!selectedId || row.last == null) return;
-    buyMutation.mutate({
-      accountId: selectedId,
-      symbol: row.symbol,
-      quantity: 1,
-      price: row.last,
-      occurred_at: todayISO(),
-      note: "התאמה מהירה",
-      adjustCash: true,
-    });
-  };
-  const quickSell = (row: PositionCardData) => {
-    if (!selectedId || row.last == null) return;
-    if (row.quantity < 1) {
-      toast.error("אין מניה שלמה למכירה — השתמש ב״מכור״ לכמות חלקית");
-      return;
-    }
-    sellMutation.mutate({
-      accountId: selectedId,
-      symbol: row.symbol,
-      quantity: 1,
-      price: row.last,
-      occurred_at: todayISO(),
-      note: "התאמה מהירה",
-      adjustCash: true,
-    });
-  };
 
   const positionById = (id: string) => positions.find((p) => p.id === id) ?? null;
 
@@ -557,66 +510,48 @@ function IbPortfolio() {
             </div>
           </section>
 
-          <section className="px-5 md:px-0 mt-4 flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">מיון:</span>
-            <SortButton
-              label="שווי"
-              active={sortKey === "marketValue"}
-              dir={sortDir}
-              onClick={() => toggleSort("marketValue")}
-            />
-            <SortButton
-              label="רווח"
-              active={sortKey === "unrealized"}
-              dir={sortDir}
-              onClick={() => toggleSort("unrealized")}
-            />
-            <SortButton
-              label="סימבול"
-              active={sortKey === "symbol"}
-              dir={sortDir}
-              onClick={() => toggleSort("symbol")}
-            />
-          </section>
-
-          <section className="px-5 md:px-0 mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-            {sortedCards.length === 0 ? (
-              <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground md:col-span-2">
+          <section className="px-5 md:px-0 mt-4">
+            {sortedRows.length === 0 ? (
+              <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">
                 אין החזקות עדיין. לחץ על "הוספת החזקה" כדי להתחיל, או על "סנכרן מ-IBKR" כדי לייבא
                 מצילום מסך.
               </div>
             ) : (
-              sortedCards.map((r) => (
-                <PositionCard
-                  key={r.id}
-                  data={r}
-                  fxRate={fxRate}
-                  busy={quickTradeBusy}
-                  onQuickBuy={() => quickBuy(r)}
-                  onQuickSell={() => quickSell(r)}
-                  onBuy={() => {
-                    setActivePosition(positionById(r.id));
-                    setBuyOpen(true);
-                  }}
-                  onSell={() => {
-                    setActivePosition(positionById(r.id));
-                    setSellOpen(true);
-                  }}
-                  onHistory={() => {
-                    setHistorySymbol(r.symbol);
-                    setHistoryOpen(true);
-                  }}
-                  onDelete={() => setDeleteTarget(positionById(r.id))}
-                />
-              ))
+              <PositionsTable
+                rows={sortedRows}
+                fxRate={fxRate}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onToggleSort={toggleSort}
+                onBuy={(r) => {
+                  setActivePosition(positionById(r.id));
+                  setBuyOpen(true);
+                }}
+                onSell={(r) => {
+                  setActivePosition(positionById(r.id));
+                  setSellOpen(true);
+                }}
+                onHistory={(r) => {
+                  setHistorySymbol(r.symbol);
+                  setHistoryOpen(true);
+                }}
+                onDelete={(r) => setDeleteTarget(positionById(r.id))}
+                totals={{
+                  marketValue: totalMarket,
+                  unrealized: totalUnrealized,
+                  unrealizedKnown: totals.unrealizedKnown,
+                  dailyChange: totalDaily,
+                  costBasis: totalCostBasis,
+                }}
+              />
             )}
           </section>
           <p className="text-xs text-muted-foreground mt-2 px-5 md:px-0">
             המחירים מתעדכנים אוטומטית כל כמה שניות עם קאש מקומי. אם ה-API לא זמין נציג את המחיר
             האחרון שנשמר (
             <WifiOff className="inline size-3" />
-            ). כפתורי +1 / −1 קונים או מוכרים מניה אחת במחיר החי ונרשמים ביומן כמו עסקה רגילה.
-            הנתונים שהזנת (כמות ומחיר ממוצע) לא נמחקים אף פעם.
+            ). קנייה ומכירה דרך הדיאלוגים עם הזנת כמות. הנתונים שהזנת (כמות ומחיר ממוצע) לא נמחקים
+            אף פעם.
           </p>
 
           <BalanceHistoryList rows={history} />
@@ -700,32 +635,6 @@ function IbPortfolio() {
         </AlertDialogContent>
       </AlertDialog>
     </AppShell>
-  );
-}
-
-function SortButton({
-  label,
-  active,
-  dir,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  dir: "asc" | "desc";
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium border",
-        active ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-accent",
-      )}
-    >
-      {label}
-      <ArrowUpDown className="size-3 opacity-60" />
-      {active && <span className="text-[9px]">{dir === "asc" ? "▲" : "▼"}</span>}
-    </button>
   );
 }
 

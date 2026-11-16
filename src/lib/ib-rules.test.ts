@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isFxRateUsable,
   portfolioTotals,
+  positionCostBasis,
   positionMarketValue,
   positionWeight,
   realizedPnl,
@@ -66,5 +67,9 @@ describe("IB portfolio rules", () => {
   it("computes position weights", () => {
     expect(positionWeight(250, 1000)).toBe(25);
     expect(positionWeight(100, 0)).toBeNull();
+  });
+  it("computes cost basis as quantity x average price", () => {
+    expect(positionCostBasis(10, 400)).toBe(4000);
+    expect(positionCostBasis(0.5, 123.45)).toBeCloseTo(61.725, 6);
   });
 });
