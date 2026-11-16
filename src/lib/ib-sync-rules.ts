@@ -244,6 +244,94 @@ export function checkSyncTotals(
   };
 }
 
+/**
+ * Manual editing of the recognized portfolio in the review dialog.
+ *
+ * A row's quantity/avgPrice are raw input strings so half-typed values
+ * don't fight the user; they are parsed only when building the plan.
+ * `marketValue`/`baseQuantity` come from the scan and let the totals check
+ * follow quantity edits through the implied per-share price (the cost basis
+ * never affects market value). Manual rows have neither, so the totals
+ * check stays unavailable while one is present — we never invent a market
+ * value.
+ */
+export interface SyncRowDraft {
+  key: string;
+  symbol: string;
+  quantity: string;
+  avgPrice: string;
+  marketValue: number | null;
+  baseQuantity: number | null;
+  manual: boolean;
+}
+
+export type ParsedSyncRowDraft =
+  { ok: true; recognized: RecognizedPosition } | { ok: false; error: string };
+
+function parseQuantityInput(value: string): number | null {
+  const n = Number(value.trim());
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Empty string means "no average price"; returns undefined for invalid text. */
+function parsePriceInput(value: string): number | null | undefined {
+  const t = value.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return n;
+}
+
+export function draftFromRecognized(r: RecognizedPosition, key: string): SyncRowDraft {
+  return {
+    key,
+    symbol: r.symbol,
+    quantity: String(r.quantity),
+    avgPrice: r.avgPrice != null ? String(r.avgPrice) : "",
+    marketValue: r.marketValue,
+    baseQuantity: r.quantity,
+    manual: false,
+  };
+}
+
+/** Validate one editable row and convert it to a recognized position. */
+export function parseSyncRowDraft(row: SyncRowDraft): ParsedSyncRowDraft {
+  const symbol = row.symbol.trim().toUpperCase();
+  if (!symbol) return { ok: false, error: "יש להזין סימבול" };
+  const quantity = parseQuantityInput(row.quantity);
+  if (quantity == null) return { ok: false, error: "כמות חייבת להיות מספר גדול מ-0" };
+  const avgPrice = parsePriceInput(row.avgPrice);
+  if (avgPrice === undefined) {
+    return { ok: false, error: "מחיר ממוצע חייב להיות מספר שאינו שלילי" };
+  }
+  let marketValue = row.marketValue;
+  if (row.baseQuantity != null && row.baseQuantity > 0 && row.marketValue != null) {
+    marketValue = quantity * (row.marketValue / row.baseQuantity);
+  }
+  return { ok: true, recognized: { symbol, quantity, avgPrice, marketValue } };
+}
+
+/** Uppercase symbols appearing in more than one draft row. */
+export function findDuplicateDraftSymbols(rows: SyncRowDraft[]): string[] {
+  const seen = new Set<string>();
+  const dupes = new Set<string>();
+  for (const r of rows) {
+    const s = r.symbol.trim().toUpperCase();
+    if (!s) continue;
+    if (seen.has(s)) dupes.add(s);
+    seen.add(s);
+  }
+  return [...dupes];
+}
+
+/** Cash input: a finite, non-negative number — or null when invalid. */
+export function parseSyncCash(value: string): number | null {
+  const t = value.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 const EMPTY_SCAN: IbPortfolioScan = {
   ok: false,
   cashUsd: null,
