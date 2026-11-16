@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getMyHouseholdId, fetchMyProfile } from "@/lib/household";
-import { fetchUsdIlsRate } from "@/lib/fx";
+import { fetchRateToIls } from "@/lib/fx";
 import type { Person } from "@/lib/person";
 
 export interface BalanceHistoryRow {
@@ -66,6 +66,11 @@ export async function logBalanceChange(input: {
 /**
  * Sets an investment/savings account balance (input is ALWAYS in ILS) and logs
  * the change to the permanent history table.
+ *
+ * Historical transactions are NEVER modified: instead the account is stamped
+ * with balance_reset_at, and balance totals only count transactions created
+ * after the reset. (The old code zeroed every transaction's amounts — an
+ * irreversible data loss — to make the displayed balance match.)
  */
 export async function setAccountBalanceIls(input: {
   accountId: string;
@@ -77,22 +82,20 @@ export async function setAccountBalanceIls(input: {
   const { accountId, currency, oldIls, newIls } = input;
   let native = newIls;
   if (currency !== "ILS") {
-    const rate = input.fxRate && input.fxRate > 0 ? input.fxRate : await fetchUsdIlsRate();
+    // The rate must match the account's own currency (not always USD), and a
+    // failed fetch must throw — never silently convert at a wrong rate.
+    const rate = input.fxRate && input.fxRate > 0 ? input.fxRate : await fetchRateToIls(currency);
     native = newIls / rate;
   }
   const { error } = await supabase
     .from("investment_accounts")
-    .update({ starting_balance: native, starting_balance_ils: newIls })
+    .update({
+      starting_balance: native,
+      starting_balance_ils: newIls,
+      balance_reset_at: new Date().toISOString(),
+    })
     .eq("id", accountId);
   if (error) throw error;
-
-  // Zero out historical transactions so they keep their count but stop adding
-  // to the displayed balance (the new balance IS the source of truth).
-  const { error: zeroErr } = await supabase
-    .from("transactions")
-    .update({ amount: 0, amount_ils: 0 })
-    .eq("investment_account_id", accountId);
-  if (zeroErr) throw zeroErr;
 
   await logBalanceChange({
     investment_account_id: accountId,

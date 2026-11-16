@@ -332,6 +332,7 @@ export type Database = {
           created_at: string
           household_id: string
           id: string
+          investment_account_id: string
           updated_at: string
         }
         Insert: {
@@ -339,6 +340,7 @@ export type Database = {
           created_at?: string
           household_id: string
           id?: string
+          investment_account_id: string
           updated_at?: string
         }
         Update: {
@@ -346,14 +348,22 @@ export type Database = {
           created_at?: string
           household_id?: string
           id?: string
+          investment_account_id?: string
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "ib_holdings_household_id_fkey"
             columns: ["household_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ib_holdings_investment_account_id_fkey"
+            columns: ["investment_account_id"]
+            isOneToOne: false
+            referencedRelation: "investment_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -363,6 +373,7 @@ export type Database = {
           created_at: string
           household_id: string
           id: string
+          investment_account_id: string
           kind: string
           note: string | null
           occurred_at: string
@@ -376,6 +387,7 @@ export type Database = {
           created_at?: string
           household_id: string
           id?: string
+          investment_account_id: string
           kind: string
           note?: string | null
           occurred_at?: string
@@ -389,6 +401,7 @@ export type Database = {
           created_at?: string
           household_id?: string
           id?: string
+          investment_account_id?: string
           kind?: string
           note?: string | null
           occurred_at?: string
@@ -407,6 +420,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ib_position_transactions_investment_account_id_fkey"
+            columns: ["investment_account_id"]
+            isOneToOne: false
+            referencedRelation: "investment_accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ib_position_transactions_position_id_fkey"
             columns: ["position_id"]
             isOneToOne: false
@@ -421,6 +441,7 @@ export type Database = {
           created_at: string
           household_id: string
           id: string
+          investment_account_id: string
           quantity: number
           symbol: string
           updated_at: string
@@ -430,6 +451,7 @@ export type Database = {
           created_at?: string
           household_id: string
           id?: string
+          investment_account_id: string
           quantity?: number
           symbol: string
           updated_at?: string
@@ -439,6 +461,7 @@ export type Database = {
           created_at?: string
           household_id?: string
           id?: string
+          investment_account_id?: string
           quantity?: number
           symbol?: string
           updated_at?: string
@@ -451,10 +474,18 @@ export type Database = {
             referencedRelation: "households"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ib_positions_investment_account_id_fkey"
+            columns: ["investment_account_id"]
+            isOneToOne: false
+            referencedRelation: "investment_accounts"
+            referencedColumns: ["id"]
+          },
         ]
       }
       investment_accounts: {
         Row: {
+          balance_reset_at: string | null
           color: string
           created_at: string
           currency: string
@@ -468,6 +499,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          balance_reset_at?: string | null
           color?: string
           created_at?: string
           currency?: string
@@ -481,6 +513,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          balance_reset_at?: string | null
           color?: string
           created_at?: string
           currency?: string
@@ -952,12 +985,50 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_ib_sync: {
+        Args: {
+          _account_id: string
+          _cash_usd: number
+          _ops: Json
+          _occurred_at: string
+          _note?: string
+        }
+        Returns: Json
+      }
+      buy_ib_shares: {
+        Args: {
+          _account_id: string
+          _symbol: string
+          _quantity: number
+          _price: number
+          _occurred_at: string
+          _note?: string
+          _adjust_cash?: boolean
+        }
+        Returns: Json
+      }
       create_household: { Args: { _name: string }; Returns: string }
       current_household_id: { Args: never; Returns: string }
       delete_my_household: { Args: never; Returns: undefined }
       generate_invite_code: { Args: { _household_id: string }; Returns: string }
       leave_household: { Args: never; Returns: undefined }
       redeem_invite: { Args: { _code: string }; Returns: string }
+      sell_ib_shares: {
+        Args: {
+          _account_id: string
+          _symbol: string
+          _quantity: number
+          _price: number
+          _occurred_at: string
+          _note?: string
+          _adjust_cash?: boolean
+        }
+        Returns: Json
+      }
+      set_ib_cash: {
+        Args: { _account_id: string; _cash_usd: number }
+        Returns: Json
+      }
     }
     Enums: {
       person: "yonatan" | "shiri" | "shared"

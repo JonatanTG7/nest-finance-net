@@ -17,11 +17,14 @@ export function PositionHistoryDialog({
   open,
   onOpenChange,
   initialSymbol,
+  accountId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** Pre-fills the ticker filter when opened from a specific position's menu. */
   initialSymbol?: string | null;
+  /** The portfolio whose ledger is shown. */
+  accountId: string;
 }) {
   const [filter, setFilter] = useState("");
 
@@ -40,9 +43,9 @@ export function PositionHistoryDialog({
     isError,
     error,
   } = useQuery({
-    queryKey: ["ib", "transactions", "all"],
-    queryFn: () => fetchIbTransactions(),
-    enabled: open,
+    queryKey: ["ib", "transactions", accountId],
+    queryFn: () => fetchIbTransactions(accountId),
+    enabled: open && !!accountId,
     retry: 1,
   });
 
@@ -58,8 +61,10 @@ export function PositionHistoryDialog({
     let realizedPnl = 0;
     for (const t of txs) {
       const total = t.quantity * t.price;
+      // 'adjust' entries (portfolio-sync corrections) are neither buys nor
+      // sells — they don't count toward bought/sold totals.
       if (t.kind === "buy") bought += total;
-      else {
+      else if (t.kind === "sell") {
         sold += total;
         if (t.prior_avg_price != null) realizedPnl += (t.price - t.prior_avg_price) * t.quantity;
       }
@@ -146,12 +151,12 @@ export function PositionHistoryDialog({
                       <span
                         className={cn(
                           "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
-                          t.kind === "buy"
-                            ? "bg-emerald-500/15 text-emerald-500"
-                            : "bg-rose-500/15 text-rose-400",
+                          t.kind === "buy" && "bg-emerald-500/15 text-emerald-500",
+                          t.kind === "sell" && "bg-rose-500/15 text-rose-400",
+                          t.kind === "adjust" && "bg-amber-500/15 text-amber-500",
                         )}
                       >
-                        {t.kind === "buy" ? "קנייה" : "מכירה"}
+                        {t.kind === "buy" ? "קנייה" : t.kind === "sell" ? "מכירה" : "סנכרון"}
                       </span>
                       <span className="text-xs text-muted-foreground" dir="ltr">
                         {new Date(t.occurred_at).toLocaleDateString("he-IL")}

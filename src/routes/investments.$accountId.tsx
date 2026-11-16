@@ -11,7 +11,7 @@ import { fetchInvestmentAccounts } from "@/lib/db";
 import { fetchBalanceHistory, setAccountBalanceIls } from "@/lib/balance_history";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchUsdIlsRate } from "@/lib/fx";
-import { IB_ACCOUNT_ID } from "@/lib/ib";
+import { IB_KIND } from "@/lib/ib";
 
 export const Route = createFileRoute("/investments/$accountId")({
   head: () => ({ meta: [{ title: "חשבון השקעה" }] }),
@@ -82,11 +82,11 @@ function AccountPage() {
         </div>
       </header>
 
-      {accountId === IB_ACCOUNT_ID ? (
+      {account?.kind === IB_KIND ? (
         <section className="px-5 md:px-0">
           <div className="rounded-2xl border bg-card p-6 text-sm">
             <p className="mb-3">חשבון Interactive Brokers מנוהל בעמוד תיק ההשקעות.</p>
-            <Link to="/investments/ib">
+            <Link to="/investments/ib" search={{ account: accountId }}>
               <Button size="sm">פתח את תיק ה-IB</Button>
             </Link>
           </div>

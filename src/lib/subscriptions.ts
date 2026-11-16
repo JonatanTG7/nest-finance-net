@@ -53,7 +53,10 @@ export function useInvalidateSubscriptions() {
 }
 
 export async function saveSubscription(input: SubscriptionInput, id?: string) {
-  if (input.payment_count != null && (!Number.isInteger(input.payment_count) || input.payment_count < 1)) {
+  if (
+    input.payment_count != null &&
+    (!Number.isInteger(input.payment_count) || input.payment_count < 1)
+  ) {
     throw new Error("מספר התשלומים חייב להיות מספר שלם גדול מאפס");
   }
   if (!input.start_date || (input.end_date && input.end_date < input.start_date)) {
@@ -110,13 +113,26 @@ async function doSync(): Promise<number> {
   const rateCache = new Map<string, number>();
   let created = 0;
   for (const s of subs) {
+    // Fetch the rate once per subscription, BEFORE creating any charge.
+    // A failed fetch must NEVER fall back to rate 1 (that would record a $10
+    // charge as 10 ₪): skip this subscription for now — with no transaction
+    // created, the next sync run will retry it.
+    let rate = rateCache.get(s.currency);
+    if (rate == null) {
+      if (s.currency === "ILS") {
+        rate = 1;
+      } else {
+        try {
+          rate = await fetchRateToIls(s.currency);
+        } catch (e) {
+          console.warn("[subscriptions] skipping charge, FX rate unavailable", s.currency, e);
+          continue;
+        }
+      }
+      rateCache.set(s.currency, rate);
+    }
     for (const d of dueDates(s, today)) {
       if (have.has(`${s.id}|${d}`)) continue;
-      let rate = rateCache.get(s.currency);
-      if (rate == null) {
-        rate = s.currency === "ILS" ? 1 : await fetchRateToIls(s.currency).catch(() => 1);
-        rateCache.set(s.currency, rate);
-      }
       const { error: insErr } = await db.from("transactions").insert({
         type: "fixed",
         amount: s.amount,
@@ -139,4 +155,3 @@ async function doSync(): Promise<number> {
   }
   return created;
 }
-

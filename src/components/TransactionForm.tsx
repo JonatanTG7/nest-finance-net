@@ -445,6 +445,12 @@ export function TransactionForm({
       toast.error("בחר כרטיס אשראי");
       return;
     }
+    // Never save a foreign-currency transaction with a failed/missing rate —
+    // the old fallback (rate 1) silently recorded $ amounts as ₪ amounts.
+    if (currency !== "ILS" && (fxError || !(parseFloat(fx) > 0))) {
+      toast.error("לא ניתן לשמור בלי שער חליפין תקין — רענן את השער ונסה שוב");
+      return;
+    }
     setDefaultPerson(enteredBy);
     if (paymentMethod) setLastPaymentMethod(paymentMethod);
 
