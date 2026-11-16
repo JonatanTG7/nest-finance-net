@@ -1,12 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   ArrowUpDown,
+  Camera,
   History,
-  MoreVertical,
   Plus,
   Wallet,
   RefreshCw,
@@ -16,34 +16,55 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CashDialog } from "@/components/ib/CashDialog";
 import { BuyDialog } from "@/components/ib/BuyDialog";
 import { SellDialog } from "@/components/ib/SellDialog";
 import { PositionHistoryDialog } from "@/components/ib/PositionHistoryDialog";
+import { PositionCard, type PositionCardData } from "@/components/ib/PositionCard";
+import { PortfolioSyncDialog } from "@/components/ib/PortfolioSyncDialog";
+import { NewPortfolioDialog } from "@/components/ib/NewPortfolioDialog";
 import { BalanceHistoryList } from "@/components/investments/BalanceHistoryList";
-import { fetchBalanceHistory, logBalanceChange } from "@/lib/balance_history";
+import { fetchBalanceHistory } from "@/lib/balance_history";
 import {
   fetchIbHoldings,
+  fetchIbPortfolios,
   fetchIbPositions,
+  fetchIbTransactions,
+  createIbPortfolio,
   setIbCash,
   buyIbShares,
   sellIbShares,
   deleteIbPosition,
-  IB_ACCOUNT_ID,
   type IbPosition,
 } from "@/lib/ib";
 import { getQuotes, type Quote } from "@/lib/ib.functions";
-import { fetchUsdIlsRate } from "@/lib/fx";
+import { useUsdIlsRate } from "@/lib/fx";
 import { formatMoney, formatILS } from "@/lib/finance";
+import {
+  portfolioTotals,
+  positionMarketValue,
+  positionWeight,
+  toIls,
+  unrealizedPct,
+  unrealizedPnl,
+} from "@/lib/ib-rules";
+import { todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/investments/ib")({
   head: () => ({ meta: [{ title: "Interactive Brokers" }] }),
+  validateSearch: (search: Record<string, unknown>): { account?: string } => ({
+    account: typeof search.account === "string" ? search.account : undefined,
+  }),
   component: IbPortfolio,
 });
 
@@ -57,25 +78,7 @@ type CachedQuote = {
   dailyChangePct: number | null;
   at: number;
 };
-type PositionRow = IbPosition & {
-  last: number | null;
-  prevClose: number | null;
-  phase: MarketPhase;
-  stale: boolean;
-  marketValue: number;
-  unrealized: number;
-  unrealizedPct: number | null;
-  dailyChangeAbs: number | null;
-  dailyChangePct: number | null;
-};
 const QUOTE_CACHE_KEY = "ib.quoteCache.v2";
-
-const PHASE_LABEL: Record<MarketPhase, string> = {
-  REGULAR: "Regular",
-  PRE: "Pre",
-  POST: "After",
-  CLOSED: "Closed",
-};
 
 function loadQuoteCache(): Record<string, CachedQuote> {
   try {
@@ -95,13 +98,18 @@ function saveQuoteCache(c: Record<string, CachedQuote>) {
 
 function IbPortfolio() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { account: accountParam } = Route.useSearch();
   const getQuotesFn = useServerFn(getQuotes);
   const [cashOpen, setCashOpen] = useState(false);
   const [buyOpen, setBuyOpen] = useState(false);
   const [sellOpen, setSellOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [newPortfolioOpen, setNewPortfolioOpen] = useState(false);
   const [activePosition, setActivePosition] = useState<IbPosition | null>(null);
   const [historySymbol, setHistorySymbol] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<IbPosition | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("marketValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [quoteCache, setQuoteCache] = useState<Record<string, CachedQuote>>({});
@@ -110,21 +118,40 @@ function IbPortfolio() {
     setQuoteCache(loadQuoteCache());
   }, []);
 
+  const { data: portfolios = [] } = useQuery({
+    queryKey: ["ib", "portfolios"],
+    queryFn: fetchIbPortfolios,
+  });
+  const selectedId =
+    (accountParam && portfolios.some((p) => p.id === accountParam)
+      ? accountParam
+      : portfolios[0]?.id) ?? null;
+  const selectedPortfolio = portfolios.find((p) => p.id === selectedId) ?? null;
+
+  const selectPortfolio = (id: string) => {
+    navigate({ to: "/investments/ib", search: { account: id } });
+  };
+
   const { data: holdings } = useQuery({
-    queryKey: ["ib", "holdings"],
-    queryFn: fetchIbHoldings,
+    queryKey: ["ib", "holdings", selectedId],
+    queryFn: () => fetchIbHoldings(selectedId!),
+    enabled: !!selectedId,
     refetchInterval: 10_000,
   });
   const { data: positions = [] } = useQuery({
-    queryKey: ["ib", "positions"],
-    queryFn: fetchIbPositions,
+    queryKey: ["ib", "positions", selectedId],
+    queryFn: () => fetchIbPositions(selectedId!),
+    enabled: !!selectedId,
     refetchInterval: 15_000,
   });
-  const { data: fxRate = 3.7 } = useQuery({
-    queryKey: ["fx", "usdils"],
-    queryFn: fetchUsdIlsRate,
-    staleTime: 60 * 60 * 1000,
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["ib", "transactions", selectedId],
+    queryFn: () => fetchIbTransactions(selectedId!),
+    enabled: !!selectedId,
   });
+  // No hardcoded fallback rate: when the rate is unavailable the ₪ values
+  // show "rate unavailable" instead of a wrong number.
+  const { rate: fxRate, stale: fxStale, updatedAt: fxUpdatedAt } = useUsdIlsRate();
 
   const symbols = useMemo(() => positions.map((p) => p.symbol), [positions]);
 
@@ -143,8 +170,9 @@ function IbPortfolio() {
   });
 
   const { data: history = [] } = useQuery({
-    queryKey: ["balance_history", IB_ACCOUNT_ID],
-    queryFn: () => fetchBalanceHistory(IB_ACCOUNT_ID),
+    queryKey: ["balance_history", selectedId],
+    queryFn: () => fetchBalanceHistory(selectedId!),
+    enabled: !!selectedId,
   });
 
   // Merge live quotes into cache; never overwrite a good value with null.
@@ -176,20 +204,21 @@ function IbPortfolio() {
     });
   }, [liveQuotes]);
 
-  const rows = useMemo<PositionRow[]>(() => {
-    return positions.map((p) => {
+  const cash = Number(holdings?.cash_usd ?? 0);
+
+  const cards = useMemo<PositionCardData[]>(() => {
+    const rows = positions.map((p) => {
       const cached = quoteCache[p.symbol];
       const last = cached?.last ?? null;
       const prevClose = cached?.prevClose ?? null;
       const phase: MarketPhase = cached?.phase ?? "CLOSED";
       const stale = cached ? Date.now() - cached.at > 5 * 60_000 : true;
       // Failsafe: no live/cached price → fall back to cost basis so
-      // Market Value & the Total Portfolio never crash to 0.
-      const priceForCalc = last ?? p.avg_price;
-      const marketValue = priceForCalc * p.quantity;
-      const unrealized = last != null ? (last - p.avg_price) * p.quantity : 0;
-      const unrealizedPct =
-        last != null && p.avg_price > 0 ? ((last - p.avg_price) / p.avg_price) * 100 : null;
+      // Market Value & the Total Portfolio never crash to 0. Unrealized P&L
+      // is then unknown (null), not zero — see ib-rules.
+      const marketValue = positionMarketValue(p.quantity, last, p.avg_price);
+      const unrealized = unrealizedPnl(last, p.avg_price, p.quantity);
+      const pct = unrealizedPct(last, p.avg_price);
       const perShareChange =
         cached?.dailyChange ?? (last != null && prevClose != null ? last - prevClose : null);
       const dailyChangeAbs = perShareChange != null ? perShareChange * p.quantity : null;
@@ -199,29 +228,61 @@ function IbPortfolio() {
           ? ((last - prevClose) / prevClose) * 100
           : null);
       return {
-        ...p,
+        id: p.id,
+        symbol: p.symbol,
+        quantity: p.quantity,
+        avgPrice: p.avg_price,
         last,
-        prevClose,
         phase,
         stale,
         marketValue,
         unrealized,
-        unrealizedPct,
+        unrealizedPct: pct,
         dailyChangeAbs,
         dailyChangePct,
+        weight: null as number | null,
       };
     });
-  }, [positions, quoteCache]);
+    const totals = portfolioTotals(
+      rows.map((r) => ({
+        marketValue: r.marketValue,
+        unrealized: r.unrealized,
+        dailyChangeAbs: r.dailyChangeAbs,
+      })),
+    );
+    const portfolioUsd = cash + totals.marketValue;
+    for (const r of rows) r.weight = positionWeight(r.marketValue, portfolioUsd);
+    return rows;
+  }, [positions, quoteCache, cash]);
 
-  const cash = Number(holdings?.cash_usd ?? 0);
-  const totalMarket = rows.reduce((s, r) => s + (r.marketValue ?? 0), 0);
-  const totalUnrealized = rows.reduce((s, r) => s + (r.unrealized ?? 0), 0);
-  const totalDaily = rows.reduce((s, r) => s + (r.dailyChangeAbs ?? 0), 0);
+  const totals = useMemo(
+    () =>
+      portfolioTotals(
+        cards.map((r) => ({
+          marketValue: r.marketValue,
+          unrealized: r.unrealized,
+          dailyChangeAbs: r.dailyChangeAbs,
+        })),
+      ),
+    [cards],
+  );
+  const totalMarket = totals.marketValue;
+  const totalUnrealized = totals.unrealized;
+  const totalDaily = totals.dailyChange;
   const portfolioUsd = cash + totalMarket;
-  const portfolioIls = portfolioUsd * fxRate;
+  const portfolioIls = toIls(portfolioUsd, fxRate);
+  const realizedPnlTotal = useMemo(() => {
+    let sum = 0;
+    for (const t of transactions) {
+      if (t.kind === "sell" && t.prior_avg_price != null) {
+        sum += (t.price - t.prior_avg_price) * t.quantity;
+      }
+    }
+    return sum;
+  }, [transactions]);
 
-  const sortedRows = useMemo(() => {
-    const arr = [...rows];
+  const sortedCards = useMemo(() => {
+    const arr = [...cards];
     arr.sort((a, b) => {
       let av: number | string = 0;
       let bv: number | string = 0;
@@ -240,7 +301,7 @@ function IbPortfolio() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return arr;
-  }, [rows, sortKey, sortDir]);
+  }, [cards, sortKey, sortDir]);
 
   const toggleSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -250,20 +311,22 @@ function IbPortfolio() {
     }
   };
 
+  const invalidateIb = () => {
+    qc.invalidateQueries({ queryKey: ["ib", "holdings", selectedId] });
+    qc.invalidateQueries({ queryKey: ["ib", "positions", selectedId] });
+    qc.invalidateQueries({ queryKey: ["ib", "transactions", selectedId] });
+    qc.invalidateQueries({ queryKey: ["ib", "holdings", "all"] });
+    qc.invalidateQueries({ queryKey: ["ib", "positions", "all"] });
+    qc.invalidateQueries({ queryKey: ["balance_history", selectedId] });
+    qc.invalidateQueries({ queryKey: ["investment_accounts"] });
+  };
+
   const saveCash = useMutation({
     mutationFn: async (usd: number) => {
-      await setIbCash(usd);
-      await logBalanceChange({
-        investment_account_id: IB_ACCOUNT_ID,
-        kind: "מזומן",
-        old_amount: cash,
-        new_amount: usd,
-        currency: "USD",
-      });
+      await setIbCash(selectedId!, usd);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["ib", "holdings"] });
-      qc.invalidateQueries({ queryKey: ["balance_history", IB_ACCOUNT_ID] });
+      invalidateIb();
       toast.success("היתרה עודכנה");
     },
     onError: (e) => {
@@ -275,10 +338,7 @@ function IbPortfolio() {
   const buyMutation = useMutation({
     mutationFn: buyIbShares,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["ib", "positions"] });
-      qc.invalidateQueries({ queryKey: ["ib", "holdings"] });
-      qc.invalidateQueries({ queryKey: ["ib", "transactions"] });
-      qc.invalidateQueries({ queryKey: ["balance_history", IB_ACCOUNT_ID] });
+      invalidateIb();
       toast.success("הקנייה נשמרה");
     },
     onError: (e: unknown) => {
@@ -290,10 +350,7 @@ function IbPortfolio() {
   const sellMutation = useMutation({
     mutationFn: sellIbShares,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["ib", "positions"] });
-      qc.invalidateQueries({ queryKey: ["ib", "holdings"] });
-      qc.invalidateQueries({ queryKey: ["ib", "transactions"] });
-      qc.invalidateQueries({ queryKey: ["balance_history", IB_ACCOUNT_ID] });
+      invalidateIb();
       toast.success("המכירה נשמרה");
     },
     onError: (e: unknown) => {
@@ -305,10 +362,60 @@ function IbPortfolio() {
   const removePos = useMutation({
     mutationFn: deleteIbPosition,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["ib", "positions"] });
+      invalidateIb();
       toast.success("נמחק");
     },
+    onError: () => toast.error("שגיאה במחיקה"),
   });
+
+  const createPortfolio = useMutation({
+    mutationFn: createIbPortfolio,
+    onSuccess: (id) => {
+      qc.invalidateQueries({ queryKey: ["ib", "portfolios"] });
+      qc.invalidateQueries({ queryKey: ["investment_accounts"] });
+      toast.success("התיק נוצר");
+      selectPortfolio(id);
+    },
+    onError: (e) => {
+      console.error(e);
+      toast.error("שגיאה ביצירת התיק");
+    },
+  });
+
+  const quickTradeBusy = buyMutation.isPending || sellMutation.isPending;
+
+  /** Quick +/- : trade exactly 1 share at the live price, recorded in the
+   *  ledger like a normal trade (cash adjusted). Disabled without a price. */
+  const quickBuy = (row: PositionCardData) => {
+    if (!selectedId || row.last == null) return;
+    buyMutation.mutate({
+      accountId: selectedId,
+      symbol: row.symbol,
+      quantity: 1,
+      price: row.last,
+      occurred_at: todayISO(),
+      note: "התאמה מהירה",
+      adjustCash: true,
+    });
+  };
+  const quickSell = (row: PositionCardData) => {
+    if (!selectedId || row.last == null) return;
+    if (row.quantity < 1) {
+      toast.error("אין מניה שלמה למכירה — השתמש ב״מכור״ לכמות חלקית");
+      return;
+    }
+    sellMutation.mutate({
+      accountId: selectedId,
+      symbol: row.symbol,
+      quantity: 1,
+      price: row.last,
+      occurred_at: todayISO(),
+      note: "התאמה מהירה",
+      adjustCash: true,
+    });
+  };
+
+  const positionById = (id: string) => positions.find((p) => p.id === id) ?? null;
 
   return (
     <AppShell>
@@ -316,8 +423,10 @@ function IbPortfolio() {
         <Link to="/investments" className="p-2 rounded-lg hover:bg-accent">
           <ArrowLeft className="size-5" />
         </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">Interactive Brokers</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold truncate">
+            {selectedPortfolio?.name ?? "Interactive Brokers"}
+          </h1>
           <p className="text-xs text-muted-foreground">תיק השקעות · USD</p>
         </div>
         <button
@@ -339,254 +448,180 @@ function IbPortfolio() {
         </button>
       </header>
 
-      <section className="px-5 md:px-0">
-        <div className="rounded-3xl bg-gradient-to-br from-savings to-savings/70 text-foreground p-6">
-          <p className="text-sm opacity-80">שווי תיק כולל</p>
-          <p className="text-4xl font-bold mt-1 tabular-nums" dir="ltr">
-            {formatMoney(portfolioUsd, "USD")}
-          </p>
-          <p className="text-sm opacity-70 mt-1 tabular-nums">≈ {formatILS(portfolioIls)}</p>
-
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <SummaryStat label="מזומן" value={formatMoney(cash, "USD")} />
-            <SummaryStat label="שווי החזקות" value={formatMoney(totalMarket, "USD")} />
-            <SummaryStat
-              label="P&L לא ממומש"
-              value={
-                <span className={cn(totalUnrealized >= 0 ? "text-green-500" : "text-red-500")}>
-                  {totalUnrealized >= 0 ? "+" : ""}
-                  {formatMoney(totalUnrealized, "USD")}
-                </span>
-              }
-            />
-            <SummaryStat
-              label="שינוי יומי"
-              value={
-                <span className={cn(totalDaily >= 0 ? "text-green-500" : "text-red-500")}>
-                  {totalDaily >= 0 ? "+" : ""}
-                  {formatMoney(totalDaily, "USD")}
-                </span>
-              }
-            />
-          </div>
-
-          <div className="mt-5 flex gap-2 flex-wrap">
-            <Button size="sm" variant="secondary" onClick={() => setCashOpen(true)}>
-              <Wallet className="size-4 me-1" />
-              עדכון מזומן
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setActivePosition(null);
-                setBuyOpen(true);
-              }}
-            >
-              <Plus className="size-4 me-1" />
-              הוספת החזקה
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 md:px-0 mt-4" dir="ltr">
-        <div className="rounded-2xl border bg-card overflow-x-auto">
-          <table className="w-full text-sm min-w-[880px] border-separate border-spacing-0">
-            <thead>
-              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/40">
-                <Th
-                  onClick={() => toggleSort("symbol")}
-                  active={sortKey === "symbol"}
-                  dir={sortDir}
-                  align="left"
-                  sticky
-                >
-                  Instrument
-                </Th>
-                <Th align="right">Last</Th>
-                <Th align="right">Avg</Th>
-                <Th
-                  onClick={() => toggleSort("unrealized")}
-                  active={sortKey === "unrealized"}
-                  dir={sortDir}
-                  align="right"
-                >
-                  Unreal. P&amp;L
-                </Th>
-                <Th align="right">Daily</Th>
-                <Th
-                  onClick={() => toggleSort("marketValue")}
-                  active={sortKey === "marketValue"}
-                  dir={sortDir}
-                  align="right"
-                >
-                  Market Value
-                </Th>
-                <Th align="right">Position</Th>
-                <Th align="right">Weight</Th>
-                <th className="w-8 border-b" />
-              </tr>
-            </thead>
-            <tbody>
-              {sortedRows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="p-8 text-center text-sm text-muted-foreground border-b"
-                    dir="rtl"
-                  >
-                    אין החזקות עדיין. לחץ על "הוספת החזקה" כדי להתחיל.
-                  </td>
-                </tr>
-              ) : (
-                sortedRows.map((r, idx) => {
-                  const weight =
-                    portfolioUsd > 0 && r.marketValue != null
-                      ? (r.marketValue / portfolioUsd) * 100
-                      : null;
-                  const rowBg = idx % 2 === 0 ? "bg-card" : "bg-muted/10";
-                  return (
-                    <tr key={r.id} className={cn("hover:bg-muted/30", rowBg)}>
-                      <td
-                        className={cn("px-3 py-3 font-semibold border-b sticky left-0 z-10", rowBg)}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span>{r.symbol}</span>
-                          {r.stale && r.last != null && (
-                            <WifiOff
-                              className="size-3 text-muted-foreground"
-                              aria-label="offline price"
-                            />
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums border-b">
-                        <div className="leading-tight">
-                          <div>{r.last != null ? fmtUsd(r.last) : "—"}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                            {PHASE_LABEL[r.phase]}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-b">
-                        {fmtUsd(r.avg_price)}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-3 py-3 text-right tabular-nums font-medium border-b",
-                          r.unrealized == null
-                            ? "text-muted-foreground"
-                            : r.unrealized >= 0
-                              ? "text-emerald-500"
-                              : "text-rose-400",
-                        )}
-                      >
-                        {r.unrealized == null ? (
-                          "—"
-                        ) : (
-                          <div className="leading-tight">
-                            <div>
-                              {`${r.unrealized >= 0 ? "+" : "-"}${fmtUsd(Math.abs(r.unrealized))}`}
-                            </div>
-                            {r.unrealizedPct != null && (
-                              <div className="text-[10px] opacity-80">
-                                {`${r.unrealizedPct >= 0 ? "+" : ""}${r.unrealizedPct.toFixed(2)}%`}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-3 py-3 text-right tabular-nums border-b",
-                          r.dailyChangeAbs == null
-                            ? "text-muted-foreground"
-                            : r.dailyChangeAbs >= 0
-                              ? "text-emerald-500"
-                              : "text-rose-400",
-                        )}
-                      >
-                        {r.dailyChangeAbs == null ? (
-                          "—"
-                        ) : (
-                          <div className="leading-tight">
-                            <div>
-                              {`${r.dailyChangeAbs >= 0 ? "+" : "-"}${fmtUsd(Math.abs(r.dailyChangeAbs))}`}
-                            </div>
-                            {r.dailyChangePct != null && (
-                              <div className="text-[10px] opacity-80">
-                                {`${r.dailyChangePct >= 0 ? "+" : ""}${r.dailyChangePct.toFixed(2)}%`}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums font-semibold border-b">
-                        {r.marketValue != null ? fmtUsd(r.marketValue) : "—"}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums border-b">
-                        {r.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-b">
-                        {weight != null ? `${weight.toFixed(1)}%` : "—"}
-                      </td>
-                      <td className="px-1 py-3">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1 rounded hover:bg-accent text-muted-foreground">
-                              <MoreVertical className="size-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setActivePosition(r);
-                                setBuyOpen(true);
-                              }}
-                            >
-                              קנה עוד
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setActivePosition(r);
-                                setSellOpen(true);
-                              }}
-                            >
-                              מכור
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setHistorySymbol(r.symbol);
-                                setHistoryOpen(true);
-                              }}
-                            >
-                              היסטוריית תנועות
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => removePos.mutate(r.id)}
-                            >
-                              מחיקה מלאה
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  );
-                })
+      {portfolios.length > 0 && (
+        <section className="px-5 md:px-0 pb-1 flex items-center gap-2 overflow-x-auto">
+          {portfolios.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => selectPortfolio(p.id)}
+              className={cn(
+                "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors",
+                p.id === selectedId
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card hover:bg-accent",
               )}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-muted-foreground mt-2 px-1" dir="rtl">
-          המחירים מתעדכנים אוטומטית כל כמה שניות עם קאש מקומי. אם ה-API לא זמין נציג את המחיר האחרון
-          שנשמר (
-          <WifiOff className="inline size-3" />
-          ). הנתונים שהזנת (כמות ומחיר ממוצע) לא נמחקים אף פעם.
-        </p>
-      </section>
+            >
+              {p.name}
+            </button>
+          ))}
+          <button
+            onClick={() => setNewPortfolioOpen(true)}
+            className="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium border bg-card hover:bg-accent flex items-center gap-1"
+            title="תיק מסחר חדש"
+          >
+            <Plus className="size-4" />
+            תיק חדש
+          </button>
+        </section>
+      )}
 
-      <BalanceHistoryList rows={history} />
+      {!selectedId ? (
+        <section className="px-5 md:px-0 mt-4">
+          <div className="rounded-2xl border bg-card p-6 text-sm">
+            <p className="mb-3">עדיין אין תיק Interactive Brokers במשק הבית.</p>
+            <Button size="sm" onClick={() => setNewPortfolioOpen(true)}>
+              <Plus className="size-4 me-1" />
+              צור תיק ראשון
+            </Button>
+          </div>
+        </section>
+      ) : (
+        <>
+          <section className="px-5 md:px-0">
+            <div className="rounded-3xl bg-gradient-to-br from-savings to-savings/70 text-foreground p-6">
+              <p className="text-sm opacity-80">שווי תיק כולל</p>
+              <p className="text-4xl font-bold mt-1 tabular-nums" dir="ltr">
+                {formatMoney(portfolioUsd, "USD")}
+              </p>
+              <p className="text-xl font-bold mt-1 tabular-nums">
+                {portfolioIls != null ? formatILS(portfolioIls) : "שער דולר לא זמין"}
+              </p>
+              {fxStale && fxUpdatedAt != null && (
+                <p className="text-xs opacity-70 mt-1">
+                  שער אחרון ידוע מ־{new Date(fxUpdatedAt).toLocaleString("he-IL")} — יתרענן אוטומטית
+                </p>
+              )}
+
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                <SummaryStat label="מזומן" usd={cash} ils={toIls(cash, fxRate)} currency="USD" />
+                <SummaryStat
+                  label="שווי החזקות"
+                  usd={totalMarket}
+                  ils={toIls(totalMarket, fxRate)}
+                  currency="USD"
+                />
+                <SummaryStat
+                  label="P&L לא ממומש"
+                  usd={totalUnrealized}
+                  ils={toIls(totalUnrealized, fxRate)}
+                  currency="USD"
+                  colored
+                  note={!totals.unrealizedKnown ? "חלקי — חסר מחיר חי" : undefined}
+                />
+                <SummaryStat
+                  label="P&L ממומש"
+                  usd={realizedPnlTotal}
+                  ils={toIls(realizedPnlTotal, fxRate)}
+                  currency="USD"
+                  colored
+                />
+                <SummaryStat
+                  label="שינוי יומי"
+                  usd={totalDaily}
+                  ils={toIls(totalDaily, fxRate)}
+                  currency="USD"
+                  colored
+                />
+              </div>
+
+              <div className="mt-5 flex gap-2 flex-wrap">
+                <Button size="sm" variant="secondary" onClick={() => setCashOpen(true)}>
+                  <Wallet className="size-4 me-1" />
+                  עדכון מזומן
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setActivePosition(null);
+                    setBuyOpen(true);
+                  }}
+                >
+                  <Plus className="size-4 me-1" />
+                  הוספת החזקה
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setSyncOpen(true)}>
+                  <Camera className="size-4 me-1" />
+                  📸 סנכרן מ-IBKR
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          <section className="px-5 md:px-0 mt-4 flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">מיון:</span>
+            <SortButton
+              label="שווי"
+              active={sortKey === "marketValue"}
+              dir={sortDir}
+              onClick={() => toggleSort("marketValue")}
+            />
+            <SortButton
+              label="רווח"
+              active={sortKey === "unrealized"}
+              dir={sortDir}
+              onClick={() => toggleSort("unrealized")}
+            />
+            <SortButton
+              label="סימבול"
+              active={sortKey === "symbol"}
+              dir={sortDir}
+              onClick={() => toggleSort("symbol")}
+            />
+          </section>
+
+          <section className="px-5 md:px-0 mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+            {sortedCards.length === 0 ? (
+              <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground md:col-span-2">
+                אין החזקות עדיין. לחץ על "הוספת החזקה" כדי להתחיל, או על "סנכרן מ-IBKR" כדי לייבא
+                מצילום מסך.
+              </div>
+            ) : (
+              sortedCards.map((r) => (
+                <PositionCard
+                  key={r.id}
+                  data={r}
+                  fxRate={fxRate}
+                  busy={quickTradeBusy}
+                  onQuickBuy={() => quickBuy(r)}
+                  onQuickSell={() => quickSell(r)}
+                  onBuy={() => {
+                    setActivePosition(positionById(r.id));
+                    setBuyOpen(true);
+                  }}
+                  onSell={() => {
+                    setActivePosition(positionById(r.id));
+                    setSellOpen(true);
+                  }}
+                  onHistory={() => {
+                    setHistorySymbol(r.symbol);
+                    setHistoryOpen(true);
+                  }}
+                  onDelete={() => setDeleteTarget(positionById(r.id))}
+                />
+              ))
+            )}
+          </section>
+          <p className="text-xs text-muted-foreground mt-2 px-5 md:px-0">
+            המחירים מתעדכנים אוטומטית כל כמה שניות עם קאש מקומי. אם ה-API לא זמין נציג את המחיר
+            האחרון שנשמר (
+            <WifiOff className="inline size-3" />
+            ). כפתורי +1 / −1 קונים או מוכרים מניה אחת במחיר החי ונרשמים ביומן כמו עסקה רגילה.
+            הנתונים שהזנת (כמות ומחיר ממוצע) לא נמחקים אף פעם.
+          </p>
+
+          <BalanceHistoryList rows={history} />
+        </>
+      )}
 
       <CashDialog
         open={cashOpen}
@@ -602,7 +637,7 @@ function IbPortfolio() {
         position={activePosition}
         currentCash={cash}
         onSave={async (v) => {
-          await buyMutation.mutateAsync({ ...v, currentCash: cash });
+          await buyMutation.mutateAsync({ ...v, accountId: selectedId! });
         }}
       />
       <SellDialog
@@ -614,9 +649,8 @@ function IbPortfolio() {
           if (!activePosition) return;
           await sellMutation.mutateAsync({
             ...v,
-            positionId: activePosition.id,
+            accountId: selectedId!,
             symbol: activePosition.symbol,
-            currentCash: cash,
           });
         }}
       />
@@ -624,64 +658,109 @@ function IbPortfolio() {
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         initialSymbol={historySymbol}
+        accountId={selectedId ?? ""}
       />
+      <PortfolioSyncDialog
+        open={syncOpen}
+        onOpenChange={setSyncOpen}
+        portfolios={portfolios}
+        initialAccountId={selectedId}
+        onApplied={invalidateIb}
+      />
+      <NewPortfolioDialog
+        open={newPortfolioOpen}
+        onOpenChange={setNewPortfolioOpen}
+        existingNames={portfolios.map((p) => p.name)}
+        onSave={async (name) => {
+          await createPortfolio.mutateAsync(name);
+        }}
+      />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקה מלאה של {deleteTarget?.symbol}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ההחזקה תימחק מהתיק. היסטוריית הקניות והמכירות שלה תישאר ביומן, אבל לא ניתן לשחזר את
+              ההחזקה עצמה.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) removePos.mutate(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+            >
+              מחק
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
 
-const usdFmt = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-function fmtUsd(n: number): string {
-  return usdFmt.format(n);
-}
-
-function Th({
-  children,
-  align = "left",
-  onClick,
+function SortButton({
+  label,
   active,
   dir,
-  sticky,
+  onClick,
 }: {
-  children: React.ReactNode;
-  align?: "left" | "right";
-  onClick?: () => void;
-  active?: boolean;
-  dir?: "asc" | "desc";
-  sticky?: boolean;
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  onClick: () => void;
 }) {
-  const clickable = !!onClick;
   return (
-    <th
-      className={cn(
-        "px-3 py-2 font-medium border-b bg-muted/40",
-        align === "right" ? "text-right" : "text-left",
-        clickable && "cursor-pointer select-none hover:text-foreground",
-        active && "text-foreground",
-        sticky && "sticky left-0 z-20",
-      )}
+    <button
       onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium border",
+        active ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-accent",
+      )}
     >
-      <span className={cn("inline-flex items-center gap-1", align === "right" && "justify-end")}>
-        {children}
-        {clickable && <ArrowUpDown className={cn("size-3 opacity-60", active && "opacity-100")} />}
-        {active && <span className="text-[9px]">{dir === "asc" ? "▲" : "▼"}</span>}
-      </span>
-    </th>
+      {label}
+      <ArrowUpDown className="size-3 opacity-60" />
+      {active && <span className="text-[9px]">{dir === "asc" ? "▲" : "▼"}</span>}
+    </button>
   );
 }
 
-function SummaryStat({ label, value }: { label: string; value: React.ReactNode }) {
+function SummaryStat({
+  label,
+  usd,
+  ils,
+  currency,
+  colored,
+  note,
+}: {
+  label: string;
+  usd: number;
+  ils: number | null;
+  currency: "USD";
+  colored?: boolean;
+  note?: string;
+}) {
   return (
     <div>
       <p className="text-xs opacity-70">{label}</p>
-      <p className="font-semibold tabular-nums mt-0.5" dir="ltr">
-        {value}
+      <p
+        className={cn(
+          "font-semibold tabular-nums mt-0.5",
+          colored && (usd >= 0 ? "text-green-500" : "text-red-500"),
+        )}
+        dir="ltr"
+      >
+        {colored && usd >= 0 ? "+" : ""}
+        {formatMoney(usd, currency)}
       </p>
+      <p className="text-xs opacity-70 tabular-nums">
+        {ils != null ? `${colored && ils >= 0 ? "+" : ""}${formatILS(ils)}` : "שער ₪ לא זמין"}
+      </p>
+      {note && <p className="text-[10px] opacity-60 mt-0.5">{note}</p>}
     </div>
   );
 }
