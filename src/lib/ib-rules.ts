@@ -92,6 +92,11 @@ export function portfolioTotals(rows: PortfolioRowInput[]): PortfolioTotals {
   return { marketValue, unrealized, unrealizedKnown, dailyChange };
 }
 
+/** Cost basis of a position: quantity × average price. */
+export function positionCostBasis(quantity: number, avgPrice: number): number {
+  return quantity * avgPrice;
+}
+
 /** Weight of one position in the portfolio, or null when the total is 0. */
 export function positionWeight(marketValue: number, portfolioUsd: number): number | null {
   if (!(portfolioUsd > 0)) return null;
