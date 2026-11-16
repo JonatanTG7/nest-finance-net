@@ -1,15 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Camera, CheckCircle2, Images, Loader2 } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, Images, Loader2, Plus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { todayISO } from "@/lib/dates";
 import { shrinkImageFile } from "@/lib/image-shrink";
 import { extractIbPortfolio, type IbPortfolioScan } from "@/lib/ib-sync.functions";
-import { checkSyncTotals, planSyncOps, type SyncPlan } from "@/lib/ib-sync-rules";
+import {
+  checkSyncTotals,
+  draftFromRecognized,
+  findDuplicateDraftSymbols,
+  parseSyncCash,
+  parseSyncRowDraft,
+  planSyncOps,
+  type RecognizedPosition,
+  type SyncPlan,
+  type SyncRowDraft,
+} from "@/lib/ib-sync-rules";
 import { applyIbSync, fetchIbHoldings, fetchIbPositions, type IbPortfolio } from "@/lib/ib";
 
 const usdFmt = new Intl.NumberFormat("en-US", {
@@ -27,6 +38,11 @@ function fmtUsd(n: number): string {
  * after the user reviews the before/after table and presses "אשר ועדכן".
  * Nothing is ever applied automatically. Symbols missing from the screenshot
  * are left untouched, and a totals mismatch is shown as a clear warning.
+ *
+ * The user can fix the recognized rows by hand (quantity / average price),
+ * add a stock manually, and edit the cash amount (amount only). Every edit
+ * re-plans the sync and re-checks the totals live; invalid rows block the
+ * confirmation with a clear message.
  */
 export function PortfolioSyncDialog({
   open,
@@ -46,13 +62,24 @@ export function PortfolioSyncDialog({
   const [scan, setScan] = useState<IbPortfolioScan | null>(null);
   const [scanning, setScanning] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [editedRows, setEditedRows] = useState<SyncRowDraft[] | null>(null);
+  // null = untouched: the field shows the recognized cash (or the current
+  // cash when nothing was recognized), and follows the live cash balance.
+  const [cashInput, setCashInput] = useState<string | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const keyCounter = useRef(0);
+
+  function resetScan() {
+    setScan(null);
+    setEditedRows(null);
+    setCashInput(null);
+  }
 
   useEffect(() => {
     if (!open) return;
     setTargetId(initialAccountId ?? portfolios[0]?.id ?? "");
-    setScan(null);
+    resetScan();
   }, [open, initialAccountId, portfolios]);
 
   const { data: holdings } = useQuery({
@@ -67,24 +94,96 @@ export function PortfolioSyncDialog({
   });
 
   const currentCash = Number(holdings?.cash_usd ?? 0);
+
+  // --- Editable plan: drafts -> validated recognized positions -> plan ------
+  const parsedRows = useMemo(
+    () =>
+      (editedRows ?? []).map((row) => ({
+        key: row.key,
+        row,
+        parsed: parseSyncRowDraft(row),
+      })),
+    [editedRows],
+  );
+  const duplicateSymbols = useMemo(
+    () => new Set(findDuplicateDraftSymbols(editedRows ?? [])),
+    [editedRows],
+  );
+  const rowErrors = useMemo(() => {
+    const errors = new Map<string, string>();
+    for (const { key, row, parsed } of parsedRows) {
+      if (!parsed.ok) {
+        errors.set(key, parsed.error);
+      } else if (duplicateSymbols.has(parsed.recognized.symbol)) {
+        errors.set(key, "סימבול כפול — כל מניה מופיעה פעם אחת בלבד");
+      }
+    }
+    return errors;
+  }, [parsedRows, duplicateSymbols]);
+  const effectiveRecognized = useMemo(() => {
+    const out: RecognizedPosition[] = [];
+    for (const { key, parsed } of parsedRows) {
+      if (parsed.ok && !rowErrors.has(key)) out.push(parsed.recognized);
+    }
+    return out;
+  }, [parsedRows, rowErrors]);
   const plan: SyncPlan | null =
     scan?.ok != null && scan.ok
       ? planSyncOps(
           positions.map((p) => ({ symbol: p.symbol, quantity: p.quantity, avgPrice: p.avg_price })),
-          scan.positions,
+          effectiveRecognized,
         )
       : null;
+  const planRowBySymbol = useMemo(
+    () => new Map((plan?.rows ?? []).map((r) => [r.symbol, r])),
+    [plan],
+  );
+
+  const cashValue =
+    cashInput == null
+      ? scan?.ok
+        ? (scan.cashUsd ?? currentCash)
+        : currentCash
+      : parseSyncCash(cashInput);
+  const cashError =
+    cashInput != null && parseSyncCash(cashInput) == null
+      ? "מזומן חייב להיות מספר שאינו שלילי"
+      : null;
   const totalsCheck = scan?.ok
-    ? checkSyncTotals(scan.positions, scan.cashUsd, scan.totalValueUsd)
+    ? checkSyncTotals(effectiveRecognized, cashValue, scan.totalValueUsd)
     : null;
-  const recognizedCash = scan?.ok ? scan.cashUsd : null;
-  const cashWillChange = recognizedCash != null && Math.abs(recognizedCash - currentCash) > 0.005;
-  const canApply = plan != null && (plan.hasChanges || cashWillChange);
+  const cashWillChange = cashValue != null && Math.abs(cashValue - currentCash) > 0.005;
+  const hasErrors = rowErrors.size > 0 || cashError != null;
+  const canApply = plan != null && !hasErrors && (plan.hasChanges || cashWillChange);
+
+  function updateRow(key: string, patch: Partial<SyncRowDraft>) {
+    setEditedRows((rows) => (rows ?? []).map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  function removeRow(key: string) {
+    setEditedRows((rows) => (rows ?? []).filter((r) => r.key !== key));
+  }
+
+  function addManualRow() {
+    keyCounter.current += 1;
+    setEditedRows((rows) => [
+      ...(rows ?? []),
+      {
+        key: `manual-${keyCounter.current}`,
+        symbol: "",
+        quantity: "",
+        avgPrice: "",
+        marketValue: null,
+        baseQuantity: null,
+        manual: true,
+      },
+    ]);
+  }
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setScanning(true);
-    setScan(null);
+    resetScan();
     try {
       const dataUrl = await shrinkImageFile(file);
       const res = await extractFn({ data: { imageBase64: dataUrl, mediaType: "image/jpeg" } });
@@ -94,6 +193,7 @@ export function PortfolioSyncDialog({
         return;
       }
       setScan(res);
+      setEditedRows(res.positions.map((p, i) => draftFromRecognized(p, `scan-${i}`)));
     } catch (err) {
       console.error(err);
       toast.error("לא הצלחנו לקרוא את התמונה");
@@ -103,12 +203,12 @@ export function PortfolioSyncDialog({
   }
 
   async function handleApply() {
-    if (!plan || !targetId) return;
+    if (!plan || !targetId || cashValue == null) return;
     setApplying(true);
     try {
       const res = await applyIbSync({
         accountId: targetId,
-        cashUsd: recognizedCash ?? currentCash,
+        cashUsd: cashValue,
         ops: plan.ops,
         occurredAt: todayISO(),
       });
@@ -144,7 +244,7 @@ export function PortfolioSyncDialog({
               value={targetId}
               onChange={(e) => {
                 setTargetId(e.target.value);
-                setScan(null);
+                resetScan();
               }}
               className="w-full h-10 border rounded-md bg-background px-3 text-sm"
             >
@@ -211,7 +311,7 @@ export function PortfolioSyncDialog({
             <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm">
               <p className="font-medium">לא הצלחנו לפענח את הצילום</p>
               <p className="text-muted-foreground mt-1">{scan.error ?? "נסה צילום ברור יותר"}</p>
-              <Button size="sm" variant="outline" className="mt-3" onClick={() => setScan(null)}>
+              <Button size="sm" variant="outline" className="mt-3" onClick={resetScan}>
                 נסה צילום אחר
               </Button>
             </div>
@@ -269,55 +369,142 @@ export function PortfolioSyncDialog({
                 </p>
               )}
 
-              <div className="rounded-xl border p-3 text-sm">
-                <p className="font-medium">מזומן</p>
-                <p className="tabular-nums mt-1" dir="ltr">
-                  {fmtUsd(currentCash)} →{" "}
-                  {recognizedCash != null ? fmtUsd(recognizedCash) : "לא זוהה — יישאר ללא שינוי"}
+              <div className="rounded-xl border p-3 text-sm space-y-2">
+                <label className="block font-medium" htmlFor="sync-cash">
+                  מזומן (USD)
+                </label>
+                <Input
+                  id="sync-cash"
+                  dir="ltr"
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  value={cashInput ?? String(scan.cashUsd ?? currentCash)}
+                  onChange={(e) => setCashInput(e.target.value)}
+                  className="tabular-nums"
+                />
+                <p className="text-xs text-muted-foreground">
+                  מזומן נוכחי בתיק:{" "}
+                  <span className="tabular-nums" dir="ltr">
+                    {fmtUsd(currentCash)}
+                  </span>
+                  {scan.cashUsd == null && " · לא זוהה בצילום — מוצג המזומן הנוכחי"}
                 </p>
+                {cashError && <p className="text-xs text-destructive">{cashError}</p>}
               </div>
 
               <div className="space-y-2">
-                {plan.rows.map((r) => (
-                  <div key={r.symbol} className="rounded-xl border p-3 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold" dir="ltr">
-                        {r.symbol}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
-                          r.action === "buy" && "bg-emerald-500/15 text-emerald-500",
-                          r.action === "sell" && "bg-rose-500/15 text-rose-400",
-                          r.action === "adjust" && "bg-amber-500/15 text-amber-500",
-                          r.action === "none" && "bg-muted text-muted-foreground",
+                {(editedRows ?? []).map((draft) => {
+                  const planRow = planRowBySymbol.get(draft.symbol.trim().toUpperCase());
+                  const error = rowErrors.get(draft.key);
+                  return (
+                    <div key={draft.key} className="rounded-xl border p-3 text-sm space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        {draft.manual ? (
+                          <Input
+                            aria-label="סימבול"
+                            dir="ltr"
+                            value={draft.symbol}
+                            onChange={(e) =>
+                              updateRow(draft.key, { symbol: e.target.value.toUpperCase() })
+                            }
+                            placeholder="סימבול (למשל IVV)"
+                            className="h-8 w-36 font-semibold uppercase"
+                          />
+                        ) : (
+                          <span className="font-semibold" dir="ltr">
+                            {draft.symbol}
+                          </span>
                         )}
-                      >
-                        {r.action === "buy"
-                          ? "קנייה"
-                          : r.action === "sell"
-                            ? "מכירה"
-                            : r.action === "adjust"
-                              ? "עדכון ממוצע"
-                              : "ללא שינוי"}
-                      </span>
+                        <span className="flex items-center gap-1">
+                          {planRow && (
+                            <span
+                              className={cn(
+                                "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                                planRow.action === "buy" && "bg-emerald-500/15 text-emerald-500",
+                                planRow.action === "sell" && "bg-rose-500/15 text-rose-400",
+                                planRow.action === "adjust" && "bg-amber-500/15 text-amber-500",
+                                planRow.action === "none" && "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {planRow.action === "buy"
+                                ? "קנייה"
+                                : planRow.action === "sell"
+                                  ? "מכירה"
+                                  : planRow.action === "adjust"
+                                    ? "עדכון ממוצע"
+                                    : "ללא שינוי"}
+                            </span>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-6"
+                            aria-label={`הסר את ${draft.symbol || "השורה"}`}
+                            onClick={() => removeRow(draft.key)}
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block text-xs text-muted-foreground">
+                          כמות
+                          <Input
+                            dir="ltr"
+                            type="number"
+                            inputMode="decimal"
+                            step="any"
+                            min="0"
+                            value={draft.quantity}
+                            onChange={(e) => updateRow(draft.key, { quantity: e.target.value })}
+                            className="mt-1 h-8 tabular-nums"
+                          />
+                        </label>
+                        <label className="block text-xs text-muted-foreground">
+                          מחיר ממוצע ($)
+                          <Input
+                            dir="ltr"
+                            type="number"
+                            inputMode="decimal"
+                            step="any"
+                            min="0"
+                            value={draft.avgPrice}
+                            onChange={(e) => updateRow(draft.key, { avgPrice: e.target.value })}
+                            placeholder="—"
+                            className="mt-1 h-8 tabular-nums"
+                          />
+                        </label>
+                      </div>
+                      {planRow && (
+                        <>
+                          <p className="text-xs text-muted-foreground tabular-nums" dir="ltr">
+                            {planRow.currentQty != null
+                              ? `${planRow.currentQty.toLocaleString("en-US", { maximumFractionDigits: 4 })} × ${fmtUsd(planRow.currentAvg ?? 0)}`
+                              : "חדשה"}
+                            {"  →  "}
+                            {planRow.recognizedQty.toLocaleString("en-US", {
+                              maximumFractionDigits: 4,
+                            })}{" "}
+                            × {planRow.recognizedAvg != null ? fmtUsd(planRow.recognizedAvg) : "—"}
+                          </p>
+                          <p className="text-xs">{planRow.note}</p>
+                        </>
+                      )}
+                      {error && <p className="text-xs text-destructive">{error}</p>}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1 tabular-nums" dir="ltr">
-                      {r.currentQty != null
-                        ? `${r.currentQty.toLocaleString("en-US", { maximumFractionDigits: 4 })} × ${fmtUsd(r.currentAvg ?? 0)}`
-                        : "חדשה"}
-                      {"  →  "}
-                      {r.recognizedQty.toLocaleString("en-US", { maximumFractionDigits: 4 })} ×{" "}
-                      {r.recognizedAvg != null ? fmtUsd(r.recognizedAvg) : "—"}
-                    </p>
-                    <p className="text-xs mt-1">{r.note}</p>
-                  </div>
-                ))}
-                {plan.rows.length === 0 && (
+                  );
+                })}
+                {(editedRows ?? []).length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-2">
                     לא זוהו מניות בצילום.
                   </p>
                 )}
+                <Button variant="outline" size="sm" className="w-full" onClick={addManualRow}>
+                  <Plus className="size-4 me-1" />
+                  הוסף מניה
+                </Button>
               </div>
 
               {plan.untouchedSymbols.length > 0 && (
@@ -327,14 +514,20 @@ export function PortfolioSyncDialog({
                 </p>
               )}
 
-              {!canApply && (
+              {hasErrors && (
+                <p className="text-sm text-center text-destructive">
+                  יש לתקן את השגיאות המסומנות לפני האישור.
+                </p>
+              )}
+
+              {!canApply && !hasErrors && (
                 <p className="text-sm text-center text-muted-foreground">
                   התיק כבר מסונכרן — אין שינויים לאשר.
                 </p>
               )}
 
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setScan(null)}>
+                <Button variant="outline" className="flex-1" onClick={resetScan}>
                   צילום אחר
                 </Button>
                 <Button className="flex-1" onClick={handleApply} disabled={!canApply || applying}>

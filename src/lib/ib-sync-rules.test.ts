@@ -1,5 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { checkSyncTotals, parseIbPortfolioScan, planSyncOps } from "./ib-sync-rules";
+import {
+  checkSyncTotals,
+  draftFromRecognized,
+  findDuplicateDraftSymbols,
+  parseIbPortfolioScan,
+  parseSyncCash,
+  parseSyncRowDraft,
+  planSyncOps,
+  type SyncRowDraft,
+} from "./ib-sync-rules";
+
+function draft(over: Partial<SyncRowDraft> = {}): SyncRowDraft {
+  return {
+    key: "k1",
+    symbol: "IVV",
+    quantity: "10",
+    avgPrice: "400",
+    marketValue: 4200,
+    baseQuantity: 10,
+    manual: false,
+    ...over,
+  };
+}
 
 describe("IB screenshot sync rules", () => {
   it("buys the missing shares of an existing position", () => {
@@ -101,5 +123,87 @@ describe("IB screenshot sync rules", () => {
   it("fails gracefully on garbage AI output", () => {
     expect(parseIbPortfolioScan("not json at all").ok).toBe(false);
     expect(parseIbPortfolioScan('{"positions": []}').ok).toBe(false);
+  });
+});
+
+describe("IB sync manual editing", () => {
+  it("parses a valid edited row and uppercases the symbol", () => {
+    const parsed = parseSyncRowDraft(draft({ symbol: "ivv", quantity: "12.5", avgPrice: "410" }));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.recognized.symbol).toBe("IVV");
+      expect(parsed.recognized.quantity).toBe(12.5);
+      expect(parsed.recognized.avgPrice).toBe(410);
+    }
+  });
+  it("treats an empty average price as missing (not an error)", () => {
+    const parsed = parseSyncRowDraft(draft({ avgPrice: "" }));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.recognized.avgPrice).toBeNull();
+  });
+  it("rejects bad quantity and bad average price with Hebrew errors", () => {
+    expect(parseSyncRowDraft(draft({ quantity: "0" }))).toMatchObject({ ok: false });
+    expect(parseSyncRowDraft(draft({ quantity: "-3" }))).toMatchObject({ ok: false });
+    expect(parseSyncRowDraft(draft({ quantity: "abc" }))).toMatchObject({ ok: false });
+    expect(parseSyncRowDraft(draft({ quantity: "" }))).toMatchObject({ ok: false });
+    expect(parseSyncRowDraft(draft({ avgPrice: "-5" }))).toMatchObject({ ok: false });
+    expect(parseSyncRowDraft(draft({ avgPrice: "abc" }))).toMatchObject({ ok: false });
+    expect(parseSyncRowDraft(draft({ symbol: "   " }))).toMatchObject({ ok: false });
+    const err = parseSyncRowDraft(draft({ quantity: "0" }));
+    if (!err.ok) expect(err.error).toMatch("כמות");
+  });
+  it("recomputes market value from the implied price when quantity is edited", () => {
+    // Recognized: 10 shares, market value $4,200 -> implied $420/share.
+    const parsed = parseSyncRowDraft(draft({ quantity: "5" }));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.recognized.marketValue).toBeCloseTo(2100, 6);
+    // Editing only the average price leaves the market value untouched.
+    const avgOnly = parseSyncRowDraft(draft({ avgPrice: "999" }));
+    if (avgOnly.ok) expect(avgOnly.recognized.marketValue).toBeCloseTo(4200, 6);
+  });
+  it("never invents a market value for manual rows", () => {
+    const parsed = parseSyncRowDraft(
+      draft({ manual: true, marketValue: null, baseQuantity: null, symbol: "QQQ" }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.recognized.marketValue).toBeNull();
+  });
+  it("finds duplicate symbols case-insensitively and ignores blanks", () => {
+    expect(
+      findDuplicateDraftSymbols([
+        draft({ key: "a", symbol: "IVV" }),
+        draft({ key: "b", symbol: "ivv" }),
+        draft({ key: "c", symbol: "QQQ" }),
+        draft({ key: "d", symbol: "" }),
+      ]),
+    ).toEqual(["IVV"]);
+    expect(
+      findDuplicateDraftSymbols([draft({ key: "a" }), draft({ key: "b", symbol: "QQQ" })]),
+    ).toEqual([]);
+  });
+  it("parses the editable cash field", () => {
+    expect(parseSyncCash("123.45")).toBe(123.45);
+    expect(parseSyncCash("0")).toBe(0);
+    expect(parseSyncCash("")).toBeNull();
+    expect(parseSyncCash("-1")).toBeNull();
+    expect(parseSyncCash("abc")).toBeNull();
+  });
+  it("builds drafts from a scan and feeds edits back into the plan", () => {
+    const fromScan = draftFromRecognized(
+      { symbol: "IVV", quantity: 10, avgPrice: 400, marketValue: 4200 },
+      "scan-0",
+    );
+    expect(fromScan).toMatchObject({ symbol: "IVV", quantity: "10", avgPrice: "400" });
+    // User fixes the quantity 10 -> 12: the plan must gain a buy of 2.
+    const parsed = parseSyncRowDraft({ ...fromScan, quantity: "12" });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const plan = planSyncOps([{ symbol: "IVV", quantity: 10, avgPrice: 400 }], [parsed.recognized]);
+    expect(plan.ops).toContainEqual({ symbol: "IVV", action: "buy", quantity: 2, price: 400 });
+    // ...and the totals check follows the edit (5 x $420 + $100 cash = $2,200).
+    const fixed = parseSyncRowDraft({ ...fromScan, quantity: "5" });
+    if (!fixed.ok) return;
+    expect(checkSyncTotals([fixed.recognized], 100, 2200).ok).toBe(true);
+    expect(checkSyncTotals([fixed.recognized], 100, 5000).ok).toBe(false);
   });
 });
