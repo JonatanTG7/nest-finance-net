@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Camera, History, Plus, Wallet, RefreshCw, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,12 +42,13 @@ import {
 } from "@/lib/ib";
 import { getQuotes, type Quote } from "@/lib/ib.functions";
 import { useUsdIlsRate } from "@/lib/fx";
-import { formatMoney, formatILS } from "@/lib/finance";
+import { formatILS } from "@/lib/finance";
 import {
+  dailyChangePct,
   portfolioTotals,
-  positionCostBasis,
   positionMarketValue,
   toIls,
+  totalRealizedPnl,
   unrealizedPct,
   unrealizedPnl,
 } from "@/lib/ib-rules";
@@ -89,6 +89,36 @@ function saveQuoteCache(c: Record<string, CachedQuote>) {
   }
 }
 
+// IBKR header style: whole numbers, no currency symbol, no "+" prefix —
+// green/red carries the sign. Zero reads as green, like in IBKR.
+function fmtInt(n: number): string {
+  return Math.round(n).toLocaleString("en-US");
+}
+function fmtPct(n: number): string {
+  return `${n.toFixed(2)}%`;
+}
+function fmtUsd(n: number): string {
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+function pnlClass(n: number | null): string | undefined {
+  if (n == null) return undefined;
+  return n >= 0 ? "text-emerald-400" : "text-rose-400";
+}
+
+// IBKR shows cash as "5.62K" in the Cash Balances section.
+const compactFmt = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 2,
+});
+
+const actionBtnClass =
+  "inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700";
+
 function IbPortfolio() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -105,6 +135,7 @@ function IbPortfolio() {
   const [deleteTarget, setDeleteTarget] = useState<IbPosition | null>(null);
   const [sortKey, setSortKey] = useState<PositionSortKey>("marketValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [tab, setTab] = useState<"positions" | "balances">("positions");
   const [quoteCache, setQuoteCache] = useState<Record<string, CachedQuote>>({});
 
   useEffect(() => {
@@ -248,24 +279,16 @@ function IbPortfolio() {
       ),
     [rows],
   );
-  const totalCostBasis = useMemo(
-    () => rows.reduce((s, r) => s + positionCostBasis(r.quantity, r.avgPrice), 0),
-    [rows],
-  );
   const totalMarket = totals.marketValue;
   const totalUnrealized = totals.unrealized;
   const totalDaily = totals.dailyChange;
   const portfolioUsd = cash + totalMarket;
   const portfolioIls = toIls(portfolioUsd, fxRate);
-  const realizedPnlTotal = useMemo(() => {
-    let sum = 0;
-    for (const t of transactions) {
-      if (t.kind === "sell" && t.prior_avg_price != null) {
-        sum += (t.price - t.prior_avg_price) * t.quantity;
-      }
-    }
-    return sum;
-  }, [transactions]);
+  const dailyPct = useMemo(
+    () => dailyChangePct(totalDaily, portfolioUsd),
+    [totalDaily, portfolioUsd],
+  );
+  const realizedPnlTotal = useMemo(() => totalRealizedPnl(transactions), [transactions]);
 
   const sortedRows = useMemo(() => {
     const arr = [...rows];
@@ -313,11 +336,11 @@ function IbPortfolio() {
     },
     onSuccess: () => {
       invalidateIb();
-      toast.success("היתרה עודכנה");
+      toast.success("Balance updated");
     },
     onError: (e) => {
       console.error(e);
-      toast.error("שגיאה בעדכון היתרה");
+      toast.error("Error updating balance");
     },
   });
 
@@ -325,11 +348,11 @@ function IbPortfolio() {
     mutationFn: buyIbShares,
     onSuccess: () => {
       invalidateIb();
-      toast.success("הקנייה נשמרה");
+      toast.success("Purchase saved");
     },
     onError: (e: unknown) => {
       console.error(e);
-      toast.error(`שגיאה בשמירת הקנייה: ${(e as Error)?.message ?? "לא ידועה"}`);
+      toast.error(`Error saving purchase: ${(e as Error)?.message ?? "unknown"}`);
     },
   });
 
@@ -337,11 +360,11 @@ function IbPortfolio() {
     mutationFn: sellIbShares,
     onSuccess: () => {
       invalidateIb();
-      toast.success("המכירה נשמרה");
+      toast.success("Sale saved");
     },
     onError: (e: unknown) => {
       console.error(e);
-      toast.error(`שגיאה בשמירת המכירה: ${(e as Error)?.message ?? "לא ידועה"}`);
+      toast.error(`Error saving sale: ${(e as Error)?.message ?? "unknown"}`);
     },
   });
 
@@ -349,9 +372,9 @@ function IbPortfolio() {
     mutationFn: deleteIbPosition,
     onSuccess: () => {
       invalidateIb();
-      toast.success("נמחק");
+      toast.success("Deleted");
     },
-    onError: () => toast.error("שגיאה במחיקה"),
+    onError: () => toast.error("Error deleting"),
   });
 
   const createPortfolio = useMutation({
@@ -359,12 +382,12 @@ function IbPortfolio() {
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ["ib", "portfolios"] });
       qc.invalidateQueries({ queryKey: ["investment_accounts"] });
-      toast.success("התיק נוצר");
+      toast.success("Portfolio created");
       selectPortfolio(id);
     },
     onError: (e) => {
       console.error(e);
-      toast.error("שגיאה ביצירת התיק");
+      toast.error("Error creating portfolio");
     },
   });
 
@@ -372,191 +395,229 @@ function IbPortfolio() {
 
   return (
     <AppShell>
-      <header className="px-5 md:px-0 pt-6 pb-3 flex items-center gap-2">
-        <Link to="/investments" className="p-2 rounded-lg hover:bg-accent">
-          <ArrowLeft className="size-5" />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold truncate">
-            {selectedPortfolio?.name ?? "Interactive Brokers"}
-          </h1>
-          <p className="text-xs text-muted-foreground">תיק השקעות · USD</p>
-        </div>
-        <button
-          onClick={() => {
-            setHistorySymbol(null);
-            setHistoryOpen(true);
-          }}
-          className="p-2 rounded-lg hover:bg-accent text-muted-foreground"
-          title="היסטוריית תנועות"
-        >
-          <History className="size-4" />
-        </button>
-        <button
-          onClick={() => refetchQuotes()}
-          className="p-2 rounded-lg hover:bg-accent text-muted-foreground"
-          title="רענן מחירים"
-        >
-          <RefreshCw className={cn("size-4", quotesLoading && "animate-spin")} />
-        </button>
-      </header>
-
-      {portfolios.length > 0 && (
-        <section className="px-5 md:px-0 pb-1 flex items-center gap-2 overflow-x-auto">
-          {portfolios.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => selectPortfolio(p.id)}
-              className={cn(
-                "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors",
-                p.id === selectedId
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card hover:bg-accent",
-              )}
-            >
-              {p.name}
-            </button>
-          ))}
-          <button
-            onClick={() => setNewPortfolioOpen(true)}
-            className="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium border bg-card hover:bg-accent flex items-center gap-1"
-            title="תיק מסחר חדש"
-          >
-            <Plus className="size-4" />
-            תיק חדש
-          </button>
-        </section>
-      )}
-
-      {!selectedId ? (
-        <section className="px-5 md:px-0 mt-4">
-          <div className="rounded-2xl border bg-card p-6 text-sm">
-            <p className="mb-3">עדיין אין תיק Interactive Brokers במשק הבית.</p>
-            <Button size="sm" onClick={() => setNewPortfolioOpen(true)}>
-              <Plus className="size-4 me-1" />
-              צור תיק ראשון
-            </Button>
+      {/* IBKR-style screen: always dark, English, LTR — even though the rest
+          of the app is Hebrew RTL. No yellow anywhere: zinc neutrals with
+          green/red only for P&L. */}
+      <div
+        dir="ltr"
+        className="bg-zinc-950 text-zinc-100 md:rounded-2xl md:border md:border-zinc-800 overflow-hidden"
+      >
+        <header className="px-4 pt-4 pb-2 flex items-center gap-2">
+          <Link to="/investments" className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-300">
+            <ArrowLeft className="size-5" />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold truncate">
+              {selectedPortfolio?.name ?? "Interactive Brokers"}
+            </h1>
+            <p className="text-xs text-zinc-500">Investment Portfolio · USD</p>
           </div>
-        </section>
-      ) : (
-        <>
-          <section className="px-5 md:px-0">
-            <div className="rounded-3xl bg-gradient-to-br from-savings to-savings/70 text-foreground p-6">
-              <p className="text-sm opacity-80">שווי תיק כולל</p>
-              <p className="text-4xl font-bold mt-1 tabular-nums" dir="ltr">
-                {formatMoney(portfolioUsd, "USD")}
-              </p>
-              <p className="text-xl font-bold mt-1 tabular-nums">
-                {portfolioIls != null ? formatILS(portfolioIls) : "שער דולר לא זמין"}
-              </p>
-              {fxStale && fxUpdatedAt != null && (
-                <p className="text-xs opacity-70 mt-1">
-                  שער אחרון ידוע מ־{new Date(fxUpdatedAt).toLocaleString("he-IL")} — יתרענן אוטומטית
-                </p>
-              )}
+          <button
+            onClick={() => {
+              setHistorySymbol(null);
+              setHistoryOpen(true);
+            }}
+            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400"
+            title="Transaction history"
+          >
+            <History className="size-4" />
+          </button>
+          <button
+            onClick={() => refetchQuotes()}
+            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400"
+            title="Refresh prices"
+          >
+            <RefreshCw className={cn("size-4", quotesLoading && "animate-spin")} />
+          </button>
+        </header>
 
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                <SummaryStat label="מזומן" usd={cash} ils={toIls(cash, fxRate)} currency="USD" />
-                <SummaryStat
-                  label="שווי החזקות"
-                  usd={totalMarket}
-                  ils={toIls(totalMarket, fxRate)}
-                  currency="USD"
-                />
-                <SummaryStat
-                  label="P&L לא ממומש"
-                  usd={totalUnrealized}
-                  ils={toIls(totalUnrealized, fxRate)}
-                  currency="USD"
-                  colored
-                  note={!totals.unrealizedKnown ? "חלקי — חסר מחיר חי" : undefined}
-                />
-                <SummaryStat
-                  label="P&L ממומש"
-                  usd={realizedPnlTotal}
-                  ils={toIls(realizedPnlTotal, fxRate)}
-                  currency="USD"
-                  colored
-                />
-                <SummaryStat
-                  label="שינוי יומי"
-                  usd={totalDaily}
-                  ils={toIls(totalDaily, fxRate)}
-                  currency="USD"
-                  colored
-                />
-              </div>
+        {portfolios.length > 0 && (
+          <section className="px-4 pb-1 flex items-center gap-2 overflow-x-auto">
+            {portfolios.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => selectPortfolio(p.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors",
+                  p.id === selectedId
+                    ? "bg-zinc-100 text-zinc-900 border-zinc-100"
+                    : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800",
+                )}
+              >
+                {p.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setNewPortfolioOpen(true)}
+              className="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium border bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800 flex items-center gap-1"
+              title="New portfolio"
+            >
+              <Plus className="size-4" />
+              New Portfolio
+            </button>
+          </section>
+        )}
 
-              <div className="mt-5 flex gap-2 flex-wrap">
-                <Button size="sm" variant="secondary" onClick={() => setCashOpen(true)}>
-                  <Wallet className="size-4 me-1" />
-                  עדכון מזומן
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setActivePosition(null);
-                    setBuyOpen(true);
-                  }}
-                >
-                  <Plus className="size-4 me-1" />
-                  הוספת החזקה
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setSyncOpen(true)}>
-                  <Camera className="size-4 me-1" />
-                  📸 סנכרן מ-IBKR
-                </Button>
-              </div>
+        {!selectedId ? (
+          <section className="px-4 py-6">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm">
+              <p className="mb-3">No Interactive Brokers portfolio in this household yet.</p>
+              <button
+                onClick={() => setNewPortfolioOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+              >
+                <Plus className="size-4" />
+                Create your first portfolio
+              </button>
             </div>
           </section>
-
-          <section className="px-5 md:px-0 mt-4">
-            {sortedRows.length === 0 ? (
-              <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">
-                אין החזקות עדיין. לחץ על "הוספת החזקה" כדי להתחיל, או על "סנכרן מ-IBKR" כדי לייבא
-                מצילום מסך.
+        ) : (
+          <>
+            {/* Account header, like the IBKR app: big total value + daily
+                change on the left, unrealized/realized P&L on the right. */}
+            <section className="px-4 pt-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-4xl font-bold tabular-nums leading-none">
+                    {fmtInt(portfolioUsd)}
+                  </p>
+                  <p className="text-xs text-zinc-500 tabular-nums mt-1.5">
+                    {portfolioIls != null ? `≈ ${formatILS(portfolioIls)}` : "ILS rate unavailable"}
+                  </p>
+                  {fxStale && fxUpdatedAt != null && (
+                    <p className="text-[11px] text-zinc-600 mt-0.5">
+                      Last known rate from {new Date(fxUpdatedAt).toLocaleString("en-US")} —
+                      refreshes automatically
+                    </p>
+                  )}
+                  <p
+                    className={cn("text-xl font-semibold tabular-nums mt-2", pnlClass(totalDaily))}
+                  >
+                    {fmtInt(totalDaily)}
+                    {dailyPct != null && <span className="ms-3">{fmtPct(dailyPct)}</span>}
+                  </p>
+                </div>
+                <div className="shrink-0 text-sm">
+                  <div className="flex items-baseline justify-between gap-6">
+                    <span className="text-zinc-400">Unrealized P&amp;L</span>
+                    <span className={cn("font-semibold tabular-nums", pnlClass(totalUnrealized))}>
+                      {fmtInt(totalUnrealized)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-6 mt-1">
+                    <span className="text-zinc-400">Realized P&amp;L</span>
+                    <span className={cn("font-semibold tabular-nums", pnlClass(realizedPnlTotal))}>
+                      {fmtInt(realizedPnlTotal)}
+                    </span>
+                  </div>
+                  {!totals.unrealizedKnown && (
+                    <p className="text-[11px] text-zinc-500 text-right mt-1">
+                      Partial — missing live price
+                    </p>
+                  )}
+                </div>
               </div>
-            ) : (
-              <PositionsTable
-                rows={sortedRows}
-                fxRate={fxRate}
-                sortKey={sortKey}
-                sortDir={sortDir}
-                onToggleSort={toggleSort}
-                onBuy={(r) => {
-                  setActivePosition(positionById(r.id));
+            </section>
+
+            <div className="px-4 mt-4 flex gap-2 flex-wrap">
+              <button onClick={() => setCashOpen(true)} className={actionBtnClass}>
+                <Wallet className="size-4" />
+                Update Cash
+              </button>
+              <button
+                onClick={() => {
+                  setActivePosition(null);
                   setBuyOpen(true);
                 }}
-                onSell={(r) => {
-                  setActivePosition(positionById(r.id));
-                  setSellOpen(true);
-                }}
-                onHistory={(r) => {
-                  setHistorySymbol(r.symbol);
-                  setHistoryOpen(true);
-                }}
-                onDelete={(r) => setDeleteTarget(positionById(r.id))}
-                totals={{
-                  marketValue: totalMarket,
-                  unrealized: totalUnrealized,
-                  unrealizedKnown: totals.unrealizedKnown,
-                  dailyChange: totalDaily,
-                  costBasis: totalCostBasis,
-                }}
-              />
-            )}
-          </section>
-          <p className="text-xs text-muted-foreground mt-2 px-5 md:px-0">
-            המחירים מתעדכנים אוטומטית כל כמה שניות עם קאש מקומי. אם ה-API לא זמין נציג את המחיר
-            האחרון שנשמר (
-            <WifiOff className="inline size-3" />
-            ). קנייה ומכירה דרך הדיאלוגים עם הזנת כמות. הנתונים שהזנת (כמות ומחיר ממוצע) לא נמחקים
-            אף פעם.
-          </p>
+                className={actionBtnClass}
+              >
+                <Plus className="size-4" />
+                Add Holding
+              </button>
+              <button onClick={() => setSyncOpen(true)} className={actionBtnClass}>
+                <Camera className="size-4" />
+                📸 Sync from IBKR
+              </button>
+            </div>
 
-          <BalanceHistoryList rows={history} />
-        </>
-      )}
+            {/* No Orders tab: the app has no order data, so no fake UI. */}
+            <nav className="px-4 mt-5 flex gap-6 border-b border-zinc-800 text-lg">
+              <button
+                onClick={() => setTab("positions")}
+                className={cn(
+                  "pb-2 -mb-px border-b-2",
+                  tab === "positions"
+                    ? "border-blue-500 text-zinc-100 font-semibold"
+                    : "border-transparent text-zinc-500 hover:text-zinc-300",
+                )}
+              >
+                Positions
+              </button>
+              <button
+                onClick={() => setTab("balances")}
+                className={cn(
+                  "pb-2 -mb-px border-b-2",
+                  tab === "balances"
+                    ? "border-blue-500 text-zinc-100 font-semibold"
+                    : "border-transparent text-zinc-500 hover:text-zinc-300",
+                )}
+              >
+                Balances
+              </button>
+            </nav>
+
+            {tab === "positions" ? (
+              <>
+                {sortedRows.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-zinc-500">
+                    No holdings yet. Use &quot;Add Holding&quot; to start, or &quot;Sync from
+                    IBKR&quot; to import from a screenshot.
+                  </div>
+                ) : (
+                  <PositionsTable
+                    rows={sortedRows}
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggleSort={toggleSort}
+                    onBuy={(r) => {
+                      setActivePosition(positionById(r.id));
+                      setBuyOpen(true);
+                    }}
+                    onSell={(r) => {
+                      setActivePosition(positionById(r.id));
+                      setSellOpen(true);
+                    }}
+                    onHistory={(r) => {
+                      setHistorySymbol(r.symbol);
+                      setHistoryOpen(true);
+                    }}
+                    onDelete={(r) => setDeleteTarget(positionById(r.id))}
+                  />
+                )}
+                <CashBalances cash={cash} />
+              </>
+            ) : (
+              <section className="px-4 py-2">
+                <div className="divide-y divide-zinc-800/70">
+                  <BalanceRow label="USD Cash" value={fmtUsd(cash)} />
+                  <BalanceRow label="Positions Value" value={fmtUsd(totalMarket)} />
+                  <BalanceRow label="Net Liquidation Value" value={fmtUsd(portfolioUsd)} bold />
+                </div>
+              </section>
+            )}
+
+            <p className="text-xs text-zinc-500 px-4 pt-4 pb-5">
+              Prices refresh automatically every few seconds with a local cache. If the API is
+              unavailable, the last saved price is shown (
+              <WifiOff className="inline size-3" />
+              ). Buy and sell through the dialogs with an entered quantity. Your entered data
+              (quantity and average price) is never deleted.
+            </p>
+          </>
+        )}
+      </div>
+
+      {selectedId && <BalanceHistoryList rows={history} />}
 
       <CashDialog
         open={cashOpen}
@@ -612,16 +673,16 @@ function IbPortfolio() {
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-        <AlertDialogContent dir="rtl">
+        <AlertDialogContent dir="ltr">
           <AlertDialogHeader>
-            <AlertDialogTitle>מחיקה מלאה של {deleteTarget?.symbol}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {deleteTarget?.symbol} entirely?</AlertDialogTitle>
             <AlertDialogDescription>
-              ההחזקה תימחק מהתיק. היסטוריית הקניות והמכירות שלה תישאר ביומן, אבל לא ניתן לשחזר את
-              ההחזקה עצמה.
+              The position will be removed from the portfolio. Its buy and sell history stays in the
+              journal, but the position itself cannot be restored.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -629,7 +690,7 @@ function IbPortfolio() {
                 setDeleteTarget(null);
               }}
             >
-              מחק
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -638,38 +699,38 @@ function IbPortfolio() {
   );
 }
 
-function SummaryStat({
-  label,
-  usd,
-  ils,
-  currency,
-  colored,
-  note,
-}: {
-  label: string;
-  usd: number;
-  ils: number | null;
-  currency: "USD";
-  colored?: boolean;
-  note?: string;
-}) {
+/** Cash section at the bottom of the Positions tab, like the IBKR app. */
+function CashBalances({ cash }: { cash: number }) {
   return (
-    <div>
-      <p className="text-xs opacity-70">{label}</p>
-      <p
-        className={cn(
-          "font-semibold tabular-nums mt-0.5",
-          colored && (usd >= 0 ? "text-green-500" : "text-red-500"),
-        )}
-        dir="ltr"
-      >
-        {colored && usd >= 0 ? "+" : ""}
-        {formatMoney(usd, currency)}
-      </p>
-      <p className="text-xs opacity-70 tabular-nums">
-        {ils != null ? `${colored && ils >= 0 ? "+" : ""}${formatILS(ils)}` : "שער ₪ לא זמין"}
-      </p>
-      {note && <p className="text-[10px] opacity-60 mt-0.5">{note}</p>}
+    <section className="mt-2">
+      <div className="bg-zinc-800/70 px-4 py-2 text-sm font-medium text-zinc-300">
+        Cash Balances
+      </div>
+      <div className="divide-y divide-zinc-800/70">
+        <div className="flex items-baseline justify-between px-4 py-3">
+          <span>USD Cash</span>
+          <span className="tabular-nums">
+            {compactFmt.format(cash)}
+            <span className="text-zinc-500 text-sm ms-3">Market Value</span>
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between px-4 py-3">
+          <span>Total Cash</span>
+          <span className="tabular-nums">
+            {compactFmt.format(cash)}
+            <span className="text-zinc-500 text-sm ms-3">Market Value</span>
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BalanceRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between py-3">
+      <span className={cn(bold && "font-semibold")}>{label}</span>
+      <span className={cn("tabular-nums", bold && "font-semibold")}>{value}</span>
     </div>
   );
 }

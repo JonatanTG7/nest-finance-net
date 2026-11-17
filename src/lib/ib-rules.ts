@@ -23,6 +23,38 @@ export function realizedPnl(price: number, avg: number, qty: number): number {
   return (price - avg) * qty;
 }
 
+export interface SellTransactionInput {
+  kind: string;
+  price: number;
+  prior_avg_price: number | null;
+  quantity: number;
+}
+
+/**
+ * Total realized P&L across sell transactions. A sell without a recorded
+ * prior average cost contributes 0 — its basis is unknown, not zero.
+ */
+export function totalRealizedPnl(transactions: SellTransactionInput[]): number {
+  let sum = 0;
+  for (const t of transactions) {
+    if (t.kind === "sell" && t.prior_avg_price != null) {
+      sum += realizedPnl(t.price, t.prior_avg_price, t.quantity);
+    }
+  }
+  return sum;
+}
+
+/**
+ * Daily change in percent vs the start-of-day portfolio value (current value
+ * minus today's change), or null when it cannot be computed (non-positive
+ * start-of-day value).
+ */
+export function dailyChangePct(dailyChange: number, portfolioUsd: number): number | null {
+  const startOfDay = portfolioUsd - dailyChange;
+  if (!(startOfDay > 0)) return null;
+  return (dailyChange / startOfDay) * 100;
+}
+
 /**
  * Market value of a position. With no live price we fall back to cost basis
  * so the portfolio total never crashes to 0 — the caller must treat the

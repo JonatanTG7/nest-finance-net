@@ -8,8 +8,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { formatILS } from "@/lib/finance";
-import { positionCostBasis, toIls } from "@/lib/ib-rules";
 
 export type MarketPhase = "REGULAR" | "PRE" | "POST" | "CLOSED";
 
@@ -30,33 +28,21 @@ export interface PositionRowData {
 
 export type PositionSortKey = "symbol" | "marketValue" | "unrealized";
 
-export interface PositionsTotals {
-  marketValue: number;
-  unrealized: number;
-  unrealizedKnown: boolean;
-  dailyChange: number;
-  costBasis: number;
-}
-
 const PHASE_LABEL: Partial<Record<MarketPhase, string>> = {
   PRE: "Pre",
   POST: "After",
 };
 
-const usdFmt = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-function fmtUsd(n: number): string {
-  return usdFmt.format(n);
+// IBKR style: plain numbers, no currency symbols, no "+" prefix —
+// green/red carries the sign. Zero reads as green, like in IBKR.
+function fmtNum(n: number): string {
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
-function fmtSignedUsd(n: number): string {
-  return `${n >= 0 ? "+" : "-"}${fmtUsd(Math.abs(n))}`;
-}
-function fmtSignedPct(n: number): string {
-  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+function fmtPct(n: number): string {
+  return `${n.toFixed(2)}%`;
 }
 function fmtQty(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
@@ -68,15 +54,16 @@ function pnlClass(n: number | null): string | undefined {
 }
 
 /**
- * Dense professional positions table (IBKR / TradingView style), always dark.
- * Horizontal scroll on mobile with the symbol column pinned on the right and
- * the actions column pinned on the left. No quick +/- actions: buy/sell go
- * through the full dialogs with an entered quantity, and delete is handled by
- * the parent with a confirmation dialog.
+ * IBKR mobile Positions table: dense, always dark, English, LTR.
+ * Column set matches the IBKR app (Instrument, Last Price, daily P&L,
+ * Chg %, Unrlzd P&L, Unrlzd P&L %, Avg Price, Market Value). Quantity is
+ * shown under the symbol — IBKR shows the exchange there, which we don't
+ * have, so the slot carries the share count instead. No quick +/- actions:
+ * buy/sell go through the full dialogs with an entered quantity, and delete
+ * is handled by the parent with a confirmation dialog.
  */
 export function PositionsTable({
   rows,
-  fxRate,
   sortKey,
   sortDir,
   onToggleSort,
@@ -84,11 +71,8 @@ export function PositionsTable({
   onSell,
   onHistory,
   onDelete,
-  totals,
 }: {
   rows: PositionRowData[];
-  /** USD→ILS rate, or null when unavailable (no ₪ values are shown then). */
-  fxRate: number | null;
   sortKey: PositionSortKey;
   sortDir: "asc" | "desc";
   onToggleSort: (k: PositionSortKey) => void;
@@ -96,7 +80,6 @@ export function PositionsTable({
   onSell: (row: PositionRowData) => void;
   onHistory: (row: PositionRowData) => void;
   onDelete: (row: PositionRowData) => void;
-  totals: PositionsTotals;
 }) {
   const header = (label: string, sort?: PositionSortKey, className?: string): React.ReactNode => {
     const active = sort != null && sortKey === sort;
@@ -117,7 +100,7 @@ export function PositionsTable({
           <button
             onClick={() => onToggleSort(sort)}
             className="hover:text-zinc-100"
-            title={`מיין לפי ${label}`}
+            title={`Sort by ${label}`}
           >
             {content}
           </button>
@@ -129,170 +112,115 @@ export function PositionsTable({
   };
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950 text-zinc-100">
-      <table className="w-full border-collapse text-sm min-w-[820px]">
+    <div dir="ltr" className="overflow-x-auto bg-zinc-950 text-zinc-100">
+      <table className="w-full border-collapse text-sm min-w-[780px]">
         <thead>
           <tr>
-            {header("סימבול", "symbol", "sticky right-0 z-10 bg-zinc-950 border-l border-zinc-800")}
-            {header("כמות")}
-            {header("מחיר אחרון")}
-            {header("שינוי %")}
-            {header("P&L יומי")}
-            {header("רווח לא ממומש", "unrealized")}
-            {header("מחיר ממוצע")}
-            {header("בסיס עלות")}
-            {header("שווי שוק", "marketValue")}
-            <th className="sticky left-0 z-10 bg-zinc-950 border-r border-zinc-800 px-2 py-2 border-b border-zinc-800">
-              <span className="sr-only">פעולות</span>
+            {header(
+              "Instrument",
+              "symbol",
+              "sticky left-0 z-10 bg-zinc-950 border-r border-zinc-800",
+            )}
+            {header("Last Price")}
+            {header("P&L")}
+            {header("Chg %")}
+            {header("Unrlzd P&L", "unrealized")}
+            {header("Unrlzd P&L %")}
+            {header("Avg Price")}
+            {header("Market Value", "marketValue")}
+            <th className="sticky right-0 z-10 bg-zinc-950 border-l border-zinc-800 px-2 py-2 border-b border-zinc-800">
+              <span className="sr-only">Actions</span>
             </th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
-            const costBasis = positionCostBasis(r.quantity, r.avgPrice);
-            const marketIls = toIls(r.marketValue, fxRate);
-            return (
-              <tr key={r.id} className="border-b border-zinc-800/70 hover:bg-zinc-900/70">
-                <td className="sticky right-0 z-10 bg-zinc-950 px-3 py-2 font-bold whitespace-nowrap border-l border-zinc-800">
-                  <span dir="ltr">{r.symbol}</span>
-                </td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap" dir="ltr">
-                  {fmtQty(r.quantity)}
-                </td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap" dir="ltr">
-                  <span className="inline-flex items-center gap-1">
-                    {r.last != null ? fmtUsd(r.last) : "—"}
-                    {r.stale && r.last != null && (
-                      <WifiOff className="size-3 text-zinc-500" aria-label="מחיר לא מעודכן" />
-                    )}
-                    {r.last != null && PHASE_LABEL[r.phase] && (
-                      <span className="text-[10px] text-zinc-500 uppercase">
-                        {PHASE_LABEL[r.phase]}
-                      </span>
-                    )}
-                  </span>
-                </td>
-                <td
-                  className={cn(
-                    "px-3 py-2 tabular-nums whitespace-nowrap",
-                    pnlClass(r.dailyChangePct),
-                  )}
-                  dir="ltr"
-                >
-                  {r.dailyChangePct != null ? fmtSignedPct(r.dailyChangePct) : "—"}
-                </td>
-                <td
-                  className={cn(
-                    "px-3 py-2 tabular-nums whitespace-nowrap",
-                    pnlClass(r.dailyChangeAbs),
-                  )}
-                  dir="ltr"
-                >
-                  {r.dailyChangeAbs != null ? fmtSignedUsd(r.dailyChangeAbs) : "—"}
-                </td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap" dir="ltr">
-                  {r.unrealized != null ? (
-                    <span className={cn("font-medium", pnlClass(r.unrealized))}>
-                      {fmtSignedUsd(r.unrealized)}
-                      {r.unrealizedPct != null && (
-                        <span className="block text-[11px] opacity-90">
-                          {fmtSignedPct(r.unrealizedPct)}
-                        </span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-zinc-500">—</span>
-                  )}
-                </td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap" dir="ltr">
-                  {fmtUsd(r.avgPrice)}
-                </td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap" dir="ltr">
-                  {fmtUsd(costBasis)}
-                </td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap" dir="ltr">
-                  <span className="font-medium">{fmtUsd(r.marketValue)}</span>
-                  {marketIls != null && (
-                    <span className="block text-[11px] text-zinc-400">
-                      ≈ {formatILS(marketIls)}
-                    </span>
-                  )}
-                </td>
-                <td className="sticky left-0 z-10 bg-zinc-950 px-1 py-2 border-r border-zinc-800">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800"
-                        aria-label={`פעולות עבור ${r.symbol}`}
-                      >
-                        <MoreVertical className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onBuy(r)}>קנה</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onSell(r)}>מכור</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onHistory(r)}>
-                        <History className="size-4 me-2" />
-                        היסטוריית תנועות
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => onDelete(r)}
-                      >
-                        <Trash2 className="size-4 me-2" />
-                        מחיקה מלאה
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-        <tfoot>
-          <tr className="font-semibold border-t-2 border-zinc-700">
-            <td className="sticky right-0 z-10 bg-zinc-950 px-3 py-2 whitespace-nowrap border-l border-zinc-800">
-              סה״כ
-            </td>
-            <td className="px-3 py-2" />
-            <td className="px-3 py-2" />
-            <td className="px-3 py-2" />
-            <td
-              className={cn(
-                "px-3 py-2 tabular-nums whitespace-nowrap",
-                pnlClass(totals.dailyChange),
-              )}
-              dir="ltr"
-            >
-              {fmtSignedUsd(totals.dailyChange)}
-            </td>
-            <td
-              className={cn(
-                "px-3 py-2 tabular-nums whitespace-nowrap",
-                pnlClass(totals.unrealized),
-              )}
-              dir="ltr"
-            >
-              {fmtSignedUsd(totals.unrealized)}
-              {!totals.unrealizedKnown && (
-                <span className="block text-[10px] font-normal text-zinc-400">
-                  חלקי — חסר מחיר חי
+          {rows.map((r) => (
+            <tr key={r.id} className="border-b border-zinc-800/70 hover:bg-zinc-900/70">
+              <td className="sticky left-0 z-10 bg-zinc-950 px-3 py-2 whitespace-nowrap border-r border-zinc-800">
+                <span className="font-bold">{r.symbol}</span>
+                <span className="block text-[11px] font-normal text-zinc-500 tabular-nums">
+                  {fmtQty(r.quantity)} shares
                 </span>
-              )}
-            </td>
-            <td className="px-3 py-2" />
-            <td className="px-3 py-2 tabular-nums whitespace-nowrap" dir="ltr">
-              {fmtUsd(totals.costBasis)}
-            </td>
-            <td className="px-3 py-2 tabular-nums whitespace-nowrap" dir="ltr">
-              {fmtUsd(totals.marketValue)}
-            </td>
-            <td className="sticky left-0 z-10 bg-zinc-950 px-1 py-2 border-r border-zinc-800" />
-          </tr>
-        </tfoot>
+              </td>
+              <td className="px-3 py-2 tabular-nums whitespace-nowrap">
+                <span className="inline-flex items-center gap-1">
+                  {r.last != null ? fmtNum(r.last) : "—"}
+                  {r.stale && r.last != null && (
+                    <WifiOff className="size-3 text-zinc-500" aria-label="Stale price" />
+                  )}
+                  {r.last != null && PHASE_LABEL[r.phase] && (
+                    <span className="text-[10px] text-zinc-500 uppercase">
+                      {PHASE_LABEL[r.phase]}
+                    </span>
+                  )}
+                </span>
+              </td>
+              <td
+                className={cn(
+                  "px-3 py-2 tabular-nums whitespace-nowrap",
+                  pnlClass(r.dailyChangeAbs),
+                )}
+              >
+                {r.dailyChangeAbs != null ? fmtNum(r.dailyChangeAbs) : "—"}
+              </td>
+              <td
+                className={cn(
+                  "px-3 py-2 tabular-nums whitespace-nowrap",
+                  pnlClass(r.dailyChangePct),
+                )}
+              >
+                {r.dailyChangePct != null ? fmtPct(r.dailyChangePct) : "—"}
+              </td>
+              <td
+                className={cn("px-3 py-2 tabular-nums whitespace-nowrap", pnlClass(r.unrealized))}
+              >
+                {r.unrealized != null ? fmtNum(r.unrealized) : "—"}
+              </td>
+              <td
+                className={cn(
+                  "px-3 py-2 tabular-nums whitespace-nowrap",
+                  pnlClass(r.unrealizedPct),
+                )}
+              >
+                {r.unrealizedPct != null ? fmtPct(r.unrealizedPct) : "—"}
+              </td>
+              <td className="px-3 py-2 tabular-nums whitespace-nowrap">{fmtNum(r.avgPrice)}</td>
+              <td className="px-3 py-2 tabular-nums whitespace-nowrap">
+                <span className="font-medium">{fmtNum(r.marketValue)}</span>
+              </td>
+              <td className="sticky right-0 z-10 bg-zinc-950 px-1 py-2 border-l border-zinc-800">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800"
+                      aria-label={`Actions for ${r.symbol}`}
+                    >
+                      <MoreVertical className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onBuy(r)}>Buy</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onSell(r)}>Sell</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onHistory(r)}>
+                      <History className="size-4 me-2" />
+                      Transaction History
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => onDelete(r)}
+                    >
+                      <Trash2 className="size-4 me-2" />
+                      Delete Position
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </td>
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   );

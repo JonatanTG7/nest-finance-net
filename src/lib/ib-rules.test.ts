@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dailyChangePct,
   isFxRateUsable,
   portfolioTotals,
   positionCostBasis,
@@ -7,6 +8,7 @@ import {
   positionWeight,
   realizedPnl,
   toIls,
+  totalRealizedPnl,
   unrealizedPct,
   unrealizedPnl,
   weightedAvg,
@@ -26,6 +28,25 @@ describe("IB portfolio rules", () => {
   it("computes realized P&L on sells", () => {
     expect(realizedPnl(150, 100, 10)).toBe(500);
     expect(realizedPnl(90, 100, 4)).toBe(-40);
+  });
+  it("sums realized P&L across sells only", () => {
+    expect(
+      totalRealizedPnl([
+        { kind: "sell", price: 150, prior_avg_price: 100, quantity: 10 },
+        { kind: "sell", price: 90, prior_avg_price: 100, quantity: 4 },
+        { kind: "buy", price: 200, prior_avg_price: 100, quantity: 5 },
+        { kind: "adjust", price: 300, prior_avg_price: 100, quantity: 2 },
+        { kind: "sell", price: 300, prior_avg_price: null, quantity: 2 },
+      ]),
+    ).toBe(460);
+    expect(totalRealizedPnl([])).toBe(0);
+  });
+  it("computes daily change % vs start-of-day value", () => {
+    expect(dailyChangePct(49, 38252)).toBeCloseTo((49 / 38203) * 100, 6);
+    expect(dailyChangePct(-100, 9900)).toBe(-1);
+    expect(dailyChangePct(0, 1000)).toBe(0);
+    expect(dailyChangePct(100, 100)).toBeNull();
+    expect(dailyChangePct(100, 50)).toBeNull();
   });
   it("falls back to cost basis for market value without a live price", () => {
     expect(positionMarketValue(10, null, 120)).toBe(1200);
