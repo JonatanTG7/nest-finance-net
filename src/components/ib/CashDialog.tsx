@@ -58,9 +58,6 @@ export function CashDialog({
             onChange={(e) => setValue(e.target.value)}
             placeholder="0.00"
           />
-          <p className="text-xs text-muted-foreground">
-            הזן את סכום המזומן החופשי (CASH) שיש לך כרגע בחשבון ה-IB.
-          </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

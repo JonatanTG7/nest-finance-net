@@ -1,4 +1,4 @@
-import { History, MoreVertical, Trash2, WifiOff } from "lucide-react";
+import { MoreVertical, Trash2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -69,7 +69,6 @@ export function PositionsTable({
   onToggleSort,
   onBuy,
   onSell,
-  onHistory,
   onDelete,
 }: {
   rows: PositionRowData[];
@@ -78,7 +77,6 @@ export function PositionsTable({
   onToggleSort: (k: PositionSortKey) => void;
   onBuy: (row: PositionRowData) => void;
   onSell: (row: PositionRowData) => void;
-  onHistory: (row: PositionRowData) => void;
   onDelete: (row: PositionRowData) => void;
 }) {
   const header = (label: string, sort?: PositionSortKey, className?: string): React.ReactNode => {
@@ -203,10 +201,6 @@ export function PositionsTable({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onBuy(r)}>Buy</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onSell(r)}>Sell</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onHistory(r)}>
-                      <History className="size-4 me-2" />
-                      Transaction History
-                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
