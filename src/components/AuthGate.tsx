@@ -140,9 +140,6 @@ function SignIn() {
     <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background p-6 text-center">
       <div className="text-5xl mb-4">💰</div>
       <h1 className="text-3xl font-bold">כסף משפחתי</h1>
-      <p className="mt-2 text-sm text-muted-foreground max-w-xs">
-        ניהול תקציב משותף ומאובטח לכל המשפחה. כניסה דרך Google כדי להגן על הנתונים שלכם.
-      </p>
       <button
         onClick={go}
         disabled={loading}

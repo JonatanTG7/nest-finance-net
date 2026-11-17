@@ -50,7 +50,6 @@ function TravelHub() {
       <header className="px-5 md:px-0 pt-6 pb-3 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">טיולים</h1>
-          <p className="text-xs text-muted-foreground">מעקב הוצאות לפי טיול</p>
         </div>
         <Link
           to="/travel/new"

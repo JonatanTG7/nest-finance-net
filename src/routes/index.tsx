@@ -314,9 +314,6 @@ function Dashboard() {
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">אתם בטיול: {activeTrip.name} 🧳</p>
-              <p className="text-xs text-muted-foreground">
-                הקישו כדי לראות את הטיול ולהוסיף הוצאה
-              </p>
             </div>
           </Link>
         </section>

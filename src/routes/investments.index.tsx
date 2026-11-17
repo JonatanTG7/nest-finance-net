@@ -192,9 +192,6 @@ function Investments() {
             חשבון חדש
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          לחץ על כל חשבון כדי לעדכן את הסכום ולראות את היסטוריית השינויים.
-        </p>
       </header>
 
       <section className="px-5 md:px-0">
@@ -233,9 +230,7 @@ function Investments() {
                   {t.ils != null ? `≈ ${formatILS(t.ils)}` : "שער דולר לא זמין"}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
-                {isIb ? `${ibCount} החזקות · מחירים חיים` : "עדכון סכום והיסטוריה"}
-              </p>
+              {isIb && <p className="text-xs text-muted-foreground mt-1">{ibCount} החזקות</p>}
             </div>
           );
           return isIb ? (

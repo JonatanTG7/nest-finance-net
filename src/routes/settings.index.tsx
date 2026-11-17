@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Sun, Moon, Copy, LogOut, Users, Plus, ArrowLeft, ShieldAlert, Coins } from "lucide-react";
 import { toast } from "sonner";
@@ -81,9 +81,6 @@ function Settings() {
             </button>
           ))}
         </div>
-        {/* <p className="mt-2 text-xs text-muted-foreground">
-          ערך זה ייבחר אוטומטית במסך הוספת תנועה. תמיד אפשר לשנות לפני שמירה.
-        </p> */}
       </section>
 
       <PeriodSection />
@@ -123,9 +120,6 @@ function Settings() {
                 </option>
               ))}
             </select>
-            {/* <p className="mt-1.5 text-xs text-muted-foreground">
-              כשתוסיפו תנועה חדשה, המטבע הזה יהיה מסומן מראש — אפשר תמיד לשנות לפני שמירה.
-            </p> */}
           </div>
         </div>
       </section>
@@ -159,37 +153,6 @@ function Settings() {
           </button>
         </div>
       </section>
-
-      <section className="px-5 mt-8">
-        <h2 className="text-sm font-semibold mb-2">התקנה כאפליקציה</h2>
-        <div className="rounded-2xl bg-card border p-4 text-sm leading-relaxed text-muted-foreground">
-          <p className="font-medium text-foreground mb-1">להוספה למסך הבית:</p>
-          <p>
-            📱 <b>אייפון:</b> פתח בספארי → לחץ על כפתור השיתוף → "הוסף למסך הבית"
-          </p>
-          <p className="mt-1">
-            🤖 <b>אנדרואיד:</b> פתח בכרום → תפריט (⋮) → "הוסף למסך הבית"
-          </p>
-        </div>
-      </section>
-
-      {/* <section className="px-5 mt-8">
-        <h2 className="text-sm font-semibold mb-2">קטגוריות</h2>
-        <Link
-          to="/settings/categories"
-          className="flex items-center justify-between rounded-2xl bg-card border p-4 text-sm"
-        >
-          <span>ניהול קטגוריות · איחוד והסתרה</span>
-          <ArrowLeft className="size-4 text-muted-foreground rotate-180" />
-        </Link>
-      </section> */}
-
-      {/* <section className="px-5 mt-8">
-        <h2 className="text-sm font-semibold mb-2">סנכרון</h2>
-        <div className="rounded-2xl bg-card border p-4 text-sm text-muted-foreground">
-          ✨ כל תנועה שתזינו תופיע מיד גם במכשיר השני, בזמן אמת.
-        </div>
-      </section> */}
 
       <CreditCardsSection />
 

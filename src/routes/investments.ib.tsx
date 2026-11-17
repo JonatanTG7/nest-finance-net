@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Camera, History, Plus, Wallet, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowLeft, Camera, Plus, Wallet, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -18,7 +18,6 @@ import {
 import { CashDialog } from "@/components/ib/CashDialog";
 import { BuyDialog } from "@/components/ib/BuyDialog";
 import { SellDialog } from "@/components/ib/SellDialog";
-import { PositionHistoryDialog } from "@/components/ib/PositionHistoryDialog";
 import {
   PositionsTable,
   type PositionRowData,
@@ -26,8 +25,6 @@ import {
 } from "@/components/ib/PositionsTable";
 import { PortfolioSyncDialog } from "@/components/ib/PortfolioSyncDialog";
 import { NewPortfolioDialog } from "@/components/ib/NewPortfolioDialog";
-import { BalanceHistoryList } from "@/components/investments/BalanceHistoryList";
-import { fetchBalanceHistory } from "@/lib/balance_history";
 import {
   fetchIbHoldings,
   fetchIbPortfolios,
@@ -127,11 +124,9 @@ function IbPortfolio() {
   const [cashOpen, setCashOpen] = useState(false);
   const [buyOpen, setBuyOpen] = useState(false);
   const [sellOpen, setSellOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const [newPortfolioOpen, setNewPortfolioOpen] = useState(false);
   const [activePosition, setActivePosition] = useState<IbPosition | null>(null);
-  const [historySymbol, setHistorySymbol] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IbPosition | null>(null);
   const [sortKey, setSortKey] = useState<PositionSortKey>("marketValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -191,12 +186,6 @@ function IbPortfolio() {
     refetchInterval: 8_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-  });
-
-  const { data: history = [] } = useQuery({
-    queryKey: ["balance_history", selectedId],
-    queryFn: () => fetchBalanceHistory(selectedId!),
-    enabled: !!selectedId,
   });
 
   // Merge live quotes into cache; never overwrite a good value with null.
@@ -326,7 +315,6 @@ function IbPortfolio() {
     qc.invalidateQueries({ queryKey: ["ib", "transactions", selectedId] });
     qc.invalidateQueries({ queryKey: ["ib", "holdings", "all"] });
     qc.invalidateQueries({ queryKey: ["ib", "positions", "all"] });
-    qc.invalidateQueries({ queryKey: ["balance_history", selectedId] });
     qc.invalidateQueries({ queryKey: ["investment_accounts"] });
   };
 
@@ -412,16 +400,6 @@ function IbPortfolio() {
             </h1>
             <p className="text-xs text-zinc-500">Investment Portfolio · USD</p>
           </div>
-          <button
-            onClick={() => {
-              setHistorySymbol(null);
-              setHistoryOpen(true);
-            }}
-            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400"
-            title="Transaction history"
-          >
-            <History className="size-4" />
-          </button>
           <button
             onClick={() => refetchQuotes()}
             className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400"
@@ -568,12 +546,7 @@ function IbPortfolio() {
 
             {tab === "positions" ? (
               <>
-                {sortedRows.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-sm text-zinc-500">
-                    No holdings yet. Use &quot;Add Holding&quot; to start, or &quot;Sync from
-                    IBKR&quot; to import from a screenshot.
-                  </div>
-                ) : (
+                {sortedRows.length > 0 && (
                   <PositionsTable
                     rows={sortedRows}
                     sortKey={sortKey}
@@ -586,10 +559,6 @@ function IbPortfolio() {
                     onSell={(r) => {
                       setActivePosition(positionById(r.id));
                       setSellOpen(true);
-                    }}
-                    onHistory={(r) => {
-                      setHistorySymbol(r.symbol);
-                      setHistoryOpen(true);
                     }}
                     onDelete={(r) => setDeleteTarget(positionById(r.id))}
                   />
@@ -605,19 +574,9 @@ function IbPortfolio() {
                 </div>
               </section>
             )}
-
-            <p className="text-xs text-zinc-500 px-4 pt-4 pb-5">
-              Prices refresh automatically every few seconds with a local cache. If the API is
-              unavailable, the last saved price is shown (
-              <WifiOff className="inline size-3" />
-              ). Buy and sell through the dialogs with an entered quantity. Your entered data
-              (quantity and average price) is never deleted.
-            </p>
           </>
         )}
       </div>
-
-      {selectedId && <BalanceHistoryList rows={history} />}
 
       <CashDialog
         open={cashOpen}
@@ -649,12 +608,6 @@ function IbPortfolio() {
             symbol: activePosition.symbol,
           });
         }}
-      />
-      <PositionHistoryDialog
-        open={historyOpen}
-        onOpenChange={setHistoryOpen}
-        initialSymbol={historySymbol}
-        accountId={selectedId ?? ""}
       />
       <PortfolioSyncDialog
         open={syncOpen}

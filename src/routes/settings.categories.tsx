@@ -112,7 +112,6 @@ function CategoriesManager() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold">ניהול קטגוריות</h1>
-          <p className="text-xs text-muted-foreground">איחוד או מחיקה של קטגוריה</p>
         </div>
       </header>
 
