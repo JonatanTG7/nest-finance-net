@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft, Plus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronUp, Eye, EyeOff, GripVertical, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,13 +15,16 @@ import { fetchAllIbHoldings, fetchAllIbPositions, IB_KIND } from "@/lib/ib";
 import { getQuotes } from "@/lib/ib.functions";
 import { useUsdIlsRate } from "@/lib/fx";
 import { fetchVouchers } from "@/lib/vouchers";
+import { privacyBlurClass, usePrivacyMode } from "@/lib/privacy";
+import { useCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/investments/")({
   head: () => ({
     meta: [
-      { title: "השקעות וחיסכון — Family Spend" },
+      { title: "נכסים — Family Spend" },
       { name: "description", content: "חשבונות ההשקעה והחיסכון של משק הבית." },
-      { property: "og:title", content: "השקעות וחיסכון — Family Spend" },
+      { property: "og:title", content: "נכסים — Family Spend" },
       { property: "og:description", content: "יתרות חשבונות ההשקעה והחיסכון." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -32,6 +35,8 @@ export const Route = createFileRoute("/investments/")({
 
 function Investments() {
   const qc = useQueryClient();
+  const { blurred, toggle: togglePrivacy } = usePrivacyMode();
+  const [editingOrder, setEditingOrder] = useState(false);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [kind, setKind] = useState("savings");
@@ -173,6 +178,12 @@ function Investments() {
     [vouchers],
   );
 
+  // Card order (accounts + vouchers card), saved per device. The grand
+  // total card stays fixed at the top and is not part of the order.
+  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
+  const cardIds = useMemo(() => [...accounts.map((a) => a.id), VOUCHERS_CARD_ID], [accounts]);
+  const { orderedIds, move } = useCardOrder(cardIds);
+
   // The grand total mixes live FX (IB) with frozen historical rates (other
   // accounts) — an inherent limitation of the model. When the FX rate is
   // unavailable, IB value is excluded and flagged instead of guessed.
@@ -186,18 +197,46 @@ function Investments() {
     <AppShell>
       <header className="px-5 md:px-0 pt-6 pb-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h1 className="text-2xl font-bold">השקעות וחיסכון</h1>
-          <Button size="sm" onClick={() => setAdding(true)}>
-            <Plus className="size-4" />
-            חשבון חדש
-          </Button>
+          <h1 className="text-2xl font-bold">נכסים</h1>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={togglePrivacy}
+              aria-label={blurred ? "הצג סכומים" : "הסתר סכומים"}
+              title={blurred ? "הצג סכומים" : "הסתר סכומים"}
+            >
+              {blurred ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditingOrder((v) => !v)}
+              aria-pressed={editingOrder}
+            >
+              {editingOrder ? (
+                "סיום"
+              ) : (
+                <>
+                  <GripVertical className="size-4" />
+                  סדר כרטיסים
+                </>
+              )}
+            </Button>
+            <Button size="sm" onClick={() => setAdding(true)}>
+              <Plus className="size-4" />
+              חשבון חדש
+            </Button>
+          </div>
         </div>
       </header>
 
       <section className="px-5 md:px-0">
         <div className="rounded-3xl bg-gradient-to-br from-savings to-savings/70 text-foreground p-6">
           <p className="text-sm opacity-80">סך נכסים (ש"ח)</p>
-          <p className="text-4xl font-bold mt-2 tabular-nums">{formatILS(grandIls)}</p>
+          <p className={cn("text-4xl font-bold mt-2 tabular-nums", privacyBlurClass(blurred))}>
+            {formatILS(grandIls)}
+          </p>
           {ibIlsMissing && (
             <p className="text-xs opacity-70 mt-1">
               שער הדולר לא זמין כרגע — שווי תיקי ה-IB לא נכלל בסך הזה.
@@ -207,32 +246,107 @@ function Investments() {
       </section>
 
       <section className="px-5 md:px-0 mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        {accounts.map((a) => {
+        {orderedIds.map((id, index) => {
+          if (id === VOUCHERS_CARD_ID) {
+            const card = (
+              <div
+                className={cn(
+                  "rounded-2xl border bg-card p-4 h-full",
+                  editingOrder && "ring-2 ring-primary/50",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {editingOrder && <GripVertical className="size-4 text-muted-foreground" />}
+                  <span className="size-3 rounded-full bg-primary" />
+                  <p className="text-sm font-semibold">שוברים</p>
+                  <span className="ms-auto text-xs text-muted-foreground">ILS</span>
+                  {!editingOrder && <ChevronLeft className="size-4 text-muted-foreground" />}
+                </div>
+                <p
+                  className={cn("text-2xl font-bold mt-2 tabular-nums", privacyBlurClass(blurred))}
+                >
+                  {formatILS(voucherTotals.remaining)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {voucherTotals.count} שוברים ·{" "}
+                  <span className={privacyBlurClass(blurred)}>
+                    {formatILS(voucherTotals.remaining)}
+                  </span>{" "}
+                  יתרה
+                </p>
+                {editingOrder && (
+                  <ReorderControls
+                    onUp={() => move(id, "up")}
+                    onDown={() => move(id, "down")}
+                    disableUp={index === 0}
+                    disableDown={index === orderedIds.length - 1}
+                  />
+                )}
+              </div>
+            );
+            return editingOrder ? (
+              <div key={id}>{card}</div>
+            ) : (
+              <Link
+                key={id}
+                to="/investments/vouchers"
+                className="block active:scale-[0.99] transition-transform"
+              >
+                {card}
+              </Link>
+            );
+          }
+
+          const a = accountById.get(id);
+          if (!a) return null;
           const t = totals.get(a.id) ?? { native: 0, ils: 0 };
           const isIb = a.kind === IB_KIND;
           const ibCount = isIb ? (ibTotals.get(a.id)?.count ?? 0) : 0;
           const card = (
-            <div className="rounded-2xl border bg-card p-4 h-full">
+            <div
+              className={cn(
+                "rounded-2xl border bg-card p-4 h-full",
+                editingOrder && "ring-2 ring-primary/50",
+              )}
+            >
               <div className="flex items-center gap-2">
+                {editingOrder && <GripVertical className="size-4 text-muted-foreground" />}
                 <span className="size-3 rounded-full" style={{ background: a.color }} />
                 <p className="text-sm font-semibold">{a.name}</p>
                 <span className="ms-auto text-xs text-muted-foreground">{a.currency}</span>
-                <ChevronLeft className="size-4 text-muted-foreground" />
+                {!editingOrder && <ChevronLeft className="size-4 text-muted-foreground" />}
               </div>
               <p
-                className="text-2xl font-bold mt-2 tabular-nums"
+                className={cn("text-2xl font-bold mt-2 tabular-nums", privacyBlurClass(blurred))}
                 dir={a.currency !== "ILS" ? "ltr" : undefined}
               >
                 {formatMoney(t.native, a.currency)}
               </p>
               {a.currency !== "ILS" && (
                 <p className="text-xs text-muted-foreground tabular-nums">
-                  {t.ils != null ? `≈ ${formatILS(t.ils)}` : "שער דולר לא זמין"}
+                  {t.ils != null ? (
+                    <>
+                      ≈ <span className={privacyBlurClass(blurred)}>{formatILS(t.ils)}</span>
+                    </>
+                  ) : (
+                    "שער דולר לא זמין"
+                  )}
                 </p>
               )}
               {isIb && <p className="text-xs text-muted-foreground mt-1">{ibCount} החזקות</p>}
+              {editingOrder && (
+                <ReorderControls
+                  onUp={() => move(id, "up")}
+                  onDown={() => move(id, "down")}
+                  disableUp={index === 0}
+                  disableDown={index === orderedIds.length - 1}
+                />
+              )}
             </div>
           );
+          // In reorder mode the cards are plain divs — tapping must not
+          // navigate while the user is rearranging.
+          if (editingOrder) return <div key={a.id}>{card}</div>;
           return isIb ? (
             <Link
               key={a.id}
@@ -253,23 +367,6 @@ function Investments() {
             </Link>
           );
         })}
-
-        <Link to="/investments/vouchers" className="block active:scale-[0.99] transition-transform">
-          <div className="rounded-2xl border bg-card p-4 h-full">
-            <div className="flex items-center gap-2">
-              <span className="size-3 rounded-full bg-primary" />
-              <p className="text-sm font-semibold">שוברים</p>
-              <span className="ms-auto text-xs text-muted-foreground">ILS</span>
-              <ChevronLeft className="size-4 text-muted-foreground" />
-            </div>
-            <p className="text-2xl font-bold mt-2 tabular-nums">
-              {formatILS(voucherTotals.remaining)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {voucherTotals.count} שוברים · {formatILS(voucherTotals.remaining)} יתרה
-            </p>
-          </div>
-        </Link>
       </section>
       <Dialog open={adding} onOpenChange={setAdding}>
         <DialogContent dir="rtl" className="max-w-md">
@@ -334,5 +431,51 @@ function Investments() {
         </DialogContent>
       </Dialog>
     </AppShell>
+  );
+}
+
+/**
+ * Up/down buttons for reorder mode. Plain buttons, not drag-and-drop —
+ * HTML5 drag-and-drop doesn't work on mobile touch, and these are
+ * reliable everywhere.
+ */
+function ReorderControls({
+  onUp,
+  onDown,
+  disableUp,
+  disableDown,
+}: {
+  onUp: () => void;
+  onDown: () => void;
+  disableUp: boolean;
+  disableDown: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onUp}
+        disabled={disableUp}
+        aria-label="הזז למעלה"
+        className="flex-1"
+      >
+        <ChevronUp className="size-4" />
+        למעלה
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onDown}
+        disabled={disableDown}
+        aria-label="הזז למטה"
+        className="flex-1"
+      >
+        <ChevronDown className="size-4" />
+        למטה
+      </Button>
+    </div>
   );
 }

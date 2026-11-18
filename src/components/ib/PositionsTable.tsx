@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { privacyBlurClass } from "@/lib/privacy";
 
 export type MarketPhase = "REGULAR" | "PRE" | "POST" | "CLOSED";
 
@@ -66,6 +67,7 @@ export function PositionsTable({
   rows,
   sortKey,
   sortDir,
+  blurred = false,
   onToggleSort,
   onBuy,
   onSell,
@@ -74,6 +76,8 @@ export function PositionsTable({
   rows: PositionRowData[];
   sortKey: PositionSortKey;
   sortDir: "asc" | "desc";
+  /** Privacy mode: blur all amounts (symbols stay visible). */
+  blurred?: boolean;
   onToggleSort: (k: PositionSortKey) => void;
   onBuy: (row: PositionRowData) => void;
   onSell: (row: PositionRowData) => void;
@@ -136,13 +140,20 @@ export function PositionsTable({
             <tr key={r.id} className="border-b border-zinc-800/70 hover:bg-zinc-900/70">
               <td className="sticky left-0 z-10 bg-zinc-950 px-3 py-2 whitespace-nowrap border-r border-zinc-800">
                 <span className="font-bold">{r.symbol}</span>
-                <span className="block text-[11px] font-normal text-zinc-500 tabular-nums">
+                <span
+                  className={cn(
+                    "block text-[11px] font-normal text-zinc-500 tabular-nums",
+                    privacyBlurClass(blurred),
+                  )}
+                >
                   {fmtQty(r.quantity)} shares
                 </span>
               </td>
               <td className="px-3 py-2 tabular-nums whitespace-nowrap">
                 <span className="inline-flex items-center gap-1">
-                  {r.last != null ? fmtNum(r.last) : "—"}
+                  <span className={privacyBlurClass(blurred)}>
+                    {r.last != null ? fmtNum(r.last) : "—"}
+                  </span>
                   {r.stale && r.last != null && (
                     <WifiOff className="size-3 text-zinc-500" aria-label="Stale price" />
                   )}
@@ -157,6 +168,7 @@ export function PositionsTable({
                 className={cn(
                   "px-3 py-2 tabular-nums whitespace-nowrap",
                   pnlClass(r.dailyChangeAbs),
+                  privacyBlurClass(blurred),
                 )}
               >
                 {r.dailyChangeAbs != null ? fmtNum(r.dailyChangeAbs) : "—"}
@@ -165,12 +177,17 @@ export function PositionsTable({
                 className={cn(
                   "px-3 py-2 tabular-nums whitespace-nowrap",
                   pnlClass(r.dailyChangePct),
+                  privacyBlurClass(blurred),
                 )}
               >
                 {r.dailyChangePct != null ? fmtPct(r.dailyChangePct) : "—"}
               </td>
               <td
-                className={cn("px-3 py-2 tabular-nums whitespace-nowrap", pnlClass(r.unrealized))}
+                className={cn(
+                  "px-3 py-2 tabular-nums whitespace-nowrap",
+                  pnlClass(r.unrealized),
+                  privacyBlurClass(blurred),
+                )}
               >
                 {r.unrealized != null ? fmtNum(r.unrealized) : "—"}
               </td>
@@ -178,12 +195,25 @@ export function PositionsTable({
                 className={cn(
                   "px-3 py-2 tabular-nums whitespace-nowrap",
                   pnlClass(r.unrealizedPct),
+                  privacyBlurClass(blurred),
                 )}
               >
                 {r.unrealizedPct != null ? fmtPct(r.unrealizedPct) : "—"}
               </td>
-              <td className="px-3 py-2 tabular-nums whitespace-nowrap">{fmtNum(r.avgPrice)}</td>
-              <td className="px-3 py-2 tabular-nums whitespace-nowrap">
+              <td
+                className={cn(
+                  "px-3 py-2 tabular-nums whitespace-nowrap",
+                  privacyBlurClass(blurred),
+                )}
+              >
+                {fmtNum(r.avgPrice)}
+              </td>
+              <td
+                className={cn(
+                  "px-3 py-2 tabular-nums whitespace-nowrap",
+                  privacyBlurClass(blurred),
+                )}
+              >
                 <span className="font-medium">{fmtNum(r.marketValue)}</span>
               </td>
               <td className="sticky right-0 z-10 bg-zinc-950 px-1 py-2 border-l border-zinc-800">
