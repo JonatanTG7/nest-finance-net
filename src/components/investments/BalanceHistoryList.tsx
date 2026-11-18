@@ -2,7 +2,7 @@ import { History } from "lucide-react";
 import { formatILS } from "@/lib/finance";
 import { useMemberLabels } from "@/lib/person";
 import { cn } from "@/lib/utils";
-import { privacyBlurClass } from "@/lib/privacy";
+import { maskAmountText } from "@/lib/privacy";
 import type { BalanceHistoryRow } from "@/lib/balance_history";
 
 function fmtDate(iso: string) {
@@ -23,11 +23,11 @@ function fmtAmount(n: number, currency: string) {
 
 export function BalanceHistoryList({
   rows,
-  blurred = false,
+  hidden = false,
 }: {
   rows: BalanceHistoryRow[];
-  /** Privacy mode: blur all amounts. */
-  blurred?: boolean;
+  /** Privacy mode: mask all amounts with asterisks. */
+  hidden?: boolean;
 }) {
   const labels = useMemberLabels();
 
@@ -54,14 +54,9 @@ export function BalanceHistoryList({
                       <span className="text-xs text-muted-foreground"> · {r.kind}</span>
                     )}
                   </p>
-                  <p
-                    className={cn(
-                      "text-xs text-muted-foreground tabular-nums mt-0.5",
-                      privacyBlurClass(blurred),
-                    )}
-                    dir="ltr"
-                  >
-                    {fmtAmount(r.old_amount, r.currency)} → {fmtAmount(r.new_amount, r.currency)}
+                  <p className="text-xs text-muted-foreground tabular-nums mt-0.5" dir="ltr">
+                    {maskAmountText(fmtAmount(r.old_amount, r.currency), hidden)} →{" "}
+                    {maskAmountText(fmtAmount(r.new_amount, r.currency), hidden)}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {fmtDate(r.created_at)}
@@ -71,12 +66,11 @@ export function BalanceHistoryList({
                   className={cn(
                     "text-sm font-semibold tabular-nums shrink-0",
                     diff >= 0 ? "text-emerald-500" : "text-rose-400",
-                    privacyBlurClass(blurred),
                   )}
                   dir="ltr"
                 >
                   {diff >= 0 ? "+" : "-"}
-                  {fmtAmount(Math.abs(diff), r.currency)}
+                  {maskAmountText(fmtAmount(Math.abs(diff), r.currency), hidden)}
                 </span>
               </div>
             );

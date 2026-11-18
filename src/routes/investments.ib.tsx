@@ -50,7 +50,7 @@ import {
   unrealizedPnl,
 } from "@/lib/ib-rules";
 import { cn } from "@/lib/utils";
-import { privacyBlurClass, usePrivacyMode } from "@/lib/privacy";
+import { maskAmountText, PRIVACY_MASK, usePrivacyMode } from "@/lib/privacy";
 
 export const Route = createFileRoute("/investments/ib")({
   head: () => ({ meta: [{ title: "Interactive Brokers" }] }),
@@ -133,7 +133,7 @@ function IbPortfolio() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [tab, setTab] = useState<"positions" | "balances">("positions");
   const [quoteCache, setQuoteCache] = useState<Record<string, CachedQuote>>({});
-  const { blurred, toggle: togglePrivacy } = usePrivacyMode();
+  const { hidden, toggle: togglePrivacy } = usePrivacyMode();
 
   useEffect(() => {
     setQuoteCache(loadQuoteCache());
@@ -405,10 +405,10 @@ function IbPortfolio() {
           <button
             onClick={togglePrivacy}
             className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400"
-            title={blurred ? "Show amounts" : "Hide amounts"}
-            aria-label={blurred ? "Show amounts" : "Hide amounts"}
+            title={hidden ? "Show amounts" : "Hide amounts"}
+            aria-label={hidden ? "Show amounts" : "Hide amounts"}
           >
-            {blurred ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
           <button
             onClick={() => refetchQuotes()}
@@ -466,20 +466,12 @@ function IbPortfolio() {
             <section className="px-4 pt-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p
-                    className={cn(
-                      "text-4xl font-bold tabular-nums leading-none",
-                      privacyBlurClass(blurred),
-                    )}
-                  >
-                    {fmtInt(portfolioUsd)}
+                  <p className="text-4xl font-bold tabular-nums leading-none">
+                    {maskAmountText(fmtInt(portfolioUsd), hidden)}
                   </p>
                   <p className="text-xs text-zinc-500 tabular-nums mt-1.5">
                     {portfolioIls != null ? (
-                      <>
-                        ≈{" "}
-                        <span className={privacyBlurClass(blurred)}>{formatILS(portfolioIls)}</span>
-                      </>
+                      <>≈ {maskAmountText(formatILS(portfolioIls), hidden)}</>
                     ) : (
                       "ILS rate unavailable"
                     )}
@@ -491,39 +483,25 @@ function IbPortfolio() {
                     </p>
                   )}
                   <p
-                    className={cn(
-                      "text-xl font-semibold tabular-nums mt-2",
-                      pnlClass(totalDaily),
-                      privacyBlurClass(blurred),
-                    )}
+                    className={cn("text-xl font-semibold tabular-nums mt-2", pnlClass(totalDaily))}
                   >
-                    {fmtInt(totalDaily)}
-                    {dailyPct != null && <span className="ms-3">{fmtPct(dailyPct)}</span>}
+                    {maskAmountText(fmtInt(totalDaily), hidden)}
+                    {dailyPct != null && (
+                      <span className="ms-3">{maskAmountText(fmtPct(dailyPct), hidden)}</span>
+                    )}
                   </p>
                 </div>
                 <div className="shrink-0 text-sm">
                   <div className="flex items-baseline justify-between gap-6">
                     <span className="text-zinc-400">Unrealized P&amp;L</span>
-                    <span
-                      className={cn(
-                        "font-semibold tabular-nums",
-                        pnlClass(totalUnrealized),
-                        privacyBlurClass(blurred),
-                      )}
-                    >
-                      {fmtInt(totalUnrealized)}
+                    <span className={cn("font-semibold tabular-nums", pnlClass(totalUnrealized))}>
+                      {maskAmountText(fmtInt(totalUnrealized), hidden)}
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between gap-6 mt-1">
                     <span className="text-zinc-400">Realized P&amp;L</span>
-                    <span
-                      className={cn(
-                        "font-semibold tabular-nums",
-                        pnlClass(realizedPnlTotal),
-                        privacyBlurClass(blurred),
-                      )}
-                    >
-                      {fmtInt(realizedPnlTotal)}
+                    <span className={cn("font-semibold tabular-nums", pnlClass(realizedPnlTotal))}>
+                      {maskAmountText(fmtInt(realizedPnlTotal), hidden)}
                     </span>
                   </div>
                   {!totals.unrealizedKnown && (
@@ -589,7 +567,7 @@ function IbPortfolio() {
                     rows={sortedRows}
                     sortKey={sortKey}
                     sortDir={sortDir}
-                    blurred={blurred}
+                    hidden={hidden}
                     onToggleSort={toggleSort}
                     onBuy={(r) => {
                       setActivePosition(positionById(r.id));
@@ -602,21 +580,17 @@ function IbPortfolio() {
                     onDelete={(r) => setDeleteTarget(positionById(r.id))}
                   />
                 )}
-                <CashBalances cash={cash} blurred={blurred} />
+                <CashBalances cash={cash} hidden={hidden} />
               </>
             ) : (
               <section className="px-4 py-2">
                 <div className="divide-y divide-zinc-800/70">
-                  <BalanceRow label="USD Cash" value={fmtUsd(cash)} blurred={blurred} />
-                  <BalanceRow
-                    label="Positions Value"
-                    value={fmtUsd(totalMarket)}
-                    blurred={blurred}
-                  />
+                  <BalanceRow label="USD Cash" value={fmtUsd(cash)} hidden={hidden} />
+                  <BalanceRow label="Positions Value" value={fmtUsd(totalMarket)} hidden={hidden} />
                   <BalanceRow
                     label="Net Liquidation Value"
                     value={fmtUsd(portfolioUsd)}
-                    blurred={blurred}
+                    hidden={hidden}
                     bold
                   />
                 </div>
@@ -701,7 +675,10 @@ function IbPortfolio() {
 }
 
 /** Cash section at the bottom of the Positions tab, like the IBKR app. */
-function CashBalances({ cash, blurred }: { cash: number; blurred: boolean }) {
+function CashBalances({ cash, hidden }: { cash: number; hidden: boolean }) {
+  // Plain mask here, not maskAmountText: the compact format's suffix
+  // ("5.62K") would leak the order of magnitude ("****K").
+  const cashText = hidden ? PRIVACY_MASK : compactFmt.format(cash);
   return (
     <section className="mt-2">
       <div className="bg-zinc-800/70 px-4 py-2 text-sm font-medium text-zinc-300">
@@ -711,14 +688,14 @@ function CashBalances({ cash, blurred }: { cash: number; blurred: boolean }) {
         <div className="flex items-baseline justify-between px-4 py-3">
           <span>USD Cash</span>
           <span className="tabular-nums">
-            <span className={privacyBlurClass(blurred)}>{compactFmt.format(cash)}</span>
+            <span>{cashText}</span>
             <span className="text-zinc-500 text-sm ms-3">Market Value</span>
           </span>
         </div>
         <div className="flex items-baseline justify-between px-4 py-3">
           <span>Total Cash</span>
           <span className="tabular-nums">
-            <span className={privacyBlurClass(blurred)}>{compactFmt.format(cash)}</span>
+            <span>{cashText}</span>
             <span className="text-zinc-500 text-sm ms-3">Market Value</span>
           </span>
         </div>
@@ -730,19 +707,19 @@ function CashBalances({ cash, blurred }: { cash: number; blurred: boolean }) {
 function BalanceRow({
   label,
   value,
-  blurred,
+  hidden,
   bold,
 }: {
   label: string;
   value: string;
-  blurred: boolean;
+  hidden: boolean;
   bold?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between py-3">
       <span className={cn(bold && "font-semibold")}>{label}</span>
-      <span className={cn("tabular-nums", bold && "font-semibold", privacyBlurClass(blurred))}>
-        {value}
+      <span className={cn("tabular-nums", bold && "font-semibold")}>
+        {maskAmountText(value, hidden)}
       </span>
     </div>
   );

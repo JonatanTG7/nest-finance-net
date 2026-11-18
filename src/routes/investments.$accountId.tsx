@@ -12,8 +12,7 @@ import { fetchBalanceHistory, setAccountBalanceIls } from "@/lib/balance_history
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchUsdIlsRate } from "@/lib/fx";
 import { IB_KIND } from "@/lib/ib";
-import { privacyBlurClass, usePrivacyMode } from "@/lib/privacy";
-import { cn } from "@/lib/utils";
+import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 
 export const Route = createFileRoute("/investments/$accountId")({
   head: () => ({ meta: [{ title: "חשבון השקעה" }] }),
@@ -24,7 +23,7 @@ function AccountPage() {
   const { accountId } = Route.useParams();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const { blurred, toggle: togglePrivacy } = usePrivacyMode();
+  const { hidden, toggle: togglePrivacy } = usePrivacyMode();
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["investment_accounts"],
@@ -87,10 +86,10 @@ function AccountPage() {
           variant="outline"
           size="icon"
           onClick={togglePrivacy}
-          aria-label={blurred ? "הצג סכומים" : "הסתר סכומים"}
-          title={blurred ? "הצג סכומים" : "הסתר סכומים"}
+          aria-label={hidden ? "הצג סכומים" : "הסתר סכומים"}
+          title={hidden ? "הצג סכומים" : "הסתר סכומים"}
         >
-          {blurred ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </Button>
       </header>
 
@@ -114,15 +113,12 @@ function AccountPage() {
                 />
                 <p className="text-sm opacity-80">סכום נוכחי</p>
               </div>
-              <p className={cn("text-4xl font-bold mt-2 tabular-nums", privacyBlurClass(blurred))}>
-                {formatILS(currentIls)}
+              <p className="text-4xl font-bold mt-2 tabular-nums">
+                {maskAmountText(formatILS(currentIls), hidden)}
               </p>
               {account && account.currency !== "ILS" && (
                 <p className="text-sm opacity-70 mt-1 tabular-nums" dir="ltr">
-                  ≈{" "}
-                  <span className={privacyBlurClass(blurred)}>
-                    {formatMoney(currentNative, account.currency)}
-                  </span>
+                  ≈ {maskAmountText(formatMoney(currentNative, account.currency), hidden)}
                 </p>
               )}
               <div className="mt-5">
@@ -146,7 +142,7 @@ function AccountPage() {
         </>
       )}
 
-      <BalanceHistoryList rows={history} blurred={blurred} />
+      <BalanceHistoryList rows={history} hidden={hidden} />
     </AppShell>
   );
 }
