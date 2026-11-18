@@ -11,6 +11,11 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { fetchInvestmentAccounts, fetchInvestmentTransactions } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
+import {
+  fetchAllTradeJournalEntries,
+  journalPnlUsdAfterReset,
+  type TradeJournalEntry,
+} from "@/lib/trade-journal";
 import { fetchAllIbHoldings, fetchAllIbPositions, IB_KIND } from "@/lib/ib";
 import { getQuotes } from "@/lib/ib.functions";
 import { useUsdIlsRate } from "@/lib/fx";
@@ -68,6 +73,10 @@ function Investments() {
   const { data: txs = [] } = useQuery({
     queryKey: ["investments", "txs"],
     queryFn: fetchInvestmentTransactions,
+  });
+  const { data: journalEntries = [] } = useQuery({
+    queryKey: ["trade-journal", "all"],
+    queryFn: fetchAllTradeJournalEntries,
   });
   const { data: ibHoldings = [] } = useQuery({
     queryKey: ["ib", "holdings", "all"],
@@ -163,8 +172,38 @@ function Investments() {
       cur.native += Number(t.amount);
       cur.ils = (cur.ils ?? 0) + Number(t.amount_ils);
     }
+    // Journal P&L counts toward the displayed balance, exactly like
+    // transactions: only entries created after the last manual balance
+    // reset (the reset absorbs earlier trades into the baseline).
+    // P&L is in USD — a USD account takes it as-is; an ILS account
+    // converts at the live USD→ILS rate. When the rate is unavailable
+    // the ILS part is left out rather than guessed — the native figure
+    // of a USD account stays exact.
+    const journalByAccount = new Map<string, TradeJournalEntry[]>();
+    for (const e of journalEntries) {
+      const arr = journalByAccount.get(e.investment_account_id) ?? [];
+      arr.push(e);
+      journalByAccount.set(e.investment_account_id, arr);
+    }
+    for (const a of accounts) {
+      if (a.kind === IB_KIND) continue;
+      const entries = journalByAccount.get(a.id);
+      if (!entries || entries.length === 0) continue;
+      const pnlUsd = journalPnlUsdAfterReset(entries, a.balance_reset_at);
+      const cur = m.get(a.id);
+      if (!cur) continue;
+      if (a.currency === "USD") {
+        cur.native += pnlUsd;
+        if (fxRate != null) cur.ils = (cur.ils ?? 0) + pnlUsd * fxRate;
+      } else if (fxRate != null) {
+        // Non-USD accounts are ILS (only ILS/USD exist): the native
+        // figure is in ILS, so both native and ILS need the conversion.
+        cur.native += pnlUsd * fxRate;
+        cur.ils = (cur.ils ?? 0) + pnlUsd * fxRate;
+      }
+    }
     return m;
-  }, [txs, accounts, ibTotals]);
+  }, [txs, accounts, ibTotals, journalEntries, fxRate]);
 
   const { data: vouchers = [] } = useQuery({
     queryKey: ["vouchers"],

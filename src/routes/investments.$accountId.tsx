@@ -7,10 +7,12 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { BalanceDialog } from "@/components/investments/BalanceDialog";
 import { BalanceHistoryList } from "@/components/investments/BalanceHistoryList";
+import { TradeJournalSection } from "@/components/investments/TradeJournalSection";
 import { fetchInvestmentAccounts } from "@/lib/db";
 import { fetchBalanceHistory, setAccountBalanceIls } from "@/lib/balance_history";
 import { formatILS, formatMoney } from "@/lib/finance";
-import { fetchUsdIlsRate } from "@/lib/fx";
+import { fetchUsdIlsRate, useUsdIlsRate } from "@/lib/fx";
+import { fetchTradeJournalEntries, journalPnlUsdAfterReset } from "@/lib/trade-journal";
 import { IB_KIND } from "@/lib/ib";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 
@@ -43,9 +45,31 @@ function AccountPage() {
     queryFn: fetchUsdIlsRate,
     staleTime: 60 * 60 * 1000,
   });
+  // Same query key as the journal section below, so the fetch is shared.
+  // IB accounts never have a journal — their value comes from positions.
+  const isIbAccount = account?.kind === IB_KIND;
+  const { data: journalEntries = [] } = useQuery({
+    queryKey: ["trade-journal", accountId],
+    queryFn: () => fetchTradeJournalEntries(accountId),
+    enabled: !!account && !isIbAccount,
+  });
+  // Display conversion uses the last-known-good fallback; the save
+  // mutation above keeps the fresh rate (or fetches one itself).
+  const { rate: displayFxRate } = useUsdIlsRate();
 
-  const currentIls = Number(account?.starting_balance_ils ?? account?.starting_balance ?? 0);
-  const currentNative = Number(account?.starting_balance ?? 0);
+  // Journal P&L counts toward the displayed balance: trades logged after
+  // the last manual balance reset add their P&L on top of the baseline
+  // (a reset absorbs earlier trades). P&L is in USD — a USD account
+  // takes it as-is; an ILS account converts at the USD→ILS rate. When
+  // no rate is available the ILS part is left out rather than guessed.
+  const journalPnlUsd = isIbAccount
+    ? 0
+    : journalPnlUsdAfterReset(journalEntries, account?.balance_reset_at ?? null);
+  const pnlIls = displayFxRate != null ? journalPnlUsd * displayFxRate : 0;
+  const baseIls = Number(account?.starting_balance_ils ?? account?.starting_balance ?? 0);
+  const baseNative = Number(account?.starting_balance ?? 0);
+  const currentIls = baseIls + pnlIls;
+  const currentNative = baseNative + (account?.currency === "USD" ? journalPnlUsd : pnlIls);
 
   const save = useMutation({
     mutationFn: (newIls: number) =>
@@ -141,6 +165,8 @@ function AccountPage() {
           />
         </>
       )}
+
+      {account && account.kind !== IB_KIND && <TradeJournalSection accountId={accountId} />}
 
       <BalanceHistoryList rows={history} hidden={hidden} />
     </AppShell>
