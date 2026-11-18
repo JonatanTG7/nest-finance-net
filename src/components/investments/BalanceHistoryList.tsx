@@ -2,6 +2,7 @@ import { History } from "lucide-react";
 import { formatILS } from "@/lib/finance";
 import { useMemberLabels } from "@/lib/person";
 import { cn } from "@/lib/utils";
+import { privacyBlurClass } from "@/lib/privacy";
 import type { BalanceHistoryRow } from "@/lib/balance_history";
 
 function fmtDate(iso: string) {
@@ -20,7 +21,14 @@ function fmtAmount(n: number, currency: string) {
   return `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`;
 }
 
-export function BalanceHistoryList({ rows }: { rows: BalanceHistoryRow[] }) {
+export function BalanceHistoryList({
+  rows,
+  blurred = false,
+}: {
+  rows: BalanceHistoryRow[];
+  /** Privacy mode: blur all amounts. */
+  blurred?: boolean;
+}) {
   const labels = useMemberLabels();
 
   return (
@@ -46,7 +54,13 @@ export function BalanceHistoryList({ rows }: { rows: BalanceHistoryRow[] }) {
                       <span className="text-xs text-muted-foreground"> · {r.kind}</span>
                     )}
                   </p>
-                  <p className="text-xs text-muted-foreground tabular-nums mt-0.5" dir="ltr">
+                  <p
+                    className={cn(
+                      "text-xs text-muted-foreground tabular-nums mt-0.5",
+                      privacyBlurClass(blurred),
+                    )}
+                    dir="ltr"
+                  >
                     {fmtAmount(r.old_amount, r.currency)} → {fmtAmount(r.new_amount, r.currency)}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -57,6 +71,7 @@ export function BalanceHistoryList({ rows }: { rows: BalanceHistoryRow[] }) {
                   className={cn(
                     "text-sm font-semibold tabular-nums shrink-0",
                     diff >= 0 ? "text-emerald-500" : "text-rose-400",
+                    privacyBlurClass(blurred),
                   )}
                   dir="ltr"
                 >

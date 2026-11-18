@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Camera, Plus, Wallet, RefreshCw } from "lucide-react";
+import { ArrowLeft, Camera, Eye, EyeOff, Plus, Wallet, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -50,6 +50,7 @@ import {
   unrealizedPnl,
 } from "@/lib/ib-rules";
 import { cn } from "@/lib/utils";
+import { privacyBlurClass, usePrivacyMode } from "@/lib/privacy";
 
 export const Route = createFileRoute("/investments/ib")({
   head: () => ({ meta: [{ title: "Interactive Brokers" }] }),
@@ -132,6 +133,7 @@ function IbPortfolio() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [tab, setTab] = useState<"positions" | "balances">("positions");
   const [quoteCache, setQuoteCache] = useState<Record<string, CachedQuote>>({});
+  const { blurred, toggle: togglePrivacy } = usePrivacyMode();
 
   useEffect(() => {
     setQuoteCache(loadQuoteCache());
@@ -401,6 +403,14 @@ function IbPortfolio() {
             <p className="text-xs text-zinc-500">Investment Portfolio · USD</p>
           </div>
           <button
+            onClick={togglePrivacy}
+            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400"
+            title={blurred ? "Show amounts" : "Hide amounts"}
+            aria-label={blurred ? "Show amounts" : "Hide amounts"}
+          >
+            {blurred ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+          <button
             onClick={() => refetchQuotes()}
             className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400"
             title="Refresh prices"
@@ -456,11 +466,23 @@ function IbPortfolio() {
             <section className="px-4 pt-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-4xl font-bold tabular-nums leading-none">
+                  <p
+                    className={cn(
+                      "text-4xl font-bold tabular-nums leading-none",
+                      privacyBlurClass(blurred),
+                    )}
+                  >
                     {fmtInt(portfolioUsd)}
                   </p>
                   <p className="text-xs text-zinc-500 tabular-nums mt-1.5">
-                    {portfolioIls != null ? `≈ ${formatILS(portfolioIls)}` : "ILS rate unavailable"}
+                    {portfolioIls != null ? (
+                      <>
+                        ≈{" "}
+                        <span className={privacyBlurClass(blurred)}>{formatILS(portfolioIls)}</span>
+                      </>
+                    ) : (
+                      "ILS rate unavailable"
+                    )}
                   </p>
                   {fxStale && fxUpdatedAt != null && (
                     <p className="text-[11px] text-zinc-600 mt-0.5">
@@ -469,7 +491,11 @@ function IbPortfolio() {
                     </p>
                   )}
                   <p
-                    className={cn("text-xl font-semibold tabular-nums mt-2", pnlClass(totalDaily))}
+                    className={cn(
+                      "text-xl font-semibold tabular-nums mt-2",
+                      pnlClass(totalDaily),
+                      privacyBlurClass(blurred),
+                    )}
                   >
                     {fmtInt(totalDaily)}
                     {dailyPct != null && <span className="ms-3">{fmtPct(dailyPct)}</span>}
@@ -478,13 +504,25 @@ function IbPortfolio() {
                 <div className="shrink-0 text-sm">
                   <div className="flex items-baseline justify-between gap-6">
                     <span className="text-zinc-400">Unrealized P&amp;L</span>
-                    <span className={cn("font-semibold tabular-nums", pnlClass(totalUnrealized))}>
+                    <span
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        pnlClass(totalUnrealized),
+                        privacyBlurClass(blurred),
+                      )}
+                    >
                       {fmtInt(totalUnrealized)}
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between gap-6 mt-1">
                     <span className="text-zinc-400">Realized P&amp;L</span>
-                    <span className={cn("font-semibold tabular-nums", pnlClass(realizedPnlTotal))}>
+                    <span
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        pnlClass(realizedPnlTotal),
+                        privacyBlurClass(blurred),
+                      )}
+                    >
                       {fmtInt(realizedPnlTotal)}
                     </span>
                   </div>
@@ -551,6 +589,7 @@ function IbPortfolio() {
                     rows={sortedRows}
                     sortKey={sortKey}
                     sortDir={sortDir}
+                    blurred={blurred}
                     onToggleSort={toggleSort}
                     onBuy={(r) => {
                       setActivePosition(positionById(r.id));
@@ -563,14 +602,23 @@ function IbPortfolio() {
                     onDelete={(r) => setDeleteTarget(positionById(r.id))}
                   />
                 )}
-                <CashBalances cash={cash} />
+                <CashBalances cash={cash} blurred={blurred} />
               </>
             ) : (
               <section className="px-4 py-2">
                 <div className="divide-y divide-zinc-800/70">
-                  <BalanceRow label="USD Cash" value={fmtUsd(cash)} />
-                  <BalanceRow label="Positions Value" value={fmtUsd(totalMarket)} />
-                  <BalanceRow label="Net Liquidation Value" value={fmtUsd(portfolioUsd)} bold />
+                  <BalanceRow label="USD Cash" value={fmtUsd(cash)} blurred={blurred} />
+                  <BalanceRow
+                    label="Positions Value"
+                    value={fmtUsd(totalMarket)}
+                    blurred={blurred}
+                  />
+                  <BalanceRow
+                    label="Net Liquidation Value"
+                    value={fmtUsd(portfolioUsd)}
+                    blurred={blurred}
+                    bold
+                  />
                 </div>
               </section>
             )}
@@ -653,7 +701,7 @@ function IbPortfolio() {
 }
 
 /** Cash section at the bottom of the Positions tab, like the IBKR app. */
-function CashBalances({ cash }: { cash: number }) {
+function CashBalances({ cash, blurred }: { cash: number; blurred: boolean }) {
   return (
     <section className="mt-2">
       <div className="bg-zinc-800/70 px-4 py-2 text-sm font-medium text-zinc-300">
@@ -663,14 +711,14 @@ function CashBalances({ cash }: { cash: number }) {
         <div className="flex items-baseline justify-between px-4 py-3">
           <span>USD Cash</span>
           <span className="tabular-nums">
-            {compactFmt.format(cash)}
+            <span className={privacyBlurClass(blurred)}>{compactFmt.format(cash)}</span>
             <span className="text-zinc-500 text-sm ms-3">Market Value</span>
           </span>
         </div>
         <div className="flex items-baseline justify-between px-4 py-3">
           <span>Total Cash</span>
           <span className="tabular-nums">
-            {compactFmt.format(cash)}
+            <span className={privacyBlurClass(blurred)}>{compactFmt.format(cash)}</span>
             <span className="text-zinc-500 text-sm ms-3">Market Value</span>
           </span>
         </div>
@@ -679,11 +727,23 @@ function CashBalances({ cash }: { cash: number }) {
   );
 }
 
-function BalanceRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function BalanceRow({
+  label,
+  value,
+  blurred,
+  bold,
+}: {
+  label: string;
+  value: string;
+  blurred: boolean;
+  bold?: boolean;
+}) {
   return (
     <div className="flex items-baseline justify-between py-3">
       <span className={cn(bold && "font-semibold")}>{label}</span>
-      <span className={cn("tabular-nums", bold && "font-semibold")}>{value}</span>
+      <span className={cn("tabular-nums", bold && "font-semibold", privacyBlurClass(blurred))}>
+        {value}
+      </span>
     </div>
   );
 }

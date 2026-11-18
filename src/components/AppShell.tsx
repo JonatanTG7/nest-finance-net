@@ -12,7 +12,7 @@ type NavItem = { to: NavTo; label: string; icon: typeof Home; exact?: boolean };
 const items: NavItem[] = [
   { to: "/", label: "בית", icon: Home, exact: true },
   { to: "/transactions", label: "תנועות", icon: ListIcon },
-  { to: "/investments", label: "השקעות", icon: TrendingUp },
+  { to: "/investments", label: "נכסים", icon: TrendingUp },
   { to: "/travel", label: "טיולים", icon: Plane },
   { to: "/settings", label: "הגדרות", icon: SettingsIcon },
 ];

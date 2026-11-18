@@ -63,7 +63,7 @@ export function NewPortfolioDialog({
           />
           {duplicate && <p className="text-xs text-destructive">כבר קיים תיק בשם הזה</p>}
           <p className="text-xs text-muted-foreground">
-            כל תיק מחזיק את המניות והמזומן שלו בנפרד, ומופיע ככרטיס נפרד במסך ההשקעות.
+            כל תיק מחזיק את המניות והמזומן שלו בנפרד, ומופיע ככרטיס נפרד במסך הנכסים.
           </p>
         </div>
         <DialogFooter>

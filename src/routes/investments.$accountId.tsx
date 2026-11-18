@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { fetchBalanceHistory, setAccountBalanceIls } from "@/lib/balance_history
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchUsdIlsRate } from "@/lib/fx";
 import { IB_KIND } from "@/lib/ib";
+import { privacyBlurClass, usePrivacyMode } from "@/lib/privacy";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/investments/$accountId")({
   head: () => ({ meta: [{ title: "חשבון השקעה" }] }),
@@ -22,6 +24,7 @@ function AccountPage() {
   const { accountId } = Route.useParams();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const { blurred, toggle: togglePrivacy } = usePrivacyMode();
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["investment_accounts"],
@@ -80,6 +83,15 @@ function AccountPage() {
             חשבון השקעה / חיסכון · {account?.currency ?? "ILS"}
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={togglePrivacy}
+          aria-label={blurred ? "הצג סכומים" : "הסתר סכומים"}
+          title={blurred ? "הצג סכומים" : "הסתר סכומים"}
+        >
+          {blurred ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </Button>
       </header>
 
       {account?.kind === IB_KIND ? (
@@ -102,10 +114,15 @@ function AccountPage() {
                 />
                 <p className="text-sm opacity-80">סכום נוכחי</p>
               </div>
-              <p className="text-4xl font-bold mt-2 tabular-nums">{formatILS(currentIls)}</p>
+              <p className={cn("text-4xl font-bold mt-2 tabular-nums", privacyBlurClass(blurred))}>
+                {formatILS(currentIls)}
+              </p>
               {account && account.currency !== "ILS" && (
                 <p className="text-sm opacity-70 mt-1 tabular-nums" dir="ltr">
-                  ≈ {formatMoney(currentNative, account.currency)}
+                  ≈{" "}
+                  <span className={privacyBlurClass(blurred)}>
+                    {formatMoney(currentNative, account.currency)}
+                  </span>
                 </p>
               )}
               <div className="mt-5">
@@ -129,7 +146,7 @@ function AccountPage() {
         </>
       )}
 
-      <BalanceHistoryList rows={history} />
+      <BalanceHistoryList rows={history} blurred={blurred} />
     </AppShell>
   );
 }
