@@ -15,7 +15,7 @@ import { fetchAllIbHoldings, fetchAllIbPositions, IB_KIND } from "@/lib/ib";
 import { getQuotes } from "@/lib/ib.functions";
 import { useUsdIlsRate } from "@/lib/fx";
 import { fetchVouchers } from "@/lib/vouchers";
-import { privacyBlurClass, usePrivacyMode } from "@/lib/privacy";
+import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 import { useCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/investments/")({
 
 function Investments() {
   const qc = useQueryClient();
-  const { blurred, toggle: togglePrivacy } = usePrivacyMode();
+  const { hidden, toggle: togglePrivacy } = usePrivacyMode();
   const [editingOrder, setEditingOrder] = useState(false);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -203,10 +203,10 @@ function Investments() {
               variant="outline"
               size="icon"
               onClick={togglePrivacy}
-              aria-label={blurred ? "הצג סכומים" : "הסתר סכומים"}
-              title={blurred ? "הצג סכומים" : "הסתר סכומים"}
+              aria-label={hidden ? "הצג סכומים" : "הסתר סכומים"}
+              title={hidden ? "הצג סכומים" : "הסתר סכומים"}
             >
-              {blurred ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </Button>
             <Button
               variant="outline"
@@ -234,8 +234,8 @@ function Investments() {
       <section className="px-5 md:px-0">
         <div className="rounded-3xl bg-gradient-to-br from-savings to-savings/70 text-foreground p-6">
           <p className="text-sm opacity-80">סך נכסים (ש"ח)</p>
-          <p className={cn("text-4xl font-bold mt-2 tabular-nums", privacyBlurClass(blurred))}>
-            {formatILS(grandIls)}
+          <p className="text-4xl font-bold mt-2 tabular-nums">
+            {maskAmountText(formatILS(grandIls), hidden)}
           </p>
           {ibIlsMissing && (
             <p className="text-xs opacity-70 mt-1">
@@ -262,17 +262,12 @@ function Investments() {
                   <span className="ms-auto text-xs text-muted-foreground">ILS</span>
                   {!editingOrder && <ChevronLeft className="size-4 text-muted-foreground" />}
                 </div>
-                <p
-                  className={cn("text-2xl font-bold mt-2 tabular-nums", privacyBlurClass(blurred))}
-                >
-                  {formatILS(voucherTotals.remaining)}
+                <p className="text-2xl font-bold mt-2 tabular-nums">
+                  {maskAmountText(formatILS(voucherTotals.remaining), hidden)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {voucherTotals.count} שוברים ·{" "}
-                  <span className={privacyBlurClass(blurred)}>
-                    {formatILS(voucherTotals.remaining)}
-                  </span>{" "}
-                  יתרה
+                  {maskAmountText(formatILS(voucherTotals.remaining), hidden)} יתרה
                 </p>
                 {editingOrder && (
                   <ReorderControls
@@ -317,17 +312,15 @@ function Investments() {
                 {!editingOrder && <ChevronLeft className="size-4 text-muted-foreground" />}
               </div>
               <p
-                className={cn("text-2xl font-bold mt-2 tabular-nums", privacyBlurClass(blurred))}
+                className="text-2xl font-bold mt-2 tabular-nums"
                 dir={a.currency !== "ILS" ? "ltr" : undefined}
               >
-                {formatMoney(t.native, a.currency)}
+                {maskAmountText(formatMoney(t.native, a.currency), hidden)}
               </p>
               {a.currency !== "ILS" && (
                 <p className="text-xs text-muted-foreground tabular-nums">
                   {t.ils != null ? (
-                    <>
-                      ≈ <span className={privacyBlurClass(blurred)}>{formatILS(t.ils)}</span>
-                    </>
+                    <>≈ {maskAmountText(formatILS(t.ils), hidden)}</>
                   ) : (
                     "שער דולר לא זמין"
                   )}
