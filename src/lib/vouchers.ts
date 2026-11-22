@@ -17,6 +17,20 @@ export async function fetchVouchers(): Promise<Voucher[]> {
   return Promise.all((data ?? []).map(async (v) => ({ ...v, image_url: await signMedia(v.image_url, "voucher-photos") })));
 }
 
+/**
+ * Vouchers with RAW storage paths (no signed URLs) — for the data export.
+ * A 1-hour signed URL is useless in a backup file; the stored path is.
+ */
+export async function fetchVouchersRaw(): Promise<Voucher[]> {
+  const { data, error } = await supabase
+    .from("vouchers")
+    .select("*")
+    .order("occurred_at", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Voucher[];
+}
+
 export interface VoucherInput {
   label: string;
   face_value: number;
