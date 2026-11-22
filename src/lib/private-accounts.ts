@@ -4,6 +4,7 @@ import { getMyHouseholdId, fetchMyProfile } from "@/lib/household";
 import { fetchRateToIls } from "@/lib/fx";
 import type { Person } from "@/lib/person";
 import { IB_KIND } from "@/lib/ib";
+import { statementAccountColumns, type StatementFields } from "@/lib/statement-rules";
 import type { InvestmentAccount } from "@/lib/db";
 
 export type PrivateAccountHistoryRow =
@@ -55,6 +56,41 @@ export function kindLabel(kind: string): string {
 
 export function kindColor(kind: string): string {
   return PRIVATE_KIND_COLORS[kind] ?? PRIVATE_KIND_COLORS.other;
+}
+
+/** Where the account's numbers came from (set by a statement import). */
+export const DATA_SOURCE_LABELS: Record<string, string> = {
+  manual: "הזנה ידנית",
+  statement: "דוח שנתי",
+  clearinghouse: "דוח מסלקה פנסיונית",
+  portal: "אזור אישי",
+};
+
+export function dataSourceLabel(source: string | null | undefined): string | null {
+  if (!source) return null;
+  return DATA_SOURCE_LABELS[source] ?? source;
+}
+
+/**
+ * The statement's own red fee balloon, as a rule: either fee is above
+ * the fund's average (Table ג'). Needs both the member's fee and the
+ * fund average — with no comparison data there is no balloon.
+ */
+export function feesAboveAverage(a: {
+  fee_from_balance: number | null;
+  fee_from_deposits: number | null;
+  avg_fee_from_balance: number | null;
+  avg_fee_from_deposits: number | null;
+}): boolean {
+  const balanceAbove =
+    a.fee_from_balance != null &&
+    a.avg_fee_from_balance != null &&
+    a.fee_from_balance > a.avg_fee_from_balance;
+  const depositsAbove =
+    a.fee_from_deposits != null &&
+    a.avg_fee_from_deposits != null &&
+    a.fee_from_deposits > a.avg_fee_from_deposits;
+  return balanceAbove || depositsAbove;
 }
 
 /* ------------------------------------------------------------------ *
@@ -208,6 +244,8 @@ export interface CreatePrivateAccountInput extends PrivateAccountForm {
   person: Person;
   currency: string;
   balance: number;
+  /** Statement-import extras (Treasury code, expected pension, fund-average fees, deposits, source). */
+  statement?: StatementFields;
 }
 
 /**
@@ -238,11 +276,29 @@ export async function createPrivateAccount(input: CreatePrivateAccountInput): Pr
       fee_from_balance: meta.fee_from_balance,
       fee_from_deposits: meta.fee_from_deposits,
       track: meta.track,
+      ...(input.statement ? statementAccountColumns(input.statement) : {}),
     })
     .select("id")
     .single();
   if (error) throw error;
   return data.id;
+}
+
+/**
+ * Writes the statement-only columns of an existing account (Treasury
+ * code, expected pension, fund-average fees, deposit split, source).
+ * The editable metadata (company, fees, kind) goes through
+ * updatePrivateAccount instead, so it is recorded in the history.
+ */
+export async function updateAccountStatementColumns(
+  accountId: string,
+  fields: StatementFields,
+): Promise<void> {
+  const { error } = await supabase
+    .from("investment_accounts")
+    .update(statementAccountColumns(fields))
+    .eq("id", accountId);
+  if (error) throw error;
 }
 
 export interface UpdatePrivateAccountInput extends PrivateAccountForm {

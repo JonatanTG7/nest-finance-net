@@ -545,60 +545,87 @@ export type Database = {
       };
       investment_accounts: {
         Row: {
+          avg_fee_from_balance: number | null;
+          avg_fee_from_deposits: number | null;
           balance_reset_at: string | null;
           color: string;
           company: string | null;
           created_at: string;
           currency: string;
+          data_source: string | null;
+          expected_monthly_pension: number | null;
           fee_from_balance: number | null;
           fee_from_deposits: number | null;
           household_id: string;
           id: string;
           kind: string;
+          monthly_deposit_employee: number | null;
+          monthly_deposit_employer: number | null;
+          monthly_deposit_severance: number | null;
           name: string;
           person: Database["public"]["Enums"]["person"];
           sort_order: number;
+          source_date: string | null;
           starting_balance: number;
           starting_balance_ils: number;
           track: string | null;
+          treasury_code: string | null;
           updated_at: string;
         };
         Insert: {
+          avg_fee_from_balance?: number | null;
+          avg_fee_from_deposits?: number | null;
           balance_reset_at?: string | null;
           color?: string;
           company?: string | null;
           created_at?: string;
           currency?: string;
+          data_source?: string | null;
+          expected_monthly_pension?: number | null;
           fee_from_balance?: number | null;
           fee_from_deposits?: number | null;
           household_id: string;
           id?: string;
           kind?: string;
+          monthly_deposit_employee?: number | null;
+          monthly_deposit_employer?: number | null;
+          monthly_deposit_severance?: number | null;
           name: string;
           person?: Database["public"]["Enums"]["person"];
           sort_order?: number;
+          source_date?: string | null;
           starting_balance?: number;
           starting_balance_ils?: number;
           track?: string | null;
+          treasury_code?: string | null;
           updated_at?: string;
         };
         Update: {
+          avg_fee_from_balance?: number | null;
+          avg_fee_from_deposits?: number | null;
           balance_reset_at?: string | null;
           color?: string;
           company?: string | null;
           created_at?: string;
           currency?: string;
+          data_source?: string | null;
+          expected_monthly_pension?: number | null;
           fee_from_balance?: number | null;
           fee_from_deposits?: number | null;
           household_id?: string;
           id?: string;
           kind?: string;
+          monthly_deposit_employee?: number | null;
+          monthly_deposit_employer?: number | null;
+          monthly_deposit_severance?: number | null;
           name?: string;
           person?: Database["public"]["Enums"]["person"];
           sort_order?: number;
+          source_date?: string | null;
           starting_balance?: number;
           starting_balance_ils?: number;
           track?: string | null;
+          treasury_code?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -896,6 +923,66 @@ export type Database = {
           },
           {
             foreignKeyName: "trade_journal_entries_investment_account_id_fkey";
+            columns: ["investment_account_id"];
+            isOneToOne: false;
+            referencedRelation: "investment_accounts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      track_allocations: {
+        Row: {
+          allocation_pct_balance: number | null;
+          allocation_pct_deposits: number | null;
+          created_at: string;
+          household_id: string;
+          id: string;
+          investment_account_id: string;
+          return_year_pct: number | null;
+          sort_order: number;
+          track_code: string | null;
+          track_name: string;
+          track_type: string;
+          updated_at: string;
+        };
+        Insert: {
+          allocation_pct_balance?: number | null;
+          allocation_pct_deposits?: number | null;
+          created_at?: string;
+          household_id: string;
+          id?: string;
+          investment_account_id: string;
+          return_year_pct?: number | null;
+          sort_order?: number;
+          track_code?: string | null;
+          track_name: string;
+          track_type?: string;
+          updated_at?: string;
+        };
+        Update: {
+          allocation_pct_balance?: number | null;
+          allocation_pct_deposits?: number | null;
+          created_at?: string;
+          household_id?: string;
+          id?: string;
+          investment_account_id?: string;
+          return_year_pct?: number | null;
+          sort_order?: number;
+          track_code?: string | null;
+          track_name?: string;
+          track_type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "track_allocations_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "track_allocations_investment_account_id_fkey";
             columns: ["investment_account_id"];
             isOneToOne: false;
             referencedRelation: "investment_accounts";

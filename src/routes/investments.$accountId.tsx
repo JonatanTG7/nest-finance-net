@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, Pencil } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, FileUp, Pencil, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,20 @@ import { BalanceDialog } from "@/components/investments/BalanceDialog";
 import { BalanceHistoryList } from "@/components/investments/BalanceHistoryList";
 import { PrivateAccountDialog } from "@/components/investments/PrivateAccountDialog";
 import { PrivateAccountHistoryList } from "@/components/investments/PrivateAccountHistoryList";
+import { StatementImportDialog } from "@/components/investments/StatementImportDialog";
+import { TrackSplitChart } from "@/components/investments/TrackSplitChart";
+import { TrackSplitEditor } from "@/components/investments/TrackSplitEditor";
 import { TradeJournalSection } from "@/components/investments/TradeJournalSection";
 import { fetchInvestmentAccounts } from "@/lib/db";
 import { fetchBalanceHistory, setAccountBalanceIls } from "@/lib/balance_history";
-import { fetchPrivateAccountHistory, isSharedAccount, kindLabel } from "@/lib/private-accounts";
+import {
+  dataSourceLabel,
+  feesAboveAverage,
+  fetchPrivateAccountHistory,
+  isSharedAccount,
+  kindLabel,
+} from "@/lib/private-accounts";
+import { fetchTrackAllocations } from "@/lib/track-splits";
 import { useMemberLabels, type Person } from "@/lib/person";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchUsdIlsRate, useUsdIlsRate } from "@/lib/fx";
@@ -31,6 +41,8 @@ function AccountPage() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
+  const [editingSplit, setEditingSplit] = useState(false);
+  const [importingStatement, setImportingStatement] = useState(false);
   const { hidden, toggle: togglePrivacy } = usePrivacyMode();
   const labels = useMemberLabels();
 
@@ -62,6 +74,11 @@ function AccountPage() {
   const { data: metadataHistory = [] } = useQuery({
     queryKey: ["private-account-history", accountId],
     queryFn: () => fetchPrivateAccountHistory(accountId),
+    enabled: showMetadata,
+  });
+  const { data: allocations = [] } = useQuery({
+    queryKey: ["track-allocations", accountId],
+    queryFn: () => fetchTrackAllocations(accountId),
     enabled: showMetadata,
   });
   const { data: fxRate } = useQuery({
@@ -194,10 +211,16 @@ function AccountPage() {
             <section className="px-5 md:px-0 mt-6">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <h2 className="text-sm font-semibold">פרטי החשבון</h2>
-                <Button size="sm" variant="outline" onClick={() => setEditingDetails(true)}>
-                  <Pencil className="size-4" />
-                  ערוך פרטים
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setImportingStatement(true)}>
+                    <FileUp className="size-4" />
+                    ייבוא מדוח
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingDetails(true)}>
+                    <Pencil className="size-4" />
+                    ערוך פרטים
+                  </Button>
+                </div>
               </div>
               <div className="rounded-2xl border bg-card divide-y text-sm">
                 <DetailRow label="סוג חשבון" value={kindLabel(account.kind)} />
@@ -218,9 +241,54 @@ function AccountPage() {
                       : null
                   }
                 />
-                <DetailRow label="מסלול" value={account.track} />
+                {feesAboveAverage(account) && (
+                  <div className="px-4 py-2.5 flex items-center gap-2 bg-red-50 dark:bg-red-950/30">
+                    <TriangleAlert className="size-4 text-red-600 shrink-0" />
+                    <p className="text-xs text-red-700 dark:text-red-400">
+                      שים לב לגובה דמי הניהול — הם גבוהים מהממוצע בקרן
+                      {account.avg_fee_from_balance != null ||
+                      account.avg_fee_from_deposits != null ? (
+                        <span className="tabular-nums">
+                          {" "}
+                          (ממוצע:{" "}
+                          {account.avg_fee_from_balance != null
+                            ? `${maskAmountText(`${account.avg_fee_from_balance}%`, hidden)} מצבירה`
+                            : "—"}
+                          {" · "}
+                          {account.avg_fee_from_deposits != null
+                            ? `${maskAmountText(`${account.avg_fee_from_deposits}%`, hidden)} מהפקדות`
+                            : "—"}
+                          )
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+                )}
+                {allocations.length === 0 && <DetailRow label="מסלול" value={account.track} />}
+                <DetailRow
+                  label="קצבה חודשית צפויה"
+                  value={
+                    account.expected_monthly_pension != null
+                      ? maskAmountText(formatILS(account.expected_monthly_pension), hidden)
+                      : null
+                  }
+                />
+                <DetailRow label="הפקדה חודשית" value={depositSummary(account, hidden)} />
+                <DetailRow label="קוד האוצר" value={account.treasury_code} ltr />
+                <DetailRow label="מקור הנתונים" value={sourceSummary(account)} />
                 <DetailRow label="בעלים" value={labels[(account.person ?? "shared") as Person]} />
               </div>
+            </section>
+          )}
+
+          {showMetadata && account && (
+            <section className="px-5 md:px-0 mt-6">
+              <TrackSplitChart
+                allocations={allocations}
+                balanceIls={currentIls}
+                hidden={hidden}
+                onEdit={() => setEditingSplit(true)}
+              />
             </section>
           )}
         </>
@@ -256,16 +324,80 @@ function AccountPage() {
           }}
         />
       )}
+
+      {account && showMetadata && (
+        <TrackSplitEditor
+          open={editingSplit}
+          onOpenChange={setEditingSplit}
+          accountId={accountId}
+          accountName={account.name}
+          initial={allocations}
+        />
+      )}
+
+      {account && showMetadata && (
+        <StatementImportDialog
+          open={importingStatement}
+          onOpenChange={setImportingStatement}
+          person={(account.person ?? "shared") as Person}
+          account={account}
+        />
+      )}
     </AppShell>
   );
 }
 
 /** One labeled row in the account-details section; empty values show "—". */
-function DetailRow({ label, value }: { label: string; value: string | null }) {
+function DetailRow({
+  label,
+  value,
+  ltr = false,
+}: {
+  label: string;
+  value: string | null;
+  ltr?: boolean;
+}) {
   return (
     <div className="px-4 py-2.5 flex items-center justify-between gap-3">
       <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="font-medium text-start truncate tabular-nums">{value ?? "—"}</span>
+      <span className="font-medium text-start truncate tabular-nums" dir={ltr ? "ltr" : undefined}>
+        {value ?? "—"}
+      </span>
     </div>
   );
+}
+
+/** "עובד ₪500 · מעביד ₪700 · פיצויים ₪400" — only the set parts, masked in privacy mode. */
+function depositSummary(
+  account: {
+    monthly_deposit_employee: number | null;
+    monthly_deposit_employer: number | null;
+    monthly_deposit_severance: number | null;
+  },
+  hidden: boolean,
+): string | null {
+  const parts = [
+    account.monthly_deposit_employee != null &&
+      `עובד ${maskAmountText(formatILS(account.monthly_deposit_employee), hidden)}`,
+    account.monthly_deposit_employer != null &&
+      `מעביד ${maskAmountText(formatILS(account.monthly_deposit_employer), hidden)}`,
+    account.monthly_deposit_severance != null &&
+      `פיצויים ${maskAmountText(formatILS(account.monthly_deposit_severance), hidden)}`,
+  ].filter(Boolean) as string[];
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/** "דוח שנתי · 22.11.2026" — where the numbers came from and when. */
+function sourceSummary(account: {
+  data_source: string | null;
+  source_date: string | null;
+}): string | null {
+  const label = dataSourceLabel(account.data_source);
+  if (!label) return null;
+  if (!account.source_date) return label;
+  const d = new Date(`${account.source_date}T00:00:00`);
+  const date = Number.isNaN(d.getTime())
+    ? account.source_date
+    : d.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return `${label} · ${date}`;
 }
