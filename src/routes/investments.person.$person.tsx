@@ -1,21 +1,24 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, FileUp, Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { PrivateAccountCard } from "@/components/investments/PrivateAccountCard";
 import { PrivateAccountDialog } from "@/components/investments/PrivateAccountDialog";
+import { StatementImportDialog } from "@/components/investments/StatementImportDialog";
 import {
   fetchInvestmentAccounts,
   fetchInvestmentTransactions,
   type InvestmentAccount,
 } from "@/lib/db";
 import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
+import { fetchAllTrackAllocations } from "@/lib/track-splits";
 import { computeAccountTotals } from "@/lib/account-totals";
-import { accountsOfPerson, kindColor, kindLabel } from "@/lib/private-accounts";
+import { accountsOfPerson } from "@/lib/private-accounts";
 import { personAccentColor, useHouseholdPersons, type Person } from "@/lib/person";
 import { useUsdIlsRate } from "@/lib/fx";
-import { formatILS, formatMoney } from "@/lib/finance";
+import { formatILS } from "@/lib/finance";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 
 export const Route = createFileRoute("/investments/person/$person")({
@@ -25,6 +28,7 @@ export const Route = createFileRoute("/investments/person/$person")({
 
 function PersonPage() {
   const { person: personParam } = Route.useParams();
+  const navigate = useNavigate();
   const { hidden, toggle: togglePrivacy } = usePrivacyMode();
   const { persons, isLoading: personsLoading } = useHouseholdPersons();
   const personIndex = persons.findIndex((p) => p.person === personParam);
@@ -32,6 +36,7 @@ function PersonPage() {
   const accent = personAccentColor(Math.max(personIndex, 0));
 
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<InvestmentAccount | null>(null);
 
   const { data: accounts = [] } = useQuery({
@@ -45,6 +50,10 @@ function PersonPage() {
   const { data: journalEntries = [] } = useQuery({
     queryKey: ["trade-journal", "all"],
     queryFn: fetchAllTradeJournalEntries,
+  });
+  const { data: allAllocations = [] } = useQuery({
+    queryKey: ["track-allocations", "all"],
+    queryFn: fetchAllTrackAllocations,
   });
   const { rate: fxRate } = useUsdIlsRate();
 
@@ -63,6 +72,15 @@ function PersonPage() {
     () => (person ? accountsOfPerson(accounts, person.person as Person) : []),
     [accounts, person],
   );
+  const allocationsByAccount = useMemo(() => {
+    const map = new Map<string, typeof allAllocations>();
+    for (const a of allAllocations) {
+      const list = map.get(a.investment_account_id) ?? [];
+      list.push(a);
+      map.set(a.investment_account_id, list);
+    }
+    return map;
+  }, [allAllocations]);
   const totalIls = useMemo(
     () => myAccounts.reduce((sum, a) => sum + (totals.get(a.id)?.ils ?? 0), 0),
     [myAccounts, totals],
@@ -136,10 +154,14 @@ function PersonPage() {
                 <p className="text-4xl font-bold mt-2 tabular-nums">
                   {maskAmountText(formatILS(totalIls), hidden)}
                 </p>
-                <div className="mt-5">
+                <div className="mt-5 flex flex-wrap gap-2">
                   <Button size="sm" onClick={() => setAdding(true)}>
                     <Plus className="size-4" />
                     חשבון פרטי חדש
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
+                    <FileUp className="size-4" />
+                    ייבוא מדוח שנתי
                   </Button>
                 </div>
               </div>
@@ -156,84 +178,16 @@ function PersonPage() {
                   </Button>
                 </div>
               ) : (
-                myAccounts.map((a) => {
-                  const t = totals.get(a.id) ?? { native: 0, ils: 0 };
-                  const color = kindColor(a.kind);
-                  return (
-                    <div key={a.id} className="rounded-2xl border bg-card p-4">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="size-3 rounded-full shrink-0"
-                          style={{ background: color }}
-                        />
-                        <p className="text-sm font-semibold truncate flex-1">{a.name}</p>
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-full shrink-0"
-                          style={{ background: `${color}22`, color }}
-                        >
-                          {kindLabel(a.kind)}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 shrink-0"
-                          onClick={() => setEditing(a)}
-                          aria-label={`ערוך את ${a.name}`}
-                          title="ערוך"
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                      </div>
-                      <Link
-                        to="/investments/$accountId"
-                        params={{ accountId: a.id }}
-                        className="block active:scale-[0.99] transition-transform"
-                      >
-                        <p
-                          className="text-2xl font-bold mt-2 tabular-nums"
-                          dir={a.currency !== "ILS" ? "ltr" : undefined}
-                        >
-                          {maskAmountText(formatMoney(t.native, a.currency), hidden)}
-                        </p>
-                        {a.currency !== "ILS" && (
-                          <p className="text-xs text-muted-foreground tabular-nums">
-                            {t.ils != null ? (
-                              <>≈ {maskAmountText(formatILS(t.ils), hidden)}</>
-                            ) : (
-                              "שער דולר לא זמין"
-                            )}
-                          </p>
-                        )}
-                        <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
-                          {a.company && (
-                            <p>
-                              חברה: <span className="text-foreground">{a.company}</span>
-                            </p>
-                          )}
-                          {a.track && (
-                            <p>
-                              מסלול: <span className="text-foreground">{a.track}</span>
-                            </p>
-                          )}
-                          {(a.fee_from_balance != null || a.fee_from_deposits != null) && (
-                            <p className="tabular-nums">
-                              דמי ניהול:{" "}
-                              <span className="text-foreground">
-                                {a.fee_from_balance != null
-                                  ? `מצבירה ${maskAmountText(`${a.fee_from_balance}%`, hidden)}`
-                                  : "—"}
-                                {" · "}
-                                {a.fee_from_deposits != null
-                                  ? `מהפקדות ${maskAmountText(`${a.fee_from_deposits}%`, hidden)}`
-                                  : "—"}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                    </div>
-                  );
-                })
+                myAccounts.map((a) => (
+                  <PrivateAccountCard
+                    key={a.id}
+                    account={a}
+                    total={totals.get(a.id) ?? { native: 0, ils: 0 }}
+                    allocations={allocationsByAccount.get(a.id) ?? []}
+                    hidden={hidden}
+                    onEdit={() => setEditing(a)}
+                  />
+                ))
               )}
             </section>
 
@@ -247,6 +201,19 @@ function PersonPage() {
               }}
               person={person.person as Person}
               account={editing}
+            />
+
+            <StatementImportDialog
+              open={importing}
+              onOpenChange={setImporting}
+              person={person.person as Person}
+              account={null}
+              onCreated={(newId) => {
+                navigate({
+                  to: "/investments/$accountId",
+                  params: { accountId: newId },
+                });
+              }}
             />
           </>
         )
