@@ -29,6 +29,19 @@ export async function fetchTrips(): Promise<Trip[]> {
   return Promise.all((data ?? []).map(async (t) => ({ ...t, cover_image: await signMedia(t.cover_image, "trip-covers") })));
 }
 
+/**
+ * Trips with RAW storage paths (no signed URLs) — for the data export.
+ * A 1-hour signed URL is useless in a backup file; the stored path is.
+ */
+export async function fetchTripsRaw(): Promise<Trip[]> {
+  const { data, error } = await supabase
+    .from("trips")
+    .select("*")
+    .order("start_date", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Trip[];
+}
+
 export async function fetchTrip(id: string): Promise<Trip> {
   const { data, error } = await supabase.from("trips").select("*").eq("id", id).single();
   if (error) throw error;

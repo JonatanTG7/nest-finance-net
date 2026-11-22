@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { CreditCardsSection } from "@/components/CreditCardsSection";
+import { DataExportSection } from "@/components/DataExportSection";
 import { EmailDigestSection } from "@/components/EmailDigestSection";
 import { ProfileSettingsSection } from "@/components/ProfileSettingsSection";
 
@@ -208,6 +209,8 @@ function Settings() {
       {tab === "household" && (
         <>
           <HouseholdSection />
+
+          <DataExportSection />
 
           <section className="px-5 mt-8">
             <button

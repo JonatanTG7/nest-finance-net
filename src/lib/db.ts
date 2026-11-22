@@ -145,6 +145,43 @@ export async function fetchAllTransactions(limit = 500) {
   return (data ?? []) as unknown as Transaction[];
 }
 
+const EXPORT_PAGE_SIZE = 1000; // PostgREST caps a single request at 1000 rows.
+
+/**
+ * Every transaction of the household, no limit — for the data export.
+ * Pages through .range() with the same joined select and ordering as
+ * fetchAllTransactions, plus an id tiebreaker so paging is deterministic.
+ */
+export async function fetchAllTransactionsPaged(): Promise<Transaction[]> {
+  const all: Transaction[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select(TX_SELECT)
+      .order("occurred_at", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + EXPORT_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as unknown as Transaction[];
+    all.push(...page);
+    if (page.length < EXPORT_PAGE_SIZE) return all;
+    from += EXPORT_PAGE_SIZE;
+  }
+}
+
+/** Every category (including ones hidden for this household) — for the data export backup. */
+export async function fetchAllCategories(): Promise<Category[]> {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("sort_order")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []) as Category[];
+}
+
 export async function fetchTransaction(id: string) {
   const { data, error } = await supabase
     .from("transactions")
