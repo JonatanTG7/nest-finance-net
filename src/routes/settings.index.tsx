@@ -1,10 +1,23 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sun, Moon, Copy, LogOut, Users, Plus, ArrowLeft, ShieldAlert, Coins } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  Copy,
+  LogOut,
+  Users,
+  Plus,
+  ArrowLeft,
+  ShieldAlert,
+  Coins,
+  User,
+  CreditCard,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { CreditCardsSection } from "@/components/CreditCardsSection";
 import { EmailDigestSection } from "@/components/EmailDigestSection";
+import { ProfileSettingsSection } from "@/components/ProfileSettingsSection";
 
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
@@ -30,8 +43,17 @@ export const Route = createFileRoute("/settings/")({
   component: Settings,
 });
 
+type SettingsTab = "personal" | "cards" | "household";
+
+const TABS: { id: SettingsTab; label: string; Icon: typeof User }[] = [
+  { id: "personal", label: "אישי", Icon: User },
+  { id: "cards", label: "כרטיסים", Icon: CreditCard },
+  { id: "household", label: "משק הבית", Icon: Users },
+];
+
 function Settings() {
   const navigate = useNavigate();
+  const [tab, setTab] = useState<SettingsTab>("personal");
   const [person, setPerson] = useState<Person>("yonatan");
   const [theme, setThemeState] = useState<Theme>("light");
   const [currency, setCurrencyState] = useState("ILS");
@@ -64,116 +86,144 @@ function Settings() {
         <h1 className="text-2xl font-bold">הגדרות</h1>
       </header>
 
-      <section className="px-5 mt-2">
-        <h2 className="text-sm font-semibold mb-2">מי אני?</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {(["yonatan", "shiri"] as Person[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => choose(p)}
-              className={cn(
-                "h-14 rounded-xl border text-base font-semibold transition",
-                person === p
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card border-border",
-              )}
-            >
-              {memberLabels[p]}
-            </button>
-          ))}
-        </div>
-      </section>
+      <nav className="px-5 mt-2 flex gap-6 border-b text-base">
+        {TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={cn(
+              "pb-2 -mb-px border-b-2 flex items-center gap-1.5",
+              tab === id
+                ? "border-primary text-foreground font-semibold"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Icon className="size-4" />
+            {label}
+          </button>
+        ))}
+      </nav>
 
-      <PeriodSection />
+      {tab === "personal" && (
+        <>
+          <ProfileSettingsSection />
 
-      <section className="px-5 mt-8">
-        <h2 className="text-sm font-semibold mb-2">הגדרות אישיות</h2>
-        <div className="rounded-2xl bg-card border p-4 space-y-4">
-          <div>
-            <label className="text-sm font-medium flex items-center gap-1.5">
-              <Coins className="size-3.5 text-muted-foreground" />
-              מטבע ברירת מחדל
-            </label>
-            <select
-              value={currency}
-              onChange={(e) => chooseCurrency(e.target.value)}
-              className="w-full h-11 mt-1.5 rounded-xl bg-background border px-3 text-sm outline-none"
-            >
-              {[
-                "ILS",
-                "USD",
-                "EUR",
-                "GBP",
-                "JPY",
-                "THB",
-                "CHF",
-                "CAD",
-                "AUD",
-                "AED",
-                "TRY",
-                "MXN",
-                "INR",
-                "CNY",
-                "EGP",
-              ].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+          <section className="px-5 mt-8">
+            <h2 className="text-sm font-semibold mb-2">מי אני?</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {(["yonatan", "shiri"] as Person[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => choose(p)}
+                  className={cn(
+                    "h-14 rounded-xl border text-base font-semibold transition",
+                    person === p
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card border-border",
+                  )}
+                >
+                  {memberLabels[p]}
+                </button>
               ))}
-            </select>
-          </div>
-        </div>
-      </section>
+            </div>
+          </section>
 
-      <section className="px-5 mt-8">
-        <h2 className="text-sm font-semibold mb-2">מצב תצוגה</h2>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => chooseTheme("light")}
-            className={cn(
-              "h-14 rounded-xl border text-base font-semibold transition flex items-center justify-center gap-2",
-              theme === "light"
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card border-border",
-            )}
-          >
-            <Sun className="size-5" />
-            בהיר
-          </button>
-          <button
-            onClick={() => chooseTheme("dark")}
-            className={cn(
-              "h-14 rounded-xl border text-base font-semibold transition flex items-center justify-center gap-2",
-              theme === "dark"
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card border-border",
-            )}
-          >
-            <Moon className="size-5" />
-            כהה
-          </button>
-        </div>
-      </section>
+          <EmailDigestSection />
 
-      <CreditCardsSection />
+          <PeriodSection />
 
-      <EmailDigestSection />
+          <section className="px-5 mt-8">
+            <h2 className="text-sm font-semibold mb-2">הגדרות אישיות</h2>
+            <div className="rounded-2xl bg-card border p-4 space-y-4">
+              <div>
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Coins className="size-3.5 text-muted-foreground" />
+                  מטבע ברירת מחדל
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => chooseCurrency(e.target.value)}
+                  className="w-full h-11 mt-1.5 rounded-xl bg-background border px-3 text-sm outline-none"
+                >
+                  {[
+                    "ILS",
+                    "USD",
+                    "EUR",
+                    "GBP",
+                    "JPY",
+                    "THB",
+                    "CHF",
+                    "CAD",
+                    "AUD",
+                    "AED",
+                    "TRY",
+                    "MXN",
+                    "INR",
+                    "CNY",
+                    "EGP",
+                  ].map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </section>
 
-      <HouseholdSection />
+          <section className="px-5 mt-8">
+            <h2 className="text-sm font-semibold mb-2">מצב תצוגה</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => chooseTheme("light")}
+                className={cn(
+                  "h-14 rounded-xl border text-base font-semibold transition flex items-center justify-center gap-2",
+                  theme === "light"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border",
+                )}
+              >
+                <Sun className="size-5" />
+                בהיר
+              </button>
+              <button
+                onClick={() => chooseTheme("dark")}
+                className={cn(
+                  "h-14 rounded-xl border text-base font-semibold transition flex items-center justify-center gap-2",
+                  theme === "dark"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border",
+                )}
+              >
+                <Moon className="size-5" />
+                כהה
+              </button>
+            </div>
+          </section>
+        </>
+      )}
 
-      <section className="px-5 mt-8">
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/settings/danger" })}
-          className="w-full flex items-center justify-between rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
-        >
-          <span className="flex items-center gap-2 font-medium">
-            <ShieldAlert className="size-4" />
-            מחיקת חשבון
-          </span>
-          <ArrowLeft className="size-4 rotate-180" />
-        </button>
-      </section>
+      {tab === "cards" && <CreditCardsSection />}
+
+      {tab === "household" && (
+        <>
+          <HouseholdSection />
+
+          <section className="px-5 mt-8">
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/settings/danger" })}
+              className="w-full flex items-center justify-between rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+            >
+              <span className="flex items-center gap-2 font-medium">
+                <ShieldAlert className="size-4" />
+                מחיקת חשבון
+              </span>
+              <ArrowLeft className="size-4 rotate-180" />
+            </button>
+          </section>
+        </>
+      )}
 
       <section className="px-5 mt-8 mb-8">
         <button

@@ -91,6 +91,17 @@ export async function listHouseholdMembers(householdId: string) {
   return data ?? [];
 }
 
+/** Update the signed-in member's own profile (name and/or picture). */
+export async function updateMyProfile(patch: {
+  display_name?: string;
+  avatar_url?: string | null;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error("not signed in");
+  const { error } = await supabase.from("profiles").update(patch).eq("id", auth.user.id);
+  if (error) throw error;
+}
+
 export async function updateMyPerson(person: "yonatan" | "shiri") {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new Error("not signed in");
