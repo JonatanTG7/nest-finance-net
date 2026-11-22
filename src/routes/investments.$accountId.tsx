@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Eye, EyeOff, Pencil } from "lucide-react";
@@ -7,9 +7,13 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { BalanceDialog } from "@/components/investments/BalanceDialog";
 import { BalanceHistoryList } from "@/components/investments/BalanceHistoryList";
+import { PrivateAccountDialog } from "@/components/investments/PrivateAccountDialog";
+import { PrivateAccountHistoryList } from "@/components/investments/PrivateAccountHistoryList";
 import { TradeJournalSection } from "@/components/investments/TradeJournalSection";
 import { fetchInvestmentAccounts } from "@/lib/db";
 import { fetchBalanceHistory, setAccountBalanceIls } from "@/lib/balance_history";
+import { fetchPrivateAccountHistory, isSharedAccount, kindLabel } from "@/lib/private-accounts";
+import { useMemberLabels, type Person } from "@/lib/person";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchUsdIlsRate, useUsdIlsRate } from "@/lib/fx";
 import { fetchTradeJournalEntries, journalPnlUsdAfterReset } from "@/lib/trade-journal";
@@ -24,8 +28,11 @@ export const Route = createFileRoute("/investments/$accountId")({
 function AccountPage() {
   const { accountId } = Route.useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
   const { hidden, toggle: togglePrivacy } = usePrivacyMode();
+  const labels = useMemberLabels();
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["investment_accounts"],
@@ -35,10 +42,27 @@ function AccountPage() {
     () => accounts.find((a) => a.id === accountId) ?? null,
     [accounts, accountId],
   );
+  const isPrivate = !!account && !isSharedAccount(account);
+  // The metadata section shows for private accounts (always — even
+  // before any details were entered) and for shared accounts that
+  // already have metadata. Shared accounts without metadata stay
+  // exactly as they were.
+  const hasMetadata =
+    !!account &&
+    (account.company != null ||
+      account.track != null ||
+      account.fee_from_balance != null ||
+      account.fee_from_deposits != null);
+  const showMetadata = !!account && account.kind !== IB_KIND && (isPrivate || hasMetadata);
 
   const { data: history = [] } = useQuery({
     queryKey: ["balance_history", accountId],
     queryFn: () => fetchBalanceHistory(accountId),
+  });
+  const { data: metadataHistory = [] } = useQuery({
+    queryKey: ["private-account-history", accountId],
+    queryFn: () => fetchPrivateAccountHistory(accountId),
+    enabled: showMetadata,
   });
   const { data: fxRate } = useQuery({
     queryKey: ["fx", "usdils"],
@@ -103,7 +127,9 @@ function AccountPage() {
             {account?.name ?? (isLoading ? "טוען…" : "חשבון לא נמצא")}
           </h1>
           <p className="text-xs text-muted-foreground">
-            חשבון השקעה / חיסכון · {account?.currency ?? "ILS"}
+            {account && isPrivate
+              ? `${kindLabel(account.kind)} · ${labels[(account.person ?? "shared") as Person]} · ${account.currency}`
+              : `חשבון השקעה / חיסכון · ${account?.currency ?? "ILS"}`}
           </p>
         </div>
         <Button
@@ -163,12 +189,83 @@ function AccountPage() {
               await save.mutateAsync(n);
             }}
           />
+
+          {showMetadata && account && (
+            <section className="px-5 md:px-0 mt-6">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h2 className="text-sm font-semibold">פרטי החשבון</h2>
+                <Button size="sm" variant="outline" onClick={() => setEditingDetails(true)}>
+                  <Pencil className="size-4" />
+                  ערוך פרטים
+                </Button>
+              </div>
+              <div className="rounded-2xl border bg-card divide-y text-sm">
+                <DetailRow label="סוג חשבון" value={kindLabel(account.kind)} />
+                <DetailRow label="חברה מנהלת" value={account.company} />
+                <DetailRow
+                  label="דמי ניהול מצבירה"
+                  value={
+                    account.fee_from_balance != null
+                      ? maskAmountText(`${account.fee_from_balance}%`, hidden)
+                      : null
+                  }
+                />
+                <DetailRow
+                  label="דמי ניהול מהפקדות"
+                  value={
+                    account.fee_from_deposits != null
+                      ? maskAmountText(`${account.fee_from_deposits}%`, hidden)
+                      : null
+                  }
+                />
+                <DetailRow label="מסלול" value={account.track} />
+                <DetailRow label="בעלים" value={labels[(account.person ?? "shared") as Person]} />
+              </div>
+            </section>
+          )}
         </>
       )}
 
-      {account && account.kind !== IB_KIND && <TradeJournalSection accountId={accountId} />}
+      {/* The trading journal belongs to day-trading accounts (e.g. Colmex) —
+          private accounts like a pension never have one. */}
+      {account && account.kind !== IB_KIND && !isPrivate && (
+        <TradeJournalSection accountId={accountId} />
+      )}
+
+      {showMetadata && (isPrivate || metadataHistory.length > 0) && (
+        <PrivateAccountHistoryList rows={metadataHistory} hidden={hidden} />
+      )}
 
       <BalanceHistoryList rows={history} hidden={hidden} />
+
+      {account && account.kind !== IB_KIND && (
+        <PrivateAccountDialog
+          open={editingDetails}
+          onOpenChange={setEditingDetails}
+          person={(account.person ?? "shared") as Person}
+          account={account}
+          onDeleted={() => {
+            if (isPrivate) {
+              navigate({
+                to: "/investments/person/$person",
+                params: { person: (account.person ?? "shared") as string },
+              });
+            } else {
+              navigate({ to: "/investments" });
+            }
+          }}
+        />
+      )}
     </AppShell>
+  );
+}
+
+/** One labeled row in the account-details section; empty values show "—". */
+function DetailRow({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="font-medium text-start truncate tabular-nums">{value ?? "—"}</span>
+    </div>
   );
 }

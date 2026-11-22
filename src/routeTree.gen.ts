@@ -25,6 +25,7 @@ import { Route as TransactionsNewRouteImport } from './routes/transactions.new'
 import { Route as TravelIndexRouteImport } from './routes/travel.index'
 import { Route as TravelTripIdRouteImport } from './routes/travel.$tripId'
 import { Route as TravelNewRouteImport } from './routes/travel.new'
+import { Route as InvestmentsPersonPersonRouteImport } from './routes/investments.person.$person'
 import { Route as TransactionsEditIdRouteImport } from './routes/transactions.edit.$id'
 import { Route as TravelTripIdEditRouteImport } from './routes/travel.$tripId_.edit'
 
@@ -108,6 +109,11 @@ const TravelNewRoute = TravelNewRouteImport.update({
   path: '/travel/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvestmentsPersonPersonRoute = InvestmentsPersonPersonRouteImport.update({
+  id: '/person/$person',
+  path: '/person/$person',
+  getParentRoute: () => InvestmentsRoute,
+} as any)
 const TransactionsEditIdRoute = TransactionsEditIdRouteImport.update({
   id: '/transactions/edit/$id',
   path: '/transactions/edit/$id',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
   '/travel/': typeof TravelIndexRoute
+  '/investments/person/$person': typeof InvestmentsPersonPersonRoute
   '/transactions/edit/$id': typeof TransactionsEditIdRoute
   '/travel/$tripId/edit': typeof TravelTripIdEditRoute
 }
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
   '/travel': typeof TravelIndexRoute
+  '/investments/person/$person': typeof InvestmentsPersonPersonRoute
   '/transactions/edit/$id': typeof TransactionsEditIdRoute
   '/travel/$tripId/edit': typeof TravelTripIdEditRoute
 }
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
   '/travel/': typeof TravelIndexRoute
+  '/investments/person/$person': typeof InvestmentsPersonPersonRoute
   '/transactions/edit/$id': typeof TransactionsEditIdRoute
   '/travel/$tripId_/edit': typeof TravelTripIdEditRoute
 }
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/transactions/'
     | '/travel/'
+    | '/investments/person/$person'
     | '/transactions/edit/$id'
     | '/travel/$tripId/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/transactions'
     | '/travel'
+    | '/investments/person/$person'
     | '/transactions/edit/$id'
     | '/travel/$tripId/edit'
   id:
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/transactions/'
     | '/travel/'
+    | '/investments/person/$person'
     | '/transactions/edit/$id'
     | '/travel/$tripId_/edit'
   fileRoutesById: FileRoutesById
@@ -372,6 +384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TravelNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/investments/person/$person': {
+      id: '/investments/person/$person'
+      path: '/person/$person'
+      fullPath: '/investments/person/$person'
+      preLoaderRoute: typeof InvestmentsPersonPersonRouteImport
+      parentRoute: typeof InvestmentsRoute
+    }
     '/transactions/edit/$id': {
       id: '/transactions/edit/$id'
       path: '/transactions/edit/$id'
@@ -394,6 +413,7 @@ interface InvestmentsRouteChildren {
   InvestmentsIbRoute: typeof InvestmentsIbRoute
   InvestmentsVouchersRoute: typeof InvestmentsVouchersRoute
   InvestmentsIndexRoute: typeof InvestmentsIndexRoute
+  InvestmentsPersonPersonRoute: typeof InvestmentsPersonPersonRoute
 }
 
 const InvestmentsRouteChildren: InvestmentsRouteChildren = {
@@ -401,6 +421,7 @@ const InvestmentsRouteChildren: InvestmentsRouteChildren = {
   InvestmentsIbRoute: InvestmentsIbRoute,
   InvestmentsVouchersRoute: InvestmentsVouchersRoute,
   InvestmentsIndexRoute: InvestmentsIndexRoute,
+  InvestmentsPersonPersonRoute: InvestmentsPersonPersonRoute,
 }
 
 const InvestmentsRouteWithChildren = InvestmentsRoute._addFileChildren(
