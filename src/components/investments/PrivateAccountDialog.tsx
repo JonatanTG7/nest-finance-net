@@ -57,7 +57,7 @@ function formFromAccount(a: InvestmentAccount | null): PrivateAccountForm {
  */
 export function PrivateAccountDialog({ open, onOpenChange, person, account, onDeleted }: Props) {
   const qc = useQueryClient();
-  const persons = useHouseholdPersons();
+  const { persons } = useHouseholdPersons();
   const labels = useMemberLabels();
   const editing = account != null;
 
