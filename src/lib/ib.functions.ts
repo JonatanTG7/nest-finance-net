@@ -74,58 +74,61 @@ function guessPhaseNY(): MarketPhase {
   return "CLOSED";
 }
 
+/**
+ * Live quotes without the auth-gated server-fn wrapper — for server-only
+ * callers (the email digest sender). Same cache and Finnhub logic as
+ * getQuotes; symbols with no price come back with `last: null` and the
+ * caller falls back to avg_price.
+ */
+export async function fetchLiveQuotes(symbols: string[]): Promise<Quote[]> {
+  const syms = Array.from(new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean)));
+  if (syms.length === 0) return [];
+
+  const nullQuote = (s: string): Quote => ({
+    symbol: s,
+    last: null,
+    prevClose: null,
+    phase: "CLOSED" as MarketPhase,
+    dailyChange: null,
+    dailyChangePct: null,
+  });
+
+  const apiKey = process.env.FINNHUB_API_KEY;
+  if (!apiKey) {
+    console.error("[ib] FINNHUB_API_KEY missing");
+    return syms.map(nullQuote);
+  }
+
+  const now = Date.now();
+  const results: Quote[] = [];
+  const toFetch: string[] = [];
+  for (const s of syms) {
+    const hit = cache.get(s);
+    if (hit && now - hit.at < TTL_MS) results.push(hit.q);
+    else toFetch.push(s);
+  }
+
+  const fetched = await Promise.all(
+    toFetch.map(async (s) => {
+      const q = await fetchFinnhubQuote(s, apiKey);
+      if (q) {
+        cache.set(s, { at: now, q });
+        return q;
+      }
+      return nullQuote(s);
+    }),
+  );
+  results.push(...fetched);
+
+  const by = new Map(results.map((r) => [r.symbol, r]));
+  return syms.map((s) => by.get(s)!);
+}
+
 export const getQuotes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { symbols: string[] }) => data)
   .handler(async ({ data }): Promise<Quote[]> => {
-    const syms = Array.from(
-      new Set(data.symbols.map((s) => s.trim().toUpperCase()).filter(Boolean)),
-    );
-    if (syms.length === 0) return [];
-
-    const apiKey = process.env.FINNHUB_API_KEY;
-    if (!apiKey) {
-      console.error("[ib] FINNHUB_API_KEY missing");
-      return syms.map((s) => ({
-        symbol: s,
-        last: null,
-        prevClose: null,
-        phase: "CLOSED" as MarketPhase,
-        dailyChange: null,
-        dailyChangePct: null,
-      }));
-    }
-
-    const now = Date.now();
-    const results: Quote[] = [];
-    const toFetch: string[] = [];
-    for (const s of syms) {
-      const hit = cache.get(s);
-      if (hit && now - hit.at < TTL_MS) results.push(hit.q);
-      else toFetch.push(s);
-    }
-
-    const fetched = await Promise.all(
-      toFetch.map(async (s) => {
-        const q = await fetchFinnhubQuote(s, apiKey);
-        if (q) {
-          cache.set(s, { at: now, q });
-          return q;
-        }
-        return {
-          symbol: s,
-          last: null,
-          prevClose: null,
-          phase: "CLOSED" as MarketPhase,
-          dailyChange: null,
-          dailyChangePct: null,
-        };
-      }),
-    );
-    results.push(...fetched);
-
-    const by = new Map(results.map((r) => [r.symbol, r]));
-    return syms.map((s) => by.get(s)!);
+    return fetchLiveQuotes(data.symbols);
   });
 
 //.

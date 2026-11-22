@@ -199,6 +199,72 @@ export type Database = {
           },
         ];
       };
+      email_digest_preferences: {
+        Row: {
+          created_at: string;
+          email: string;
+          enabled: boolean;
+          household_id: string;
+          id: string;
+          last_digest_kind: string | null;
+          last_net_worth_ils: number | null;
+          last_sent_at: string | null;
+          monthly_day: number | null;
+          monthly_enabled: boolean;
+          profile_id: string;
+          updated_at: string;
+          weekly_enabled: boolean;
+          weekly_weekday: number | null;
+        };
+        Insert: {
+          created_at?: string;
+          email: string;
+          enabled?: boolean;
+          household_id: string;
+          id?: string;
+          last_digest_kind?: string | null;
+          last_net_worth_ils?: number | null;
+          last_sent_at?: string | null;
+          monthly_day?: number | null;
+          monthly_enabled?: boolean;
+          profile_id: string;
+          updated_at?: string;
+          weekly_enabled?: boolean;
+          weekly_weekday?: number | null;
+        };
+        Update: {
+          created_at?: string;
+          email?: string;
+          enabled?: boolean;
+          household_id?: string;
+          id?: string;
+          last_digest_kind?: string | null;
+          last_net_worth_ils?: number | null;
+          last_sent_at?: string | null;
+          monthly_day?: number | null;
+          monthly_enabled?: boolean;
+          profile_id?: string;
+          updated_at?: string;
+          weekly_enabled?: boolean;
+          weekly_weekday?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "email_digest_preferences_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "email_digest_preferences_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       household_hidden_categories: {
         Row: {
           category_id: string;

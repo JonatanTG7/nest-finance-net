@@ -4,6 +4,7 @@ import { Sun, Moon, Copy, LogOut, Users, Plus, ArrowLeft, ShieldAlert, Coins } f
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { CreditCardsSection } from "@/components/CreditCardsSection";
+import { EmailDigestSection } from "@/components/EmailDigestSection";
 
 import { getDefaultPerson, setDefaultPerson, useMemberLabels, type Person } from "@/lib/person";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
@@ -155,6 +156,8 @@ function Settings() {
       </section>
 
       <CreditCardsSection />
+
+      <EmailDigestSection />
 
       <HouseholdSection />
 
