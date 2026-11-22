@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
+import { Route as ApiSendDigestsRouteImport } from './routes/api/send-digests'
 import { Route as InvestmentsIndexRouteImport } from './routes/investments.index'
 import { Route as InvestmentsAccountIdRouteImport } from './routes/investments.$accountId'
 import { Route as InvestmentsIbRouteImport } from './routes/investments.ib'
@@ -42,6 +43,11 @@ const InvestmentsRoute = InvestmentsRouteImport.update({
 const SubscriptionsRoute = SubscriptionsRouteImport.update({
   id: '/subscriptions',
   path: '/subscriptions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSendDigestsRoute = ApiSendDigestsRouteImport.update({
+  id: '/api/send-digests',
+  path: '/api/send-digests',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvestmentsIndexRoute = InvestmentsIndexRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/investments': typeof InvestmentsRouteWithChildren
   '/subscriptions': typeof SubscriptionsRoute
+  '/api/send-digests': typeof ApiSendDigestsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/subscriptions': typeof SubscriptionsRoute
+  '/api/send-digests': typeof ApiSendDigestsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/investments': typeof InvestmentsRouteWithChildren
   '/subscriptions': typeof SubscriptionsRoute
+  '/api/send-digests': typeof ApiSendDigestsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
   '/investments/ib': typeof InvestmentsIbRoute
   '/investments/vouchers': typeof InvestmentsVouchersRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/'
     | '/investments'
     | '/subscriptions'
+    | '/api/send-digests'
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/subscriptions'
+    | '/api/send-digests'
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/'
     | '/investments'
     | '/subscriptions'
+    | '/api/send-digests'
     | '/investments/$accountId'
     | '/investments/ib'
     | '/investments/vouchers'
@@ -257,6 +269,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InvestmentsRoute: typeof InvestmentsRouteWithChildren
   SubscriptionsRoute: typeof SubscriptionsRoute
+  ApiSendDigestsRoute: typeof ApiSendDigestsRoute
   SettingsCategoriesRoute: typeof SettingsCategoriesRoute
   SettingsDangerRoute: typeof SettingsDangerRoute
   TransactionsIdRoute: typeof TransactionsIdRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/subscriptions'
       fullPath: '/subscriptions'
       preLoaderRoute: typeof SubscriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/send-digests': {
+      id: '/api/send-digests'
+      path: '/api/send-digests'
+      fullPath: '/api/send-digests'
+      preLoaderRoute: typeof ApiSendDigestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/investments/': {
@@ -432,6 +452,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InvestmentsRoute: InvestmentsRouteWithChildren,
   SubscriptionsRoute: SubscriptionsRoute,
+  ApiSendDigestsRoute: ApiSendDigestsRoute,
   SettingsCategoriesRoute: SettingsCategoriesRoute,
   SettingsDangerRoute: SettingsDangerRoute,
   TransactionsIdRoute: TransactionsIdRoute,

@@ -12,6 +12,7 @@ import { AppShell } from "@/components/AppShell";
 import { fetchInvestmentAccounts, fetchInvestmentTransactions } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
+import { computeIbTotals, grandTotalIls } from "@/lib/net-worth";
 import { fetchAllIbHoldings, fetchAllIbPositions, IB_KIND } from "@/lib/ib";
 import { getQuotes } from "@/lib/ib.functions";
 import { useUsdIlsRate } from "@/lib/fx";
@@ -105,40 +106,11 @@ function Investments() {
   });
 
   // Per-portfolio IB totals (cash + live positions), keyed by account id.
-  const ibTotals = useMemo(() => {
-    const priceBy = new Map<string, number | null>();
-    for (const q of ibQuotes) priceBy.set(q.symbol, q.last);
-    const m = new Map<string, { native: number; ils: number | null; count: number }>();
-    const cashBy = new Map<string, number>();
-    for (const h of ibHoldings) cashBy.set(h.investment_account_id, Number(h.cash_usd ?? 0));
-    const positionsBy = new Map<string, typeof ibPositions>();
-    for (const p of ibPositions) {
-      const arr = positionsBy.get(p.investment_account_id) ?? [];
-      arr.push(p);
-      positionsBy.set(p.investment_account_id, arr);
-    }
-    for (const [accountId, positions] of positionsBy) {
-      let market = 0;
-      for (const p of positions) {
-        const last = priceBy.get(p.symbol);
-        if (last != null) market += last * Number(p.quantity);
-        else market += Number(p.avg_price) * Number(p.quantity);
-      }
-      const native = (cashBy.get(accountId) ?? 0) + market;
-      m.set(accountId, {
-        native,
-        ils: fxRate != null ? native * fxRate : null,
-        count: positions.length,
-      });
-    }
-    // Portfolios with cash but no positions yet still get a total.
-    for (const [accountId, cash] of cashBy) {
-      if (!m.has(accountId)) {
-        m.set(accountId, { native: cash, ils: fxRate != null ? cash * fxRate : null, count: 0 });
-      }
-    }
-    return m;
-  }, [ibHoldings, ibPositions, ibQuotes, fxRate]);
+  // The math lives in lib/net-worth so the email digest sender shares it.
+  const ibTotals = useMemo(
+    () => computeIbTotals(ibHoldings, ibPositions, ibQuotes, fxRate),
+    [ibHoldings, ibPositions, ibQuotes, fxRate],
+  );
 
   // Non-IB balances come from the shared totals rule (baseline + post-reset
   // transactions + post-reset journal P&L); IB portfolios are valued from
@@ -195,11 +167,7 @@ function Investments() {
   // The grand total mixes live FX (IB) with frozen historical rates (other
   // accounts) — an inherent limitation of the model. When the FX rate is
   // unavailable, IB value is excluded and flagged instead of guessed.
-  const ibIlsMissing = Array.from(totals.values()).some((t) => t.ils == null);
-  const grandIls = useMemo(
-    () => Array.from(totals.values()).reduce((a, b) => a + (b.ils ?? 0), 0),
-    [totals],
-  );
+  const { grandIls, ibIlsMissing } = useMemo(() => grandTotalIls(totals), [totals]);
 
   return (
     <AppShell>
