@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveAvatarUrl } from "@/lib/avatar";
 import { fetchMyProfile } from "@/lib/household";
 
 export type Person = "yonatan" | "shiri" | "shared";
@@ -100,10 +101,19 @@ export function useHouseholdPersons(): { persons: HouseholdPerson[]; isLoading: 
       for (const m of members ?? []) {
         const slot = m.person as Person | null;
         if (!slot || !PERSON_SLOTS.includes(slot) || bySlot.has(slot)) continue;
+        // Stored avatars are either an auth-provider URL (used as-is) or a
+        // private-bucket path (signed here). A failed sign never fails the
+        // whole list — the member just shows their initial.
+        let avatarUrl: string | null = null;
+        try {
+          avatarUrl = await resolveAvatarUrl(m.avatar_url);
+        } catch {
+          avatarUrl = null;
+        }
         bySlot.set(slot, {
           person: slot,
           label: m.display_name ? firstName(m.display_name) : personLabel[slot],
-          avatarUrl: m.avatar_url ?? null,
+          avatarUrl,
         });
       }
       return PERSON_SLOTS.flatMap((slot) => {

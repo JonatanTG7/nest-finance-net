@@ -40,9 +40,11 @@ export function PersonEntryCard({
           >
             {initial}
             {person.avatarUrl && (
-              // Avatar URLs come from the auth provider (e.g. Google photo).
-              // The initial stays underneath: if the photo fails to load,
-              // hiding it reveals the initial.
+              // Avatar URLs are either the auth provider's photo (e.g.
+              // Google) or a signed URL for an uploaded picture — both are
+              // resolved in useHouseholdPersons. The initial stays
+              // underneath: if the photo fails to load, hiding it reveals
+              // the initial.
               <img
                 src={person.avatarUrl}
                 alt=""
