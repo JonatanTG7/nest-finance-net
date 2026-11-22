@@ -11,17 +11,17 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { fetchInvestmentAccounts, fetchInvestmentTransactions } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
-import {
-  fetchAllTradeJournalEntries,
-  journalPnlUsdAfterReset,
-  type TradeJournalEntry,
-} from "@/lib/trade-journal";
+import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
 import { fetchAllIbHoldings, fetchAllIbPositions, IB_KIND } from "@/lib/ib";
 import { getQuotes } from "@/lib/ib.functions";
 import { useUsdIlsRate } from "@/lib/fx";
 import { fetchVouchers } from "@/lib/vouchers";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 import { useCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
+import { computeAccountTotals } from "@/lib/account-totals";
+import { accountsOfPerson, isSharedAccount } from "@/lib/private-accounts";
+import { personAccentColor, useHouseholdPersons } from "@/lib/person";
+import { PersonEntryCard } from "@/components/investments/PersonEntryCard";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/investments/")({
@@ -140,66 +140,21 @@ function Investments() {
     return m;
   }, [ibHoldings, ibPositions, ibQuotes, fxRate]);
 
+  // Non-IB balances come from the shared totals rule (baseline + post-reset
+  // transactions + post-reset journal P&L); IB portfolios are valued from
+  // live positions and overlaid here. The grand total below still covers
+  // every account — shared and private alike.
   const totals = useMemo(() => {
-    const m = new Map<string, { native: number; ils: number | null }>();
+    const m = computeAccountTotals({
+      accounts,
+      transactions: txs,
+      journalEntries,
+      fxRate,
+    });
     for (const a of accounts) {
       if (a.kind === IB_KIND) {
         const t = ibTotals.get(a.id);
         m.set(a.id, { native: t?.native ?? 0, ils: t?.ils ?? null });
-        continue;
-      }
-      m.set(a.id, {
-        native: Number(a.starting_balance ?? 0),
-        ils: Number(a.starting_balance_ils ?? a.starting_balance ?? 0),
-      });
-    }
-    for (const t of txs) {
-      if (!t.investment_account_id) continue;
-      const account = accounts.find((a) => a.id === t.investment_account_id);
-      // IB portfolios are valued from live positions, never from transactions.
-      if (!account || account.kind === IB_KIND) continue;
-      // After a manual balance reset, only transactions created after the
-      // reset count toward the balance — older ones stay in history.
-      if (
-        account.balance_reset_at &&
-        t.created_at &&
-        new Date(t.created_at).getTime() <= new Date(account.balance_reset_at).getTime()
-      ) {
-        continue;
-      }
-      const cur = m.get(t.investment_account_id);
-      if (!cur) continue;
-      cur.native += Number(t.amount);
-      cur.ils = (cur.ils ?? 0) + Number(t.amount_ils);
-    }
-    // Journal P&L counts toward the displayed balance, exactly like
-    // transactions: only entries created after the last manual balance
-    // reset (the reset absorbs earlier trades into the baseline).
-    // P&L is in USD — a USD account takes it as-is; an ILS account
-    // converts at the live USD→ILS rate. When the rate is unavailable
-    // the ILS part is left out rather than guessed — the native figure
-    // of a USD account stays exact.
-    const journalByAccount = new Map<string, TradeJournalEntry[]>();
-    for (const e of journalEntries) {
-      const arr = journalByAccount.get(e.investment_account_id) ?? [];
-      arr.push(e);
-      journalByAccount.set(e.investment_account_id, arr);
-    }
-    for (const a of accounts) {
-      if (a.kind === IB_KIND) continue;
-      const entries = journalByAccount.get(a.id);
-      if (!entries || entries.length === 0) continue;
-      const pnlUsd = journalPnlUsdAfterReset(entries, a.balance_reset_at);
-      const cur = m.get(a.id);
-      if (!cur) continue;
-      if (a.currency === "USD") {
-        cur.native += pnlUsd;
-        if (fxRate != null) cur.ils = (cur.ils ?? 0) + pnlUsd * fxRate;
-      } else if (fxRate != null) {
-        // Non-USD accounts are ILS (only ILS/USD exist): the native
-        // figure is in ILS, so both native and ILS need the conversion.
-        cur.native += pnlUsd * fxRate;
-        cur.ils = (cur.ils ?? 0) + pnlUsd * fxRate;
       }
     }
     return m;
@@ -219,9 +174,23 @@ function Investments() {
 
   // Card order (accounts + vouchers card), saved per device. The grand
   // total card stays fixed at the top and is not part of the order.
-  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
-  const cardIds = useMemo(() => [...accounts.map((a) => a.id), VOUCHERS_CARD_ID], [accounts]);
+  // Only shared accounts get cards here — private accounts live in their
+  // owner's tab below (an account that moves to a person drops out of
+  // the saved order automatically).
+  const sharedAccounts = useMemo(() => accounts.filter(isSharedAccount), [accounts]);
+  const accountById = useMemo(
+    () => new Map(sharedAccounts.map((a) => [a.id, a])),
+    [sharedAccounts],
+  );
+  const cardIds = useMemo(
+    () => [...sharedAccounts.map((a) => a.id), VOUCHERS_CARD_ID],
+    [sharedAccounts],
+  );
   const { orderedIds, move } = useCardOrder(cardIds);
+
+  // The household members, derived from profiles — one entry card each,
+  // leading to that person's private tab.
+  const { persons } = useHouseholdPersons();
 
   // The grand total mixes live FX (IB) with frozen historical rates (other
   // accounts) — an inherent limitation of the model. When the FX rate is
@@ -400,6 +369,31 @@ function Investments() {
           );
         })}
       </section>
+
+      {persons.length > 0 && (
+        <section className="px-5 md:px-0 mt-6 mb-8">
+          <h2 className="text-sm font-semibold mb-1">חשבונות פרטיים</h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            פנסיה, קרן השתלמות וקופות גמל — לכל אחד מבני הבית בנפרד.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {persons.map((p, i) => {
+              const mine = accountsOfPerson(accounts, p.person);
+              const totalIls = mine.reduce((s, a) => s + (totals.get(a.id)?.ils ?? 0), 0);
+              return (
+                <PersonEntryCard
+                  key={p.person}
+                  person={p}
+                  count={mine.length}
+                  totalIls={totalIls}
+                  color={personAccentColor(i)}
+                  hidden={hidden}
+                />
+              );
+            })}
+          </div>
+        </section>
+      )}
       <Dialog open={adding} onOpenChange={setAdding}>
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader>

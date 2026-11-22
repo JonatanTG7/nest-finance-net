@@ -481,43 +481,58 @@ export type Database = {
         Row: {
           balance_reset_at: string | null;
           color: string;
+          company: string | null;
           created_at: string;
           currency: string;
+          fee_from_balance: number | null;
+          fee_from_deposits: number | null;
           household_id: string;
           id: string;
           kind: string;
           name: string;
+          person: Database["public"]["Enums"]["person"];
           sort_order: number;
           starting_balance: number;
           starting_balance_ils: number;
+          track: string | null;
           updated_at: string;
         };
         Insert: {
           balance_reset_at?: string | null;
           color?: string;
+          company?: string | null;
           created_at?: string;
           currency?: string;
+          fee_from_balance?: number | null;
+          fee_from_deposits?: number | null;
           household_id: string;
           id?: string;
           kind?: string;
           name: string;
+          person?: Database["public"]["Enums"]["person"];
           sort_order?: number;
           starting_balance?: number;
           starting_balance_ils?: number;
+          track?: string | null;
           updated_at?: string;
         };
         Update: {
           balance_reset_at?: string | null;
           color?: string;
+          company?: string | null;
           created_at?: string;
           currency?: string;
+          fee_from_balance?: number | null;
+          fee_from_deposits?: number | null;
           household_id?: string;
           id?: string;
           kind?: string;
           name?: string;
+          person?: Database["public"]["Enums"]["person"];
           sort_order?: number;
           starting_balance?: number;
           starting_balance_ils?: number;
+          track?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -561,6 +576,57 @@ export type Database = {
             columns: ["household_id"];
             isOneToOne: false;
             referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      private_account_history: {
+        Row: {
+          changed_by: Database["public"]["Enums"]["person"] | null;
+          changed_by_user_id: string | null;
+          created_at: string;
+          field: string;
+          household_id: string;
+          id: string;
+          investment_account_id: string;
+          new_value: string | null;
+          old_value: string | null;
+        };
+        Insert: {
+          changed_by?: Database["public"]["Enums"]["person"] | null;
+          changed_by_user_id?: string | null;
+          created_at?: string;
+          field: string;
+          household_id: string;
+          id?: string;
+          investment_account_id: string;
+          new_value?: string | null;
+          old_value?: string | null;
+        };
+        Update: {
+          changed_by?: Database["public"]["Enums"]["person"] | null;
+          changed_by_user_id?: string | null;
+          created_at?: string;
+          field?: string;
+          household_id?: string;
+          id?: string;
+          investment_account_id?: string;
+          new_value?: string | null;
+          old_value?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "private_account_history_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "private_account_history_investment_account_id_fkey";
+            columns: ["investment_account_id"];
+            isOneToOne: false;
+            referencedRelation: "investment_accounts";
             referencedColumns: ["id"];
           },
         ];
