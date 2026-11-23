@@ -18,6 +18,7 @@ import { cardLabel } from "@/lib/credit_cards";
 import type { Category, InvestmentAccount, Tag, Transaction } from "@/lib/db";
 import type { IbHoldings, IbPosition, IbTransaction } from "@/lib/ib";
 import type { Subscription } from "@/lib/subscriptions";
+import type { RecurringIncome } from "@/lib/recurring-income";
 import type { TrackAllocationRow } from "@/lib/track-splits";
 import type { TradeJournalEntry } from "@/lib/trade-journal";
 import type { Trip } from "@/lib/trips";
@@ -276,6 +277,40 @@ export function trackAllocationsToRows(allocations: ExportTrackAllocation[]): Cs
       a.sort_order,
       a.created_at,
       a.updated_at,
+    ]),
+  };
+}
+
+/** Recurring-income sheet: columns 1:1 (no payment method / card — income has none). */
+export function recurringIncomeToRows(items: RecurringIncome[]): CsvSheet {
+  return {
+    headers: [
+      "id",
+      "name",
+      "emoji",
+      "category_id",
+      "amount",
+      "currency",
+      "billing_day",
+      "entered_by",
+      "start_date",
+      "end_date",
+      "payment_count",
+      "active",
+    ],
+    rows: items.map((s) => [
+      s.id,
+      s.name,
+      s.emoji,
+      s.category_id,
+      s.amount,
+      s.currency,
+      s.billing_day,
+      s.entered_by,
+      s.start_date,
+      s.end_date,
+      s.payment_count,
+      s.active,
     ]),
   };
 }

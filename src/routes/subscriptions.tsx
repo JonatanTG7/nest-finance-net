@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { RecurringTabs } from "@/components/RecurringTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -90,6 +91,7 @@ function SubscriptionsPage() {
           </Button>
         </div>
         <h1 className="text-2xl font-bold">מנויים והוראות קבע</h1>
+        <RecurringTabs active="expenses" />
 
         <div className="grid grid-cols-3 gap-2">
           <Stat label="סה״כ בחודש · ₪" value={totals?.total ?? null} />

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InvestmentsRouteImport } from './routes/investments'
+import { Route as RecurringIncomeRouteImport } from './routes/recurring-income'
 import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
 import { Route as ApiSendDigestsRouteImport } from './routes/api/send-digests'
 import { Route as InvestmentsIndexRouteImport } from './routes/investments.index'
@@ -38,6 +39,11 @@ const IndexRoute = IndexRouteImport.update({
 const InvestmentsRoute = InvestmentsRouteImport.update({
   id: '/investments',
   path: '/investments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecurringIncomeRoute = RecurringIncomeRouteImport.update({
+  id: '/recurring-income',
+  path: '/recurring-income',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SubscriptionsRoute = SubscriptionsRouteImport.update({
@@ -134,6 +140,7 @@ const TravelTripIdEditRoute = TravelTripIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/investments': typeof InvestmentsRouteWithChildren
+  '/recurring-income': typeof RecurringIncomeRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/api/send-digests': typeof ApiSendDigestsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/recurring-income': typeof RecurringIncomeRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/api/send-digests': typeof ApiSendDigestsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/investments': typeof InvestmentsRouteWithChildren
+  '/recurring-income': typeof RecurringIncomeRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/api/send-digests': typeof ApiSendDigestsRoute
   '/investments/$accountId': typeof InvestmentsAccountIdRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/investments'
+    | '/recurring-income'
     | '/subscriptions'
     | '/api/send-digests'
     | '/investments/$accountId'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/recurring-income'
     | '/subscriptions'
     | '/api/send-digests'
     | '/investments/$accountId'
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/investments'
+    | '/recurring-income'
     | '/subscriptions'
     | '/api/send-digests'
     | '/investments/$accountId'
@@ -268,6 +280,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InvestmentsRoute: typeof InvestmentsRouteWithChildren
+  RecurringIncomeRoute: typeof RecurringIncomeRoute
   SubscriptionsRoute: typeof SubscriptionsRoute
   ApiSendDigestsRoute: typeof ApiSendDigestsRoute
   SettingsCategoriesRoute: typeof SettingsCategoriesRoute
@@ -297,6 +310,13 @@ declare module '@tanstack/react-router' {
       path: '/investments'
       fullPath: '/investments'
       preLoaderRoute: typeof InvestmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recurring-income': {
+      id: '/recurring-income'
+      path: '/recurring-income'
+      fullPath: '/recurring-income'
+      preLoaderRoute: typeof RecurringIncomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/subscriptions': {
@@ -451,6 +471,7 @@ const InvestmentsRouteWithChildren = InvestmentsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InvestmentsRoute: InvestmentsRouteWithChildren,
+  RecurringIncomeRoute: RecurringIncomeRoute,
   SubscriptionsRoute: SubscriptionsRoute,
   ApiSendDigestsRoute: ApiSendDigestsRoute,
   SettingsCategoriesRoute: SettingsCategoriesRoute,

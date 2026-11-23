@@ -765,6 +765,75 @@ export type Database = {
           },
         ];
       };
+      recurring_income: {
+        Row: {
+          active: boolean;
+          amount: number;
+          billing_day: number;
+          category_id: string | null;
+          created_at: string;
+          currency: string;
+          emoji: string;
+          end_date: string | null;
+          entered_by: Database["public"]["Enums"]["person"];
+          household_id: string;
+          id: string;
+          name: string;
+          payment_count: number | null;
+          start_date: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          amount?: number;
+          billing_day?: number;
+          category_id?: string | null;
+          created_at?: string;
+          currency?: string;
+          emoji?: string;
+          end_date?: string | null;
+          entered_by?: Database["public"]["Enums"]["person"];
+          household_id: string;
+          id?: string;
+          name: string;
+          payment_count?: number | null;
+          start_date?: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          amount?: number;
+          billing_day?: number;
+          category_id?: string | null;
+          created_at?: string;
+          currency?: string;
+          emoji?: string;
+          end_date?: string | null;
+          entered_by?: Database["public"]["Enums"]["person"];
+          household_id?: string;
+          id?: string;
+          name?: string;
+          payment_count?: number | null;
+          start_date?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recurring_income_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recurring_income_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       subscriptions: {
         Row: {
           active: boolean;
@@ -1041,6 +1110,7 @@ export type Database = {
           occurred_at: string;
           payment_method: string | null;
           photo_url: string | null;
+          recurring_income_id: string | null;
           subscription_id: string | null;
           title: string;
           trip_id: string | null;
@@ -1065,6 +1135,7 @@ export type Database = {
           occurred_at?: string;
           payment_method?: string | null;
           photo_url?: string | null;
+          recurring_income_id?: string | null;
           subscription_id?: string | null;
           title: string;
           trip_id?: string | null;
@@ -1089,6 +1160,7 @@ export type Database = {
           occurred_at?: string;
           payment_method?: string | null;
           photo_url?: string | null;
+          recurring_income_id?: string | null;
           subscription_id?: string | null;
           title?: string;
           trip_id?: string | null;
@@ -1123,6 +1195,13 @@ export type Database = {
             columns: ["investment_account_id"];
             isOneToOne: false;
             referencedRelation: "investment_accounts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "transactions_recurring_income_id_fkey";
+            columns: ["recurring_income_id"];
+            isOneToOne: false;
+            referencedRelation: "recurring_income";
             referencedColumns: ["id"];
           },
           {

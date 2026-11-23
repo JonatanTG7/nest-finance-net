@@ -11,6 +11,7 @@ import {
   isMissingTableError,
   ibTransactionsToRows,
   journalToRows,
+  recurringIncomeToRows,
   subscriptionsToRows,
   tagsToRows,
   toCsv,
@@ -215,6 +216,30 @@ describe("trackAllocationsToRows", () => {
     expect(headers).not.toContain("household_id");
     expect(rows[0][headers.indexOf("allocation_pct_balance")]).toBe(62.9);
     expect(rows[0][headers.indexOf("allocation_pct_deposits")]).toBe(null);
+  });
+});
+
+describe("recurringIncomeToRows", () => {
+  it("exports columns 1:1 including booleans", () => {
+    const { headers, rows } = recurringIncomeToRows([
+      {
+        id: "r1",
+        name: "קצבת ילדים",
+        emoji: "👶",
+        category_id: null,
+        amount: 115,
+        currency: "ILS",
+        billing_day: 20,
+        entered_by: "shared",
+        start_date: "2026-10-20",
+        end_date: null,
+        payment_count: null,
+        active: true,
+      },
+    ]);
+    expect(rows[0][headers.indexOf("active")]).toBe(true);
+    expect(headers).not.toContain("payment_method");
+    expect(toCsv(headers, rows)).toContain(",true");
   });
 });
 

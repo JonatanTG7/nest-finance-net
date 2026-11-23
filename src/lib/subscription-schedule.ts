@@ -1,3 +1,4 @@
+// Shared by subscriptions and recurring income — billing dates and occurrence limits live here so generation and summaries cannot disagree.
 import { isoLocal } from "./dates";
 
 export type SubscriptionSchedule = {
