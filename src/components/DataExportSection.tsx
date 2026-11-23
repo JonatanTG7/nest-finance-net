@@ -15,6 +15,7 @@ import {
   ibTransactionsToRows,
   isMissingTableError,
   journalToRows,
+  recurringIncomeToRows,
   subscriptionsToRows,
   tagsToRows,
   toCsv,
@@ -38,6 +39,7 @@ import {
   fetchIbTransactions,
 } from "@/lib/ib";
 import { fetchSubscriptions } from "@/lib/subscriptions";
+import { fetchRecurringIncome } from "@/lib/recurring-income";
 import { fetchAllTrackAllocations } from "@/lib/track-splits";
 import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
 import { fetchTripsRaw } from "@/lib/trips";
@@ -87,6 +89,7 @@ export function DataExportSection() {
         accounts,
         trackAllocations,
         subs,
+        recurringIncome,
         journal,
         vouchers,
         trips,
@@ -109,6 +112,13 @@ export function DataExportSection() {
           throw e;
         }),
         fetchSubscriptions(),
+        // The recurring_income table arrives with this feature's migration;
+        // until it runs there is no income to export, so a missing table
+        // degrades to an empty sheet instead of failing the whole backup.
+        fetchRecurringIncome().catch((e) => {
+          if (isMissingTableError(e)) return [];
+          throw e;
+        }),
         fetchAllTradeJournalEntries(),
         fetchVouchersRaw(),
         fetchTripsRaw(),
@@ -135,6 +145,12 @@ export function DataExportSection() {
           date,
         ),
         prepareFile("subscriptions", "מנויים", subscriptionsToRows(subs), date),
+        prepareFile(
+          "recurring-income",
+          "הכנסות קבועות",
+          recurringIncomeToRows(recurringIncome),
+          date,
+        ),
         prepareFile("trading-journal", "יומן מסחר", journalToRows(journal), date),
         prepareFile("vouchers", "שוברים", vouchersToRows(vouchers), date),
         prepareFile("trips", "טיולים", tripsToRows(trips), date),
