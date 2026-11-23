@@ -12,7 +12,7 @@ import { AppShell } from "@/components/AppShell";
 import { fetchInvestmentAccounts, fetchInvestmentTransactions } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
-import { computeIbTotals, grandTotalIls } from "@/lib/net-worth";
+import { computeIbTotals, grandTotalIlsShared } from "@/lib/net-worth";
 import { fetchAllIbHoldings, fetchAllIbPositions, IB_KIND } from "@/lib/ib";
 import { getQuotes } from "@/lib/ib.functions";
 import { useUsdIlsRate } from "@/lib/fx";
@@ -114,8 +114,10 @@ function Investments() {
 
   // Non-IB balances come from the shared totals rule (baseline + post-reset
   // transactions + post-reset journal P&L); IB portfolios are valued from
-  // live positions and overlaid here. The grand total below still covers
-  // every account — shared and private alike.
+  // live positions and overlaid here. The map covers every account (the
+  // person cards below need their owners' totals), but the grand total
+  // below sums shared accounts only — private accounts live on their
+  // owners' tabs and never enter a household total.
   const totals = useMemo(() => {
     const m = computeAccountTotals({
       accounts,
@@ -167,7 +169,11 @@ function Investments() {
   // The grand total mixes live FX (IB) with frozen historical rates (other
   // accounts) — an inherent limitation of the model. When the FX rate is
   // unavailable, IB value is excluded and flagged instead of guessed.
-  const { grandIls, ibIlsMissing } = useMemo(() => grandTotalIls(totals), [totals]);
+  // Shared accounts only — same rule as the email digest's net worth.
+  const { grandIls, ibIlsMissing } = useMemo(
+    () => grandTotalIlsShared(totals, accounts),
+    [totals, accounts],
+  );
 
   return (
     <AppShell>

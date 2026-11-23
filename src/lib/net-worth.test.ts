@@ -3,6 +3,7 @@ import {
   computeIbTotals,
   computeNetWorth,
   grandTotalIls,
+  grandTotalIlsShared,
   type NetWorthAccountInput,
 } from "./net-worth";
 
@@ -31,6 +32,16 @@ const usdAccount: NetWorthAccountInput = {
   starting_balance: 1000,
   starting_balance_ils: 3600,
   balance_reset_at: null,
+};
+
+const privateAccount: NetWorthAccountInput = {
+  id: "acc-private",
+  kind: "pension",
+  currency: "ILS",
+  starting_balance: 70000,
+  starting_balance_ils: 70000,
+  balance_reset_at: null,
+  person: "yonatan",
 };
 
 describe("computeIbTotals", () => {
@@ -147,6 +158,36 @@ describe("computeNetWorth", () => {
     expect(grandIls).toBe(10000);
     expect(ibIlsMissing).toBe(true);
   });
+
+  it("excludes private accounts from the grand total but keeps them in the per-account map", () => {
+    const { totals, grandIls, ibIlsMissing } = computeNetWorth({
+      accounts: [ilsAccount, privateAccount],
+      transactions: [],
+      journalEntries: [],
+      ibHoldings: [],
+      ibPositions: [],
+      quotes: [],
+      fxRate: 3.5,
+    });
+    // The pension stays visible per-account (person tabs need it) but
+    // never enters the household total / digest baseline.
+    expect(totals.get("acc-private")).toEqual({ native: 70000, ils: 70000 });
+    expect(grandIls).toBe(10000);
+    expect(ibIlsMissing).toBe(false);
+  });
+
+  it("still counts an IB portfolio even when its owner column names a person", () => {
+    const { grandIls } = computeNetWorth({
+      accounts: [{ ...ibAccount, person: "yonatan" }, ilsAccount],
+      transactions: [],
+      journalEntries: [],
+      ibHoldings: [{ investment_account_id: "ib-1", cash_usd: 1000 }],
+      ibPositions: [],
+      quotes: [],
+      fxRate: 3.5,
+    });
+    expect(grandIls).toBeCloseTo(10000 + 3500);
+  });
 });
 
 describe("grandTotalIls", () => {
@@ -170,5 +211,45 @@ describe("grandTotalIls", () => {
     );
     expect(grandIls).toBe(13500);
     expect(ibIlsMissing).toBe(false);
+  });
+});
+
+describe("grandTotalIlsShared", () => {
+  it("sums shared accounts only — private, orphan and missing-owner rows handled", () => {
+    const { grandIls, ibIlsMissing } = grandTotalIlsShared(
+      new Map([
+        ["a", { native: 10000, ils: 10000 }],
+        ["b", { native: 70000, ils: 70000 }],
+        ["c", { native: 5000, ils: 5000 }],
+        ["orphan", { native: 9999, ils: 9999 }],
+        ["priv-null", { native: 1, ils: null }],
+      ]),
+      [
+        { id: "a", kind: "savings", person: "shared" },
+        { id: "b", kind: "pension", person: "yonatan" },
+        // No owner at all (pre-migration row) counts as shared.
+        { id: "c", kind: "savings" },
+        { id: "priv-null", kind: "provident", person: "shiri" },
+      ],
+    );
+    expect(grandIls).toBe(15000);
+    // The null ILS belongs to a private account, so it must not flag
+    // the shared total as missing anything.
+    expect(ibIlsMissing).toBe(false);
+  });
+
+  it("still flags a shared IB portfolio with no ILS value", () => {
+    const { grandIls, ibIlsMissing } = grandTotalIlsShared(
+      new Map([
+        ["a", { native: 10000, ils: 10000 }],
+        ["ib-1", { native: 8000, ils: null }],
+      ]),
+      [
+        { id: "a", kind: "savings", person: "shared" },
+        { id: "ib-1", kind: "interactive", person: "yonatan" },
+      ],
+    );
+    expect(grandIls).toBe(10000);
+    expect(ibIlsMissing).toBe(true);
   });
 });

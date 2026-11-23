@@ -48,6 +48,7 @@ describe("diffPrivateAccountFields", () => {
     fee_from_balance: 0.1,
     fee_from_deposits: 1.5,
     track: "מניות",
+    notes: null,
     person: "yonatan",
   };
   it("returns no changes for identical metadata", () => {
@@ -84,6 +85,12 @@ describe("diffPrivateAccountFields", () => {
   it("does not flag a fee rewritten as the same number", () => {
     expect(diffPrivateAccountFields(base, { ...base, fee_from_balance: 0.1 })).toEqual([]);
   });
+  it("never tracks notes changes in the history", () => {
+    expect(diffPrivateAccountFields(base, { ...base, notes: "מספר קופה 168" })).toEqual([]);
+    expect(diffPrivateAccountFields({ ...base, notes: "ישן" }, { ...base, notes: "חדש" })).toEqual(
+      [],
+    );
+  });
 });
 
 describe("normalizePrivateMetadata", () => {
@@ -96,6 +103,7 @@ describe("normalizePrivateMetadata", () => {
         fee_from_balance: "",
         fee_from_deposits: "1.5",
         track: " מניות ",
+        notes: "  מספר קופה 168  ",
       }),
     ).toEqual({
       name: "פנסיה",
@@ -104,7 +112,21 @@ describe("normalizePrivateMetadata", () => {
       fee_from_balance: null,
       fee_from_deposits: 1.5,
       track: "מניות",
+      notes: "מספר קופה 168",
     });
+  });
+  it("turns blank notes into null", () => {
+    expect(
+      normalizePrivateMetadata({
+        name: "x",
+        kind: "pension",
+        company: "",
+        fee_from_balance: "",
+        fee_from_deposits: "",
+        track: "",
+        notes: "   ",
+      }).notes,
+    ).toBeNull();
   });
   it("throws on a missing name", () => {
     expect(() =>
@@ -115,6 +137,7 @@ describe("normalizePrivateMetadata", () => {
         fee_from_balance: "",
         fee_from_deposits: "",
         track: "",
+        notes: "",
       }),
     ).toThrow();
   });
@@ -127,6 +150,7 @@ describe("normalizePrivateMetadata", () => {
         fee_from_balance: "101",
         fee_from_deposits: "",
         track: "",
+        notes: "",
       }),
     ).toThrow();
     expect(() =>
@@ -137,6 +161,7 @@ describe("normalizePrivateMetadata", () => {
         fee_from_balance: "-1",
         fee_from_deposits: "",
         track: "",
+        notes: "",
       }),
     ).toThrow();
   });

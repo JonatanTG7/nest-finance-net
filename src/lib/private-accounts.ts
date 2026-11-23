@@ -102,8 +102,12 @@ export function feesAboveAverage(a: {
  * always shared — they are never private, whatever the owner column says.
  * A missing owner (e.g. rows read before the migration ran) counts as
  * shared, so the app keeps working in that window.
+ *
+ * The owner is typed as a plain string on purpose: structural callers
+ * (net-worth inputs) don't carry the Person union, and the rule only
+ * compares against "shared".
  */
-export function isSharedAccount(a: { person?: Person | null; kind: string }): boolean {
+export function isSharedAccount(a: { person?: string | null; kind: string }): boolean {
   if (a.kind === IB_KIND) return true;
   return (a.person ?? "shared") === "shared";
 }
@@ -170,6 +174,8 @@ export interface PrivateMetadata {
   fee_from_balance: number | null;
   fee_from_deposits: number | null;
   track: string | null;
+  /** Free-text notes — the owner's own words. Deliberately NOT tracked in the history (see diffPrivateAccountFields). */
+  notes: string | null;
   person: Person;
 }
 
@@ -192,6 +198,10 @@ function feeText(v: number | null): string | null {
  * Diff old vs new metadata — one change per field that actually changed.
  * Empty strings and null both mean "not set", so clearing a field and
  * never having set it produce no change.
+ *
+ * Notes are deliberately NOT diffed: free-text notes are the owner's own
+ * words, not structured data, and every keystroke-level edit would spam
+ * the history. They still save through normalize/update like any field.
  */
 export function diffPrivateAccountFields(
   oldMeta: PrivateMetadata,
@@ -219,6 +229,7 @@ export interface PrivateAccountForm {
   fee_from_balance: string;
   fee_from_deposits: string;
   track: string;
+  notes: string;
 }
 
 /**
@@ -245,6 +256,7 @@ export function normalizePrivateMetadata(
     fee_from_balance: parseFee(form.fee_from_balance, "מצבירה"),
     fee_from_deposits: parseFee(form.fee_from_deposits, "מהפקדות"),
     track: textValue(form.track),
+    notes: textValue(form.notes),
   };
 }
 
@@ -322,6 +334,7 @@ export async function createPrivateAccount(input: CreatePrivateAccountInput): Pr
       fee_from_balance: meta.fee_from_balance,
       fee_from_deposits: meta.fee_from_deposits,
       track: meta.track,
+      notes: meta.notes,
       ...(input.statement ? statementAccountColumns(input.statement) : {}),
     })
     .select("id")
@@ -373,6 +386,7 @@ export async function updatePrivateAccount(
       fee_from_balance: account.fee_from_balance ?? null,
       fee_from_deposits: account.fee_from_deposits ?? null,
       track: account.track ?? null,
+      notes: account.notes ?? null,
       person: (account.person ?? "shared") as Person,
     },
     { ...meta, person: input.person },
@@ -386,6 +400,7 @@ export async function updatePrivateAccount(
       fee_from_balance: meta.fee_from_balance,
       fee_from_deposits: meta.fee_from_deposits,
       track: meta.track,
+      notes: meta.notes,
       person: input.person,
       color: kindColor(meta.kind),
     })

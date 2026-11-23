@@ -309,6 +309,12 @@ function AccountPage() {
                 <DetailRow label="מקור הנתונים" value={sourceSummary(account)} />
                 <DetailRow label="בעלים" value={labels[(account.person ?? "shared") as Person]} />
               </div>
+              {account.notes && (
+                <div className="rounded-2xl border bg-card p-4 mt-3">
+                  <h3 className="text-sm font-semibold mb-1">הערות</h3>
+                  <p className="text-sm whitespace-pre-wrap">{account.notes}</p>
+                </div>
+              )}
             </section>
           )}
         </>
