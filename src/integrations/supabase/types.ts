@@ -563,6 +563,7 @@ export type Database = {
           monthly_deposit_employer: number | null;
           monthly_deposit_severance: number | null;
           name: string;
+          notes: string | null;
           person: Database["public"]["Enums"]["person"];
           sort_order: number;
           source_date: string | null;
@@ -591,6 +592,7 @@ export type Database = {
           monthly_deposit_employer?: number | null;
           monthly_deposit_severance?: number | null;
           name: string;
+          notes?: string | null;
           person?: Database["public"]["Enums"]["person"];
           sort_order?: number;
           source_date?: string | null;
@@ -619,6 +621,7 @@ export type Database = {
           monthly_deposit_employer?: number | null;
           monthly_deposit_severance?: number | null;
           name?: string;
+          notes?: string | null;
           person?: Database["public"]["Enums"]["person"];
           sort_order?: number;
           source_date?: string | null;
