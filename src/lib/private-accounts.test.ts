@@ -6,6 +6,7 @@ import {
   kindColor,
   kindLabel,
   normalizePrivateMetadata,
+  sumPrivateAccountExtras,
   type PrivateMetadata,
 } from "./private-accounts";
 
@@ -150,5 +151,38 @@ describe("kind labels and colors", () => {
   it("colors known kinds and falls back to a neutral color", () => {
     expect(kindColor("pension")).toBe("#8b5cf6");
     expect(kindColor("mystery")).toBe("#64748b");
+  });
+});
+
+describe("sumPrivateAccountExtras", () => {
+  const account = (partial: Record<string, number | null>) => ({
+    monthly_deposit_employee: null,
+    monthly_deposit_employer: null,
+    monthly_deposit_severance: null,
+    expected_monthly_pension: null,
+    ...partial,
+  });
+  it("sums deposit parts and expected pensions across accounts", () => {
+    expect(
+      sumPrivateAccountExtras([
+        account({
+          monthly_deposit_employee: 500,
+          monthly_deposit_employer: 700,
+          expected_monthly_pension: 4000,
+        }),
+        account({ monthly_deposit_severance: 300, expected_monthly_pension: 1500 }),
+        account({}),
+      ]),
+    ).toEqual({ monthlyDeposits: 1500, expectedPension: 5500 });
+  });
+  it("returns null for a total no account has data for", () => {
+    expect(sumPrivateAccountExtras([account({}), account({})])).toEqual({
+      monthlyDeposits: null,
+      expectedPension: null,
+    });
+    expect(sumPrivateAccountExtras([])).toEqual({
+      monthlyDeposits: null,
+      expectedPension: null,
+    });
   });
 });

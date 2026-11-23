@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { Pencil, PieChart as PieChartIcon } from "lucide-react";
+import { PieChart as PieChartIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   balanceInTrack,
@@ -68,19 +68,11 @@ export function TrackSplitChart({
     );
   }
 
+  // The section header ("פיצול מסלולים" + edit button) lives on the
+  // account page, above this card — the chart itself starts with the donut.
   return (
     <div className="rounded-2xl border bg-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">פיצול מסלולים</h3>
-        {onEdit && (
-          <Button size="sm" variant="outline" onClick={onEdit}>
-            <Pencil className="size-4" />
-            ערוך פיצול
-          </Button>
-        )}
-      </div>
-
-      <div className="h-56 relative mt-2">
+      <div className="h-56 relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie

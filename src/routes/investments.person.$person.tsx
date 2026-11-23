@@ -1,7 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, FileUp, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  FileUp,
+  GraduationCap,
+  Landmark,
+  PiggyBank,
+  Plus,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { PrivateAccountCard } from "@/components/investments/PrivateAccountCard";
@@ -15,7 +24,7 @@ import {
 import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
 import { fetchAllTrackAllocations } from "@/lib/track-splits";
 import { computeAccountTotals } from "@/lib/account-totals";
-import { accountsOfPerson } from "@/lib/private-accounts";
+import { accountsOfPerson, sumPrivateAccountExtras } from "@/lib/private-accounts";
 import { personAccentColor, useHouseholdPersons, type Person } from "@/lib/person";
 import { useUsdIlsRate } from "@/lib/fx";
 import { formatILS } from "@/lib/finance";
@@ -25,6 +34,13 @@ export const Route = createFileRoute("/investments/person/$person")({
   head: () => ({ meta: [{ title: "חשבונות פרטיים" }] }),
   component: PersonPage,
 });
+
+/** Quick-add templates for the empty state: kind + editable name suggestion. */
+const QUICK_ADD_TEMPLATES = [
+  { kind: "pension", name: "קרן פנסיה", Icon: Landmark },
+  { kind: "provident", name: "קרן השתלמות", Icon: GraduationCap },
+  { kind: "provident", name: "קופת גמל", Icon: PiggyBank },
+];
 
 function PersonPage() {
   const { person: personParam } = Route.useParams();
@@ -36,6 +52,7 @@ function PersonPage() {
   const accent = personAccentColor(Math.max(personIndex, 0));
 
   const [adding, setAdding] = useState(false);
+  const [template, setTemplate] = useState<{ kind: string; name: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<InvestmentAccount | null>(null);
 
@@ -85,6 +102,7 @@ function PersonPage() {
     () => myAccounts.reduce((sum, a) => sum + (totals.get(a.id)?.ils ?? 0), 0),
     [myAccounts, totals],
   );
+  const extras = useMemo(() => sumPrivateAccountExtras(myAccounts), [myAccounts]);
 
   return (
     <AppShell>
@@ -154,6 +172,26 @@ function PersonPage() {
                 <p className="text-4xl font-bold mt-2 tabular-nums">
                   {maskAmountText(formatILS(totalIls), hidden)}
                 </p>
+                {(extras.monthlyDeposits != null || extras.expectedPension != null) && (
+                  <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+                    {extras.monthlyDeposits != null && (
+                      <div>
+                        <p className="text-xs opacity-70">הפקדה חודשית כוללת</p>
+                        <p className="text-base font-semibold tabular-nums">
+                          {maskAmountText(formatILS(extras.monthlyDeposits), hidden)}
+                        </p>
+                      </div>
+                    )}
+                    {extras.expectedPension != null && (
+                      <div>
+                        <p className="text-xs opacity-70">קצבה חודשית צפויה</p>
+                        <p className="text-base font-semibold tabular-nums">
+                          {maskAmountText(formatILS(extras.expectedPension), hidden)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button size="sm" onClick={() => setAdding(true)}>
                     <Plus className="size-4" />
@@ -169,13 +207,40 @@ function PersonPage() {
 
             <section className="px-5 md:px-0 mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
               {myAccounts.length === 0 ? (
-                <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground md:col-span-2">
-                  <p>אין עדיין חשבונות פרטיים.</p>
-                  <p className="mt-1">כאן אפשר להוסיף קרן פנסיה, קרן השתלמות, קופת גמל ועוד.</p>
-                  <Button size="sm" className="mt-4" onClick={() => setAdding(true)}>
-                    <Plus className="size-4" />
-                    הוסף חשבון פרטי
-                  </Button>
+                <div className="rounded-2xl border bg-card p-6 text-center md:col-span-2">
+                  <p className="font-semibold">כאן מרכזים את החסכונות הפרטיים</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    קרן פנסיה, קרן השתלמות, קופת גמל — עם החברה המנהלת, דמי הניהול ופיצול המסלולים.
+                    אפשר להוסיף ידנית, או לייבא מדוח שנתי והפרטים יתמלאו לבד.
+                  </p>
+                  <div className="mt-5 grid grid-cols-3 gap-2">
+                    {QUICK_ADD_TEMPLATES.map(({ kind, name, Icon }) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => setTemplate({ kind, name })}
+                        className="rounded-2xl border bg-background p-3 flex flex-col items-center gap-2 hover:bg-accent active:scale-[0.98] transition-transform"
+                      >
+                        <span
+                          className="size-10 rounded-xl flex items-center justify-center"
+                          style={{ background: `${accent}1f`, color: accent }}
+                        >
+                          <Icon className="size-5" />
+                        </span>
+                        <span className="text-sm font-medium leading-tight">{name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+                      <Plus className="size-4" />
+                      חשבון מסוג אחר
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
+                      <FileUp className="size-4" />
+                      ייבוא מדוח שנתי
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 myAccounts.map((a) => (
@@ -192,15 +257,18 @@ function PersonPage() {
             </section>
 
             <PrivateAccountDialog
-              open={adding || editing != null}
+              open={adding || template != null || editing != null}
               onOpenChange={(v) => {
                 if (!v) {
                   setAdding(false);
+                  setTemplate(null);
                   setEditing(null);
                 }
               }}
               person={person.person as Person}
               account={editing}
+              initialKind={template?.kind}
+              initialName={template?.name}
             />
 
             <StatementImportDialog

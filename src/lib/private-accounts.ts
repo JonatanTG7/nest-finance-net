@@ -116,6 +116,52 @@ export function accountsOfPerson<T extends { person?: Person | null; kind: strin
   return accounts.filter((a) => a.kind !== IB_KIND && a.person === person);
 }
 
+export interface PrivateAccountExtras {
+  /** Total monthly deposits across the accounts (employee + employer + severance parts). */
+  monthlyDeposits: number | null;
+  /** Total expected monthly pension across the accounts. */
+  expectedPension: number | null;
+}
+
+/**
+ * Sums the statement-only money of a person's private accounts. Each
+ * total is null when no account has that data at all — the person page
+ * only shows a stat when it exists.
+ */
+export function sumPrivateAccountExtras(
+  accounts: {
+    monthly_deposit_employee: number | null;
+    monthly_deposit_employer: number | null;
+    monthly_deposit_severance: number | null;
+    expected_monthly_pension: number | null;
+  }[],
+): PrivateAccountExtras {
+  let deposits = 0;
+  let hasDeposits = false;
+  let pension = 0;
+  let hasPension = false;
+  for (const a of accounts) {
+    for (const part of [
+      a.monthly_deposit_employee,
+      a.monthly_deposit_employer,
+      a.monthly_deposit_severance,
+    ]) {
+      if (part != null) {
+        deposits += part;
+        hasDeposits = true;
+      }
+    }
+    if (a.expected_monthly_pension != null) {
+      pension += a.expected_monthly_pension;
+      hasPension = true;
+    }
+  }
+  return {
+    monthlyDeposits: hasDeposits ? Math.round(deposits * 100) / 100 : null,
+    expectedPension: hasPension ? Math.round(pension * 100) / 100 : null,
+  };
+}
+
 /** The editable metadata of a private account, as stored on the row. */
 export interface PrivateMetadata {
   name: string;

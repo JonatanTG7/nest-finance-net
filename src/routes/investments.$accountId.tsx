@@ -1,7 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, FileUp, Pencil, TriangleAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  FileUp,
+  Pencil,
+  PieChart as PieChartIcon,
+  TriangleAlert,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -210,6 +218,29 @@ function AccountPage() {
           {showMetadata && account && (
             <section className="px-5 md:px-0 mt-6">
               <div className="flex items-center justify-between gap-2 mb-2">
+                <h2 className="text-base font-bold flex items-center gap-2">
+                  <PieChartIcon className="size-5" />
+                  פיצול מסלולים
+                </h2>
+                {allocations.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={() => setEditingSplit(true)}>
+                    <Pencil className="size-4" />
+                    ערוך פיצול
+                  </Button>
+                )}
+              </div>
+              <TrackSplitChart
+                allocations={allocations}
+                balanceIls={currentIls}
+                hidden={hidden}
+                onEdit={() => setEditingSplit(true)}
+              />
+            </section>
+          )}
+
+          {showMetadata && account && (
+            <section className="px-5 md:px-0 mt-6">
+              <div className="flex items-center justify-between gap-2 mb-2">
                 <h2 className="text-sm font-semibold">פרטי החשבון</h2>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setImportingStatement(true)}>
@@ -278,17 +309,6 @@ function AccountPage() {
                 <DetailRow label="מקור הנתונים" value={sourceSummary(account)} />
                 <DetailRow label="בעלים" value={labels[(account.person ?? "shared") as Person]} />
               </div>
-            </section>
-          )}
-
-          {showMetadata && account && (
-            <section className="px-5 md:px-0 mt-6">
-              <TrackSplitChart
-                allocations={allocations}
-                balanceIls={currentIls}
-                hidden={hidden}
-                onEdit={() => setEditingSplit(true)}
-              />
             </section>
           )}
         </>
