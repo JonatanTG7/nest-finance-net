@@ -5,6 +5,7 @@ import { useMyHousehold } from "@/lib/household";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { syncSubscriptions } from "@/lib/subscriptions";
+import { syncRecurringIncome } from "@/lib/recurring-income";
 
 type NavTo = "/" | "/transactions" | "/travel" | "/investments" | "/settings";
 type NavItem = { to: NavTo; label: string; icon: typeof Home; exact?: boolean };
@@ -17,20 +18,20 @@ const items: NavItem[] = [
   { to: "/settings", label: "הגדרות", icon: SettingsIcon },
 ];
 
-let subsSynced = false;
+let recurringSynced = false;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { data: household } = useMyHousehold();
   const qc = useQueryClient();
   useEffect(() => {
-    if (!household?.id || subsSynced) return;
-    subsSynced = true;
-    syncSubscriptions()
-      .then((n) => {
-        if (n > 0) void qc.invalidateQueries();
+    if (!household?.id || recurringSynced) return;
+    recurringSynced = true;
+    Promise.all([syncSubscriptions(), syncRecurringIncome()])
+      .then(([subs, income]) => {
+        if (subs + income > 0) void qc.invalidateQueries();
       })
-      .catch((e) => console.warn("subscription sync failed", e));
+      .catch((e) => console.warn("recurring sync failed", e));
   }, [household?.id, qc]);
   // The floating add-button only makes sense on the home screen — on other
   // screens (vouchers, investments, trip dashboards...) a generic "add

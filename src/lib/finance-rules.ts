@@ -13,6 +13,12 @@ export function amountInRange(amountIls: number, min: string, max: string): bool
   return (min === "" || amountIls >= Number(min)) && (max === "" || amountIls <= Number(max));
 }
 
+/**
+ * Monthly totals for any recurring list (subscriptions or recurring income):
+ * converts each row to ILS and splits into already-occurred vs pending.
+ * The rows are structural — only amount, currency and whether this month's
+ * date has arrived matter.
+ */
 export function convertedSubscriptionTotals(
   rows: { amount: number; currency: string; charged: boolean }[],
   rates: Record<string, number>,
@@ -30,6 +36,9 @@ export function convertedSubscriptionTotals(
   charged = Math.round(charged * 100) / 100;
   return { total, charged, pending: Math.round((total - charged) * 100) / 100 };
 }
+
+/** Generic name for the same totals — used by the recurring-income screen. */
+export const convertedRecurringTotals = convertedSubscriptionTotals;
 
 export function budgetProgress(spent: number, limit: number) {
   const ratio = limit > 0 ? spent / limit : 0;
