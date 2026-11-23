@@ -56,16 +56,17 @@ function formFromAccount(
     fee_from_balance: a?.fee_from_balance != null ? String(a.fee_from_balance) : "",
     fee_from_deposits: a?.fee_from_deposits != null ? String(a.fee_from_deposits) : "",
     track: a?.track ?? "",
+    notes: a?.notes ?? "",
   };
 }
 
 /**
  * Add / edit dialog for a private account (pension, study fund,
  * provident...): name, type, managing company, the two management fees,
- * and the track split (preset chips + percentages, right here at
- * creation — no need to create first and split later). The single
- * free-text "מסלול" field only shows when no split rows exist; once
- * tracks are picked it is cleared, since the split replaces it.
+ * the track split (preset chips + percentages, right here at creation —
+ * no need to create first and split later), and free-text notes.
+ * The single free-text "מסלול" field only shows when no split rows exist;
+ * once tracks are picked it is cleared, since the split replaces it.
  * The balance is only set when adding; afterwards it is updated on the
  * account page (with its own balance history), never here.
  */
@@ -362,6 +363,18 @@ export function PrivateAccountDialog({
                 </label>
               </>
             )}
+            <label className="block text-sm">
+              הערות
+              <textarea
+                aria-label="הערות"
+                value={form.notes}
+                onChange={(e) => set({ notes: e.target.value })}
+                placeholder="מספר קופה, דברים לזכור, פרטי קשר — כל דבר שחשוב לזכור על החשבון הזה"
+                rows={3}
+                maxLength={2000}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </label>
             <Button type="submit" disabled={save.isPending || !canSaveSplit} className="w-full">
               {save.isPending ? "שומר…" : editing ? "שמור שינויים" : "הוסף חשבון"}
             </Button>

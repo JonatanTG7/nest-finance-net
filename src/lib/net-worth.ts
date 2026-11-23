@@ -1,5 +1,6 @@
 import { IB_KIND } from "@/lib/ib";
 import { computeAccountTotals } from "@/lib/account-totals";
+import { isSharedAccount } from "@/lib/private-accounts";
 
 /**
  * Net-worth computation, shared by the assets page and the email digest
@@ -15,6 +16,12 @@ import { computeAccountTotals } from "@/lib/account-totals";
  *   transactions — and overlaid onto the account totals.
  * - When the USD→ILS rate is unavailable, IB value is excluded from
  *   the ILS total (null) instead of guessed — the caller flags it.
+ * - Private accounts (a person's pension, study fund, ...) NEVER count
+ *   toward a grand total — grandTotalIlsShared is the one place that
+ *   enforces it, used by both the assets page and computeNetWorth.
+ *   They live only on their owner's tab. Per-account totals maps still
+ *   cover every account (the person cards need them); only the grand
+ *   total is filtered.
  *
  * Inputs are structural on purpose: both Supabase rows (client + server)
  * and test fixtures satisfy them.
@@ -27,6 +34,8 @@ export interface NetWorthAccountInput {
   starting_balance: number | null;
   starting_balance_ils: number | null;
   balance_reset_at: string | null;
+  /** Owner slot; missing counts as shared (pre-migration rows). */
+  person?: string | null;
 }
 
 export interface NetWorthTransactionInput {
@@ -130,10 +139,29 @@ export function grandTotalIls(totals: Map<string, AccountTotal>): {
 }
 
 /**
- * Whole-household net worth: non-IB totals from the shared rule, IB
- * portfolios overlaid from live positions, plus the grand ILS total.
- * This is the same composition the assets page renders — the digest
- * sender uses it so both sides can never disagree.
+ * Grand total over SHARED accounts only — the one place that keeps
+ * private accounts out of every household total. The assets page and
+ * computeNetWorth both go through here, so the two totals cannot drift
+ * apart. A totals entry with no matching account row is dropped (it
+ * cannot be proven shared); IB portfolios always count as shared.
+ */
+export function grandTotalIlsShared(
+  totals: Map<string, AccountTotal>,
+  accounts: { id: string; person?: string | null; kind: string }[],
+): { grandIls: number; ibIlsMissing: boolean } {
+  const sharedIds = new Set(accounts.filter(isSharedAccount).map((a) => a.id));
+  const shared = new Map([...totals].filter(([id]) => sharedIds.has(id)));
+  return grandTotalIls(shared);
+}
+
+/**
+ * Shared-accounts net worth: non-IB totals from the shared rule, IB
+ * portfolios overlaid from live positions, plus the grand ILS total
+ * over shared accounts only (private accounts never count — see
+ * grandTotalIlsShared). This is the same composition the assets page
+ * renders — the digest sender uses it so both sides can never disagree.
+ * The returned per-account totals map still covers every account; only
+ * the grand total is filtered.
  */
 export function computeNetWorth(input: {
   accounts: NetWorthAccountInput[];
@@ -163,6 +191,6 @@ export function computeNetWorth(input: {
       totals.set(a.id, { native: t?.native ?? 0, ils: t?.ils ?? null });
     }
   }
-  const { grandIls, ibIlsMissing } = grandTotalIls(totals);
+  const { grandIls, ibIlsMissing } = grandTotalIlsShared(totals, input.accounts);
   return { totals, grandIls, ibIlsMissing };
 }
