@@ -80,8 +80,12 @@ export async function fetchIbPortfolios(): Promise<IbPortfolio[]> {
   return data ?? [];
 }
 
-/** Create a new IB portfolio (investment account + empty cash row). */
-export async function createIbPortfolio(name: string): Promise<string> {
+/**
+ * Create a new IB portfolio (investment account + empty cash row).
+ * The owner defaults to shared; a child's portfolio is created with
+ * that child as owner so it lives under their tab.
+ */
+export async function createIbPortfolio(name: string, person: string = "shared"): Promise<string> {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("יש להזין שם לתיק");
   const household_id = await getMyHouseholdId();
@@ -96,6 +100,7 @@ export async function createIbPortfolio(name: string): Promise<string> {
       sort_order: 4,
       starting_balance: 0,
       starting_balance_ils: 0,
+      person,
     })
     .select("id")
     .single();

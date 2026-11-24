@@ -6,6 +6,7 @@ import {
   creditCardsToRows,
   escapeCsvCell,
   exportFileName,
+  householdPeopleToRows,
   ibCashToRows,
   ibPositionsToRows,
   isMissingTableError,
@@ -404,6 +405,14 @@ describe("reference sheets", () => {
     );
     expect(rows[0][headers.indexOf("hidden")]).toBe(false);
     expect(rows[1][headers.indexOf("hidden")]).toBe(true);
+  });
+
+  it("exports added household people", () => {
+    const { headers, rows } = householdPeopleToRows([
+      { id: "p1", name: "איתן", sort_order: 0, created_at: "2026-11-23" },
+    ]);
+    expect(rows[0][headers.indexOf("name")]).toBe("איתן");
+    expect(rows[0][headers.indexOf("id")]).toBe("p1");
   });
 
   it("exports tags and credit cards", () => {

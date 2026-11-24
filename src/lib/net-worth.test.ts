@@ -176,9 +176,22 @@ describe("computeNetWorth", () => {
     expect(ibIlsMissing).toBe(false);
   });
 
-  it("still counts an IB portfolio even when its owner column names a person", () => {
+  it("excludes an IB portfolio owned by a person, like any private account", () => {
     const { grandIls } = computeNetWorth({
       accounts: [{ ...ibAccount, person: "yonatan" }, ilsAccount],
+      transactions: [],
+      journalEntries: [],
+      ibHoldings: [{ investment_account_id: "ib-1", cash_usd: 1000 }],
+      ibPositions: [],
+      quotes: [],
+      fxRate: 3.5,
+    });
+    expect(grandIls).toBeCloseTo(10000);
+  });
+
+  it("still counts a shared IB portfolio", () => {
+    const { grandIls } = computeNetWorth({
+      accounts: [{ ...ibAccount, person: "shared" }, ilsAccount],
       transactions: [],
       journalEntries: [],
       ibHoldings: [{ investment_account_id: "ib-1", cash_usd: 1000 }],
@@ -246,10 +259,25 @@ describe("grandTotalIlsShared", () => {
       ]),
       [
         { id: "a", kind: "savings", person: "shared" },
-        { id: "ib-1", kind: "interactive", person: "yonatan" },
+        { id: "ib-1", kind: "interactive", person: "shared" },
       ],
     );
     expect(grandIls).toBe(10000);
     expect(ibIlsMissing).toBe(true);
+  });
+
+  it("does not flag a privately owned IB portfolio with no ILS value", () => {
+    const { grandIls, ibIlsMissing } = grandTotalIlsShared(
+      new Map([
+        ["a", { native: 10000, ils: 10000 }],
+        ["ib-1", { native: 8000, ils: null }],
+      ]),
+      [
+        { id: "a", kind: "savings", person: "shared" },
+        { id: "ib-1", kind: "interactive", person: "person:child-1" },
+      ],
+    );
+    expect(grandIls).toBe(10000);
+    expect(ibIlsMissing).toBe(false);
   });
 });

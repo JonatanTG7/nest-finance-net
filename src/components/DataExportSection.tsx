@@ -10,6 +10,7 @@ import {
   creditCardsToRows,
   downloadCsv,
   exportFileName,
+  householdPeopleToRows,
   ibCashToRows,
   ibPositionsToRows,
   ibTransactionsToRows,
@@ -40,6 +41,7 @@ import {
 } from "@/lib/ib";
 import { fetchSubscriptions } from "@/lib/subscriptions";
 import { fetchRecurringIncome } from "@/lib/recurring-income";
+import { fetchHouseholdPeople } from "@/lib/household-people";
 import { fetchAllTrackAllocations } from "@/lib/track-splits";
 import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
 import { fetchTripsRaw } from "@/lib/trips";
@@ -101,6 +103,7 @@ export function DataExportSection() {
         tags,
         cards,
         budgets,
+        people,
       ] = await Promise.all([
         fetchAllTransactionsPaged(),
         fetchInvestmentAccounts(),
@@ -130,6 +133,14 @@ export function DataExportSection() {
         fetchTags(),
         fetchCreditCards(),
         fetchBudgets(),
+        // The household_people table arrives with this PR's migration;
+        // until it runs there are no added people to export, so a
+        // missing table degrades to an empty sheet instead of failing
+        // the whole backup.
+        fetchHouseholdPeople().catch((e) => {
+          if (isMissingTableError(e)) return [];
+          throw e;
+        }),
       ]);
       const ledgerLists = await Promise.all(portfolios.map((p) => fetchIbTransactions(p.id)));
       const ibLedger = ledgerLists.flat();
@@ -161,6 +172,7 @@ export function DataExportSection() {
         prepareFile("tags", "תגיות", tagsToRows(tags), date),
         prepareFile("credit-cards", "כרטיסי אשראי", creditCardsToRows(cards), date),
         prepareFile("budgets", "תקציבים", budgetsToRows(budgets, categories), date),
+        prepareFile("household-people", "אנשים נוספים", householdPeopleToRows(people), date),
       ]);
       toast.success("הייצוא הוכן");
     } catch (e) {

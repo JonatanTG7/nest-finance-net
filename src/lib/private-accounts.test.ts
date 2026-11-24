@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   accountsOfPerson,
   diffPrivateAccountFields,
+  filterAccountsByOwner,
   isSharedAccount,
   kindColor,
   kindLabel,
@@ -21,9 +22,12 @@ describe("isSharedAccount", () => {
   it("treats a person owner as private", () => {
     expect(isSharedAccount({ person: "yonatan", kind: "pension" })).toBe(false);
     expect(isSharedAccount({ person: "shiri", kind: "provident" })).toBe(false);
+    expect(isSharedAccount({ person: "person:child-1", kind: "savings" })).toBe(false);
   });
-  it("treats IB portfolios as shared whatever the owner says", () => {
-    expect(isSharedAccount({ person: "yonatan", kind: "interactive" })).toBe(true);
+  it("treats IB portfolios by their owner, like any account", () => {
+    expect(isSharedAccount({ person: "yonatan", kind: "interactive" })).toBe(false);
+    expect(isSharedAccount({ person: "person:child-1", kind: "interactive" })).toBe(false);
+    expect(isSharedAccount({ person: "shared", kind: "interactive" })).toBe(true);
   });
 });
 
@@ -33,10 +37,30 @@ describe("accountsOfPerson", () => {
     { id: "2", person: "shiri" as const, kind: "provident" },
     { id: "3", person: "shared" as const, kind: "savings" },
     { id: "4", person: "yonatan" as const, kind: "interactive" },
+    { id: "5", person: "person:child-1" as const, kind: "interactive" },
   ];
-  it("returns only that person's non-IB accounts", () => {
-    expect(accountsOfPerson(accounts, "yonatan").map((a) => a.id)).toEqual(["1"]);
+  it("returns only that person's accounts, including IB portfolios", () => {
+    expect(accountsOfPerson(accounts, "yonatan").map((a) => a.id)).toEqual(["1", "4"]);
     expect(accountsOfPerson(accounts, "shiri").map((a) => a.id)).toEqual(["2"]);
+    expect(accountsOfPerson(accounts, "person:child-1").map((a) => a.id)).toEqual(["5"]);
+  });
+});
+
+describe("filterAccountsByOwner", () => {
+  const accounts = [
+    { id: "1", person: "yonatan" as const, kind: "pension" },
+    { id: "2", person: "shiri" as const, kind: "provident" },
+    { id: "3", person: "shared" as const, kind: "savings" },
+    { id: "4", person: "person:child-1" as const, kind: "interactive" },
+    { id: "5", person: "shared" as const, kind: "interactive" },
+  ];
+  it("shows shared accounts for 'all' and 'shared'", () => {
+    expect(filterAccountsByOwner(accounts, "all").map((a) => a.id)).toEqual(["3", "5"]);
+    expect(filterAccountsByOwner(accounts, "shared").map((a) => a.id)).toEqual(["3", "5"]);
+  });
+  it("shows one person's accounts for a person filter", () => {
+    expect(filterAccountsByOwner(accounts, "yonatan").map((a) => a.id)).toEqual(["1"]);
+    expect(filterAccountsByOwner(accounts, "person:child-1").map((a) => a.id)).toEqual(["4"]);
   });
 });
 
@@ -80,6 +104,14 @@ describe("diffPrivateAccountFields", () => {
   it("reports an owner move", () => {
     expect(diffPrivateAccountFields(base, { ...base, person: "shiri" })).toEqual([
       { field: "owner", oldValue: "yonatan", newValue: "shiri" },
+    ]);
+  });
+  it("reports a move to shared and to an added person", () => {
+    expect(diffPrivateAccountFields(base, { ...base, person: "shared" })).toEqual([
+      { field: "owner", oldValue: "yonatan", newValue: "shared" },
+    ]);
+    expect(diffPrivateAccountFields(base, { ...base, person: "person:child-1" })).toEqual([
+      { field: "owner", oldValue: "yonatan", newValue: "person:child-1" },
     ]);
   });
   it("does not flag a fee rewritten as the same number", () => {

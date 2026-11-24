@@ -3,6 +3,7 @@ import { Landmark, Pencil, PiggyBank, TriangleAlert, TrendingUp, Wallet } from "
 import { Button } from "@/components/ui/button";
 import { feesAboveAverage, kindColor, kindLabel } from "@/lib/private-accounts";
 import { buildSplitSegments, type TrackAllocationRow } from "@/lib/track-splits";
+import { IB_KIND } from "@/lib/ib";
 import type { InvestmentAccount } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { maskAmountText } from "@/lib/privacy";
@@ -12,6 +13,7 @@ const KIND_ICONS: Record<string, typeof Landmark> = {
   provident: PiggyBank,
   savings: Wallet,
   investment: TrendingUp,
+  interactive: TrendingUp,
 };
 
 /**
@@ -19,7 +21,9 @@ const KIND_ICONS: Record<string, typeof Landmark> = {
  * type icon + Hebrew label, managing company, balance in large numerals,
  * a one-line fee summary, and a slim segmented bar showing the track
  * split. When the account's fees are above the fund's average, the
- * statement's red fee balloon appears.
+ * statement's red fee balloon appears. IB portfolios link straight to
+ * the IB screen and have no edit pencil — IB metadata is not editable
+ * (ownership moves from the IB screen).
  */
 export function PrivateAccountCard({
   account,
@@ -40,6 +44,7 @@ export function PrivateAccountCard({
   const Icon = KIND_ICONS[account.kind] ?? Wallet;
   const segments = buildSplitSegments(allocations, total.ils ?? 0);
   const feeAlert = feesAboveAverage(account);
+  const isIb = account.kind === IB_KIND;
 
   return (
     <div className="rounded-2xl border bg-card p-4">
@@ -57,81 +62,130 @@ export function PrivateAccountCard({
         >
           {kindLabel(account.kind)}
         </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 shrink-0"
-          onClick={onEdit}
-          aria-label={`ערוך את ${account.name}`}
-          title="ערוך"
-        >
-          <Pencil className="size-4" />
-        </Button>
+        {!isIb && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            onClick={onEdit}
+            aria-label={`ערוך את ${account.name}`}
+            title="ערוך"
+          >
+            <Pencil className="size-4" />
+          </Button>
+        )}
       </div>
-      <Link
-        to="/investments/$accountId"
-        params={{ accountId: account.id }}
-        className="block active:scale-[0.99] transition-transform"
-      >
-        <p
-          className="text-2xl font-bold mt-2 tabular-nums"
-          dir={account.currency !== "ILS" ? "ltr" : undefined}
+      {isIb ? (
+        <Link
+          to="/investments/ib"
+          search={{ account: account.id }}
+          className="block active:scale-[0.99] transition-transform"
         >
-          {maskAmountText(formatMoney(total.native, account.currency), hidden)}
+          <CardBody
+            account={account}
+            total={total}
+            segments={segments}
+            hasAllocations={allocations.length > 0}
+            feeAlert={feeAlert}
+            hidden={hidden}
+          />
+        </Link>
+      ) : (
+        <Link
+          to="/investments/$accountId"
+          params={{ accountId: account.id }}
+          className="block active:scale-[0.99] transition-transform"
+        >
+          <CardBody
+            account={account}
+            total={total}
+            segments={segments}
+            hasAllocations={allocations.length > 0}
+            feeAlert={feeAlert}
+            hidden={hidden}
+          />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+/** Balance + split bar + details — identical for both link targets. */
+function CardBody({
+  account,
+  total,
+  segments,
+  hasAllocations,
+  feeAlert,
+  hidden,
+}: {
+  account: InvestmentAccount;
+  total: { native: number; ils: number | null };
+  segments: ReturnType<typeof buildSplitSegments>;
+  hasAllocations: boolean;
+  feeAlert: boolean;
+  hidden: boolean;
+}) {
+  return (
+    <>
+      <p
+        className="text-2xl font-bold mt-2 tabular-nums"
+        dir={account.currency !== "ILS" ? "ltr" : undefined}
+      >
+        {maskAmountText(formatMoney(total.native, account.currency), hidden)}
+      </p>
+      {account.currency !== "ILS" && (
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {total.ils != null ? (
+            <>≈ {maskAmountText(formatILS(total.ils), hidden)}</>
+          ) : (
+            "שער דולר לא זמין"
+          )}
         </p>
-        {account.currency !== "ILS" && (
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {total.ils != null ? (
-              <>≈ {maskAmountText(formatILS(total.ils), hidden)}</>
-            ) : (
-              "שער דולר לא זמין"
-            )}
+      )}
+      {segments.length > 0 && (
+        <div className="flex h-2 w-full overflow-hidden rounded-full mt-3" dir="ltr">
+          {segments.map((s) => (
+            <div
+              key={s.id}
+              style={{ width: `${s.pct}%`, background: s.color }}
+              title={`${s.name}: ${s.pct}%`}
+            />
+          ))}
+        </div>
+      )}
+      <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
+        {account.company && (
+          <p>
+            חברה: <span className="text-foreground">{account.company}</span>
           </p>
         )}
-        {segments.length > 0 && (
-          <div className="flex h-2 w-full overflow-hidden rounded-full mt-3" dir="ltr">
-            {segments.map((s) => (
-              <div
-                key={s.id}
-                style={{ width: `${s.pct}%`, background: s.color }}
-                title={`${s.name}: ${s.pct}%`}
-              />
-            ))}
-          </div>
+        {!hasAllocations && account.track && (
+          <p>
+            מסלול: <span className="text-foreground">{account.track}</span>
+          </p>
         )}
-        <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
-          {account.company && (
-            <p>
-              חברה: <span className="text-foreground">{account.company}</span>
-            </p>
-          )}
-          {allocations.length === 0 && account.track && (
-            <p>
-              מסלול: <span className="text-foreground">{account.track}</span>
-            </p>
-          )}
-          {(account.fee_from_balance != null || account.fee_from_deposits != null) && (
-            <p className="tabular-nums">
-              דמי ניהול:{" "}
-              <span className="text-foreground">
-                {account.fee_from_balance != null
-                  ? `מצבירה ${maskAmountText(`${account.fee_from_balance}%`, hidden)}`
-                  : "—"}
-                {" · "}
-                {account.fee_from_deposits != null
-                  ? `מהפקדות ${maskAmountText(`${account.fee_from_deposits}%`, hidden)}`
-                  : "—"}
-              </span>
-            </p>
-          )}
-          {feeAlert && (
-            <p className="flex items-center gap-1 text-red-600 font-medium pt-0.5">
-              <TriangleAlert className="size-3.5 shrink-0" />
-              שים לב: דמי הניהול גבוהים מהממוצע בקרן
-            </p>
-          )}
-        </div>
-      </Link>
-    </div>
+        {(account.fee_from_balance != null || account.fee_from_deposits != null) && (
+          <p className="tabular-nums">
+            דמי ניהול:{" "}
+            <span className="text-foreground">
+              {account.fee_from_balance != null
+                ? `מצבירה ${maskAmountText(`${account.fee_from_balance}%`, hidden)}`
+                : "—"}
+              {" · "}
+              {account.fee_from_deposits != null
+                ? `מהפקדות ${maskAmountText(`${account.fee_from_deposits}%`, hidden)}`
+                : "—"}
+            </span>
+          </p>
+        )}
+        {feeAlert && (
+          <p className="flex items-center gap-1 text-red-600 font-medium pt-0.5">
+            <TriangleAlert className="size-3.5 shrink-0" />
+            שים לב: דמי הניהול גבוהים מהממוצע בקרן
+          </p>
+        )}
+      </div>
+    </>
   );
 }
