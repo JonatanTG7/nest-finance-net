@@ -51,6 +51,9 @@ import {
 } from "@/lib/ib-rules";
 import { cn } from "@/lib/utils";
 import { maskAmountText, PRIVACY_MASK, usePrivacyMode } from "@/lib/privacy";
+import { OwnerPicker } from "@/components/investments/OwnerPicker";
+import { setAccountOwner } from "@/lib/private-accounts";
+import { SHARED_OWNER, type OwnerId } from "@/lib/person";
 
 export const Route = createFileRoute("/investments/ib")({
   head: () => ({ meta: [{ title: "Interactive Brokers" }] }),
@@ -368,7 +371,8 @@ function IbPortfolio() {
   });
 
   const createPortfolio = useMutation({
-    mutationFn: createIbPortfolio,
+    mutationFn: ({ name, owner }: { name: string; owner: OwnerId }) =>
+      createIbPortfolio(name, owner),
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ["ib", "portfolios"] });
       qc.invalidateQueries({ queryKey: ["investment_accounts"] });
@@ -379,6 +383,19 @@ function IbPortfolio() {
       console.error(e);
       toast.error("Error creating portfolio");
     },
+  });
+
+  // Owner reassignment — the only edit path for a portfolio (IB metadata
+  // is not editable). Moving the owner moves the portfolio between the
+  // shared assets list and that person's tab.
+  const moveOwner = useMutation({
+    mutationFn: (owner: OwnerId) => setAccountOwner(selectedPortfolio!, owner),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ib", "portfolios"] });
+      qc.invalidateQueries({ queryKey: ["investment_accounts"] });
+      toast.success("Owner updated");
+    },
+    onError: () => toast.error("Error updating owner"),
   });
 
   const positionById = (id: string) => positions.find((p) => p.id === id) ?? null;
@@ -443,6 +460,20 @@ function IbPortfolio() {
               <Plus className="size-4" />
               New Portfolio
             </button>
+          </section>
+        )}
+
+        {selectedPortfolio && (
+          <section className="px-4 pt-2 pb-1 flex items-center gap-2">
+            <span className="text-xs text-zinc-500 shrink-0">Owner</span>
+            <div className="w-48">
+              <OwnerPicker
+                value={selectedPortfolio.person ?? SHARED_OWNER}
+                onChange={(o) => moveOwner.mutate(o)}
+                ariaLabel="Portfolio owner"
+                className="h-8 text-sm bg-zinc-900 border-zinc-700 text-zinc-100"
+              />
+            </div>
           </section>
         )}
 
@@ -642,8 +673,8 @@ function IbPortfolio() {
         open={newPortfolioOpen}
         onOpenChange={setNewPortfolioOpen}
         existingNames={portfolios.map((p) => p.name)}
-        onSave={async (name) => {
-          await createPortfolio.mutateAsync(name);
+        onSave={async (name, owner) => {
+          await createPortfolio.mutateAsync({ name, owner });
         }}
       />
 
