@@ -43,6 +43,21 @@ describe("escapeCsvCell", () => {
     expect(escapeCsvCell("line1\nline2")).toBe('"line1\nline2"');
     expect(escapeCsvCell("a\rb")).toBe('"a\rb"');
   });
+
+  it("neutralizes formula-leading cells (CSV injection)", () => {
+    expect(escapeCsvCell("=2+5")).toBe("'=2+5");
+    expect(escapeCsvCell("+2+5")).toBe("'+2+5");
+    expect(escapeCsvCell("-2+5")).toBe("'-2+5");
+    expect(escapeCsvCell("@SUM(A1:A2)")).toBe("'@SUM(A1:A2)");
+    expect(escapeCsvCell("  =2+5")).toBe("'  =2+5");
+    expect(escapeCsvCell("\t=2+5")).toBe("'\t=2+5");
+    expect(escapeCsvCell("\r=2+5")).toBe('\'"\r=2+5"');
+    expect(escapeCsvCell("=a,b")).toBe('\'"=a,b"');
+    // Plain values stay untouched.
+    expect(escapeCsvCell("2+5")).toBe("2+5");
+    expect(escapeCsvCell("a=b")).toBe("a=b");
+    expect(escapeCsvCell("  hello")).toBe("  hello");
+  });
 });
 
 describe("toCsv", () => {
