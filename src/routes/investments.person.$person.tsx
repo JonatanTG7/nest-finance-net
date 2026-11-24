@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -8,11 +8,25 @@ import {
   FileUp,
   GraduationCap,
   Landmark,
+  Pencil,
   PiggyBank,
   Plus,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AddPersonDialog } from "@/components/investments/AddPersonDialog";
 import { PrivateAccountCard } from "@/components/investments/PrivateAccountCard";
 import { PrivateAccountDialog } from "@/components/investments/PrivateAccountDialog";
 import { StatementImportDialog } from "@/components/investments/StatementImportDialog";
@@ -25,7 +39,14 @@ import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
 import { fetchAllTrackAllocations } from "@/lib/track-splits";
 import { computeAccountTotals } from "@/lib/account-totals";
 import { accountsOfPerson, sumPrivateAccountExtras } from "@/lib/private-accounts";
-import { personAccentColor, useHouseholdPersons, type Person } from "@/lib/person";
+import { ownerIdForAddedPerson, personAccentColor, useHouseholdPersons } from "@/lib/person";
+import {
+  deleteHouseholdPerson,
+  useHouseholdPeople,
+  useInvalidateHouseholdPeople,
+} from "@/lib/household-people";
+import { IB_KIND } from "@/lib/ib";
+import { useIbTotalsMap } from "@/lib/use-ib-totals";
 import { useUsdIlsRate } from "@/lib/fx";
 import { formatILS } from "@/lib/finance";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
@@ -45,6 +66,7 @@ const QUICK_ADD_TEMPLATES = [
 function PersonPage() {
   const { person: personParam } = Route.useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { hidden, toggle: togglePrivacy } = usePrivacyMode();
   const { persons, isLoading: personsLoading } = useHouseholdPersons();
   const personIndex = persons.findIndex((p) => p.person === personParam);
@@ -55,6 +77,29 @@ function PersonPage() {
   const [template, setTemplate] = useState<{ kind: string; name: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<InvestmentAccount | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  // Added people (children) can be renamed and removed from their own
+  // tab. Login members are never managed here — their names come from
+  // their profiles.
+  const { data: addedPeople = [] } = useHouseholdPeople();
+  const addedRow = addedPeople.find((r) => ownerIdForAddedPerson(r.id) === person?.person) ?? null;
+  const invalidatePeople = useInvalidateHouseholdPeople();
+
+  const removePerson = useMutation({
+    mutationFn: () => deleteHouseholdPerson(addedRow!.id),
+    onSuccess: () => {
+      invalidatePeople();
+      qc.invalidateQueries({ queryKey: ["investment_accounts"] });
+      toast.success("האדם נמחק");
+      setConfirmRemove(false);
+      navigate({ to: "/investments" });
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "לא הצלחנו למחוק. נסה שוב.");
+    },
+  });
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["investment_accounts"],
@@ -73,20 +118,29 @@ function PersonPage() {
     queryFn: fetchAllTrackAllocations,
   });
   const { rate: fxRate } = useUsdIlsRate();
+  // IB portfolios are valued from live positions, never from
+  // transactions — same overlay as the assets index, so an IB account
+  // under this person shows its real value.
+  const ibTotals = useIbTotalsMap();
 
-  const totals = useMemo(
-    () =>
-      computeAccountTotals({
-        accounts,
-        transactions: txs,
-        journalEntries,
-        fxRate: fxRate ?? null,
-      }),
-    [accounts, txs, journalEntries, fxRate],
-  );
+  const totals = useMemo(() => {
+    const m = computeAccountTotals({
+      accounts,
+      transactions: txs,
+      journalEntries,
+      fxRate: fxRate ?? null,
+    });
+    for (const a of accounts) {
+      if (a.kind === IB_KIND) {
+        const t = ibTotals.get(a.id);
+        m.set(a.id, { native: t?.native ?? 0, ils: t?.ils ?? null });
+      }
+    }
+    return m;
+  }, [accounts, txs, journalEntries, fxRate, ibTotals]);
 
   const myAccounts = useMemo(
-    () => (person ? accountsOfPerson(accounts, person.person as Person) : []),
+    () => (person ? accountsOfPerson(accounts, person.person) : []),
     [accounts, person],
   );
   const allocationsByAccount = useMemo(() => {
@@ -201,6 +255,23 @@ function PersonPage() {
                     <FileUp className="size-4" />
                     ייבוא מדוח שנתי
                   </Button>
+                  {addedRow && (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => setRenaming(true)}>
+                        <Pencil className="size-4" />
+                        שנה שם
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive"
+                        onClick={() => setConfirmRemove(true)}
+                      >
+                        <Trash2 className="size-4" />
+                        מחק אדם
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </section>
@@ -265,7 +336,7 @@ function PersonPage() {
                   setEditing(null);
                 }
               }}
-              person={person.person as Person}
+              person={person.person}
               account={editing}
               initialKind={template?.kind}
               initialName={template?.name}
@@ -274,7 +345,7 @@ function PersonPage() {
             <StatementImportDialog
               open={importing}
               onOpenChange={setImporting}
-              person={person.person as Person}
+              person={person.person}
               account={null}
               onCreated={(newId) => {
                 navigate({
@@ -283,6 +354,32 @@ function PersonPage() {
                 });
               }}
             />
+
+            <AddPersonDialog open={renaming} onOpenChange={setRenaming} existing={addedRow} />
+
+            <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+              <AlertDialogContent dir="rtl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>למחוק את {person.label}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {myAccounts.length > 0
+                      ? `לא ניתן למחוק — ל${person.label} עדיין יש ${myAccounts.length === 1 ? "חשבון אחד" : `${myAccounts.length} חשבונות`}. העבירו אותם לבעלים אחר קודם (עריכת החשבון ← בעלים).`
+                      : `האדם „${person.label}” יימחק ממשק הבית. אין לו חשבונות, אז לא יימחק שום דבר אחר.`}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>ביטול</AlertDialogCancel>
+                  {myAccounts.length === 0 && (
+                    <AlertDialogAction
+                      onClick={() => removePerson.mutate()}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      מחק
+                    </AlertDialogAction>
+                  )}
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )
       )}

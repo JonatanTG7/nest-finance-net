@@ -26,15 +26,16 @@ import {
 } from "@/lib/private-accounts";
 import { fetchTrackAllocations, saveTrackAllocations } from "@/lib/track-splits";
 import { rowFromAllocation, rowsToInputs, splitCanSave, type PickerRow } from "@/lib/track-picker";
-import { useHouseholdPersons, useMemberLabels, type Person } from "@/lib/person";
+import { OwnerPicker } from "@/components/investments/OwnerPicker";
+import { SHARED_OWNER, type OwnerId } from "@/lib/person";
 import { usePrivacyMode } from "@/lib/privacy";
 import type { InvestmentAccount } from "@/lib/db";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The person the account belongs to when adding (fixed). Ignored when editing. */
-  person: Person;
+  /** Default owner when adding (usually the tab's person); changeable. */
+  person: OwnerId;
   /** The account to edit, or null to add a new one. */
   account: InvestmentAccount | null;
   /** Pre-fill for a quick-add template (create mode only): kind + name suggestion. */
@@ -80,15 +81,13 @@ export function PrivateAccountDialog({
   onDeleted,
 }: Props) {
   const qc = useQueryClient();
-  const { persons } = useHouseholdPersons();
-  const labels = useMemberLabels();
   const { hidden } = usePrivacyMode();
   const editing = account != null;
 
   const [form, setForm] = useState<PrivateAccountForm>(() =>
     formFromAccount(account, initialKind, initialName),
   );
-  const [owner, setOwner] = useState<Person>(person);
+  const [owner, setOwner] = useState<OwnerId>(person);
   const [currency, setCurrency] = useState("ILS");
   const [balance, setBalance] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -111,7 +110,7 @@ export function PrivateAccountDialog({
   useEffect(() => {
     if (!open) return;
     setForm(formFromAccount(account, initialKind, initialName));
-    setOwner(((account?.person ?? person) as Person) ?? "shared");
+    setOwner(account?.person ?? person ?? SHARED_OWNER);
     setCurrency("ILS");
     setBalance("");
     setConfirmDelete(false);
@@ -168,7 +167,7 @@ export function PrivateAccountDialog({
       } else {
         savedId = await createPrivateAccount({
           ...formToSave,
-          person,
+          person: owner,
           currency,
           balance: Number(balance || 0),
         });
@@ -316,24 +315,11 @@ export function PrivateAccountDialog({
                 אי אפשר לשמור: לכל מסלול צריך שם, ואסור שהסכום יעבור 100%.
               </p>
             )}
-            {editing ? (
-              <label className="block text-sm">
-                בעלים
-                <select
-                  aria-label="בעלים"
-                  value={owner}
-                  onChange={(e) => setOwner(e.target.value as Person)}
-                  className="w-full h-10 border rounded-md bg-background px-3"
-                >
-                  <option value="shared">{labels.shared}</option>
-                  {persons.map((p) => (
-                    <option key={p.person} value={p.person}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
+            <label className="block text-sm">
+              בעלים
+              <OwnerPicker value={owner} onChange={setOwner} />
+            </label>
+            {!editing && (
               <>
                 <label className="block text-sm">
                   מטבע

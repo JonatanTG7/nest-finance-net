@@ -24,6 +24,7 @@ import type { TradeJournalEntry } from "@/lib/trade-journal";
 import type { Trip } from "@/lib/trips";
 import type { Voucher } from "@/lib/vouchers";
 import type { CreditCard } from "@/lib/credit_cards";
+import type { HouseholdPersonRow } from "@/lib/household-people";
 
 export interface CsvSheet {
   headers: string[];
@@ -594,6 +595,16 @@ export function categoriesToRows(categories: ExportCategory[], hiddenIds: Set<st
       hiddenIds.has(c.id),
       c.created_at,
     ]),
+  };
+}
+
+/** Added household people (children): columns 1:1, household_id dropped. */
+export function householdPeopleToRows(
+  people: Pick<HouseholdPersonRow, "id" | "name" | "sort_order" | "created_at">[],
+): CsvSheet {
+  return {
+    headers: ["id", "name", "sort_order", "created_at"],
+    rows: people.map((p) => [p.id, p.name, p.sort_order, p.created_at]),
   };
 }
 
