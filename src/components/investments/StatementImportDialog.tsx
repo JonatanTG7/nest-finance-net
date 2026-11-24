@@ -22,7 +22,7 @@ import {
 import { scanStatement, MAX_STATEMENT_PAGES } from "@/lib/statement.functions";
 import type { StatementFields } from "@/lib/statement-rules";
 import { shrinkImageFile } from "@/lib/image-shrink";
-import type { Person } from "@/lib/person";
+import { SHARED_OWNER, type OwnerId } from "@/lib/person";
 import type { InvestmentAccount } from "@/lib/db";
 import { formatILS } from "@/lib/finance";
 
@@ -61,7 +61,7 @@ export function StatementImportDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Owner for a newly created account. Ignored in update mode. */
-  person: Person;
+  person: OwnerId;
   /** The account to update, or null to create a new one. */
   account: InvestmentAccount | null;
   /** Create mode: called with the new account id after saving. */
@@ -207,7 +207,7 @@ export function StatementImportDialog({
       if (account) {
         await updatePrivateAccount(account, {
           ...form,
-          person: (account.person ?? "shared") as Person,
+          person: account.person ?? SHARED_OWNER,
         });
         await updateAccountStatementColumns(account.id, reviewed);
         const { toSave } = mergeImportedTracks(existingAllocations, reviewed.tracks);

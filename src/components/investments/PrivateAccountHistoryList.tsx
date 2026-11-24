@@ -5,7 +5,7 @@ import {
   type PrivateAccountField,
   type PrivateAccountHistoryRow,
 } from "@/lib/private-accounts";
-import { useMemberLabels, type Person } from "@/lib/person";
+import { useMemberLabels } from "@/lib/person";
 import { maskAmountText } from "@/lib/privacy";
 
 function fmtDate(iso: string) {
@@ -38,7 +38,9 @@ export function PrivateAccountHistoryList({
 
   const displayValue = (field: string, value: string | null): string => {
     if (value == null) return "—";
-    if (field === "owner") return labels[value as Person] ?? value;
+    // Owner values are raw owner ids ("shared", a slot, or
+    // "person:<id>") — the labels map covers all of them.
+    if (field === "owner") return labels[value] ?? value;
     if (field === "kind") return kindLabel(value);
     if (FEE_FIELDS.includes(field as PrivateAccountField)) return `${value}%`;
     return value;

@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { getMyHouseholdId, fetchMyProfile } from "@/lib/household";
 import { fetchRateToIls } from "@/lib/fx";
-import type { Person } from "@/lib/person";
+import { SHARED_OWNER, type OwnerId } from "@/lib/person";
 import { IB_KIND } from "@/lib/ib";
 import { statementAccountColumns, type StatementFields } from "@/lib/statement-rules";
 import type { InvestmentAccount } from "@/lib/db";
@@ -38,6 +38,7 @@ export const PRIVATE_KIND_LABELS: Record<string, string> = {
   provident: "קופת גמל / השתלמות",
   savings: "חיסכון",
   investment: "השקעה",
+  interactive: "Interactive Brokers",
   other: "אחר",
 };
 
@@ -98,26 +99,40 @@ export function feesAboveAverage(a: {
  * ------------------------------------------------------------------ */
 
 /**
- * Is this account shown in the shared assets view? IB portfolios are
- * always shared — they are never private, whatever the owner column says.
- * A missing owner (e.g. rows read before the migration ran) counts as
- * shared, so the app keeps working in that window.
+ * Is this account shown in the shared assets view? Every account kind
+ * respects its owner — including IB portfolios, so a child's IB account
+ * lives under that child. A missing owner (e.g. rows read before the
+ * migration ran) counts as shared, so the app keeps working in that
+ * window.
  *
  * The owner is typed as a plain string on purpose: structural callers
- * (net-worth inputs) don't carry the Person union, and the rule only
+ * (net-worth inputs) don't carry the OwnerId type, and the rule only
  * compares against "shared".
  */
 export function isSharedAccount(a: { person?: string | null; kind: string }): boolean {
-  if (a.kind === IB_KIND) return true;
-  return (a.person ?? "shared") === "shared";
+  return (a.person ?? SHARED_OWNER) === SHARED_OWNER;
 }
 
-/** Accounts owned by one person. IB portfolios never count as private. */
-export function accountsOfPerson<T extends { person?: Person | null; kind: string }>(
+/** Accounts owned by one person — every kind, including IB portfolios. */
+export function accountsOfPerson<T extends { person?: string | null; kind: string }>(
   accounts: T[],
-  person: Person,
+  person: OwnerId,
 ): T[] {
-  return accounts.filter((a) => a.kind !== IB_KIND && a.person === person);
+  return accounts.filter((a) => a.person === person);
+}
+
+/**
+ * The assets index filter: "all" shows the shared accounts (the
+ * unfiltered view, with the person entries below), "shared" shows the
+ * shared accounts on their own, and a person id shows that person's
+ * accounts as cards. Pure, so the filter rule is testable.
+ */
+export function filterAccountsByOwner<T extends { person?: string | null; kind: string }>(
+  accounts: T[],
+  owner: OwnerId | "all",
+): T[] {
+  if (owner === "all" || owner === SHARED_OWNER) return accounts.filter(isSharedAccount);
+  return accountsOfPerson(accounts, owner);
 }
 
 export interface PrivateAccountExtras {
@@ -176,7 +191,7 @@ export interface PrivateMetadata {
   track: string | null;
   /** Free-text notes — the owner's own words. Deliberately NOT tracked in the history (see diffPrivateAccountFields). */
   notes: string | null;
-  person: Person;
+  person: OwnerId;
 }
 
 export interface PrivateAccountChange {
@@ -217,7 +232,7 @@ export function diffPrivateAccountFields(
   push("fee_from_balance", feeText(oldMeta.fee_from_balance), feeText(newMeta.fee_from_balance));
   push("fee_from_deposits", feeText(oldMeta.fee_from_deposits), feeText(newMeta.fee_from_deposits));
   push("track", textValue(oldMeta.track), textValue(newMeta.track));
-  push("owner", oldMeta.person ?? "shared", newMeta.person ?? "shared");
+  push("owner", oldMeta.person ?? SHARED_OWNER, newMeta.person ?? SHARED_OWNER);
   return changes;
 }
 
@@ -299,7 +314,7 @@ async function logPrivateAccountChanges(
 }
 
 export interface CreatePrivateAccountInput extends PrivateAccountForm {
-  person: Person;
+  person: OwnerId;
   currency: string;
   balance: number;
   /** Statement-import extras (Treasury code, expected pension, fund-average fees, deposits, source). */
@@ -361,7 +376,7 @@ export async function updateAccountStatementColumns(
 }
 
 export interface UpdatePrivateAccountInput extends PrivateAccountForm {
-  person: Person;
+  person: OwnerId;
 }
 
 /**
@@ -387,7 +402,7 @@ export async function updatePrivateAccount(
       fee_from_deposits: account.fee_from_deposits ?? null,
       track: account.track ?? null,
       notes: account.notes ?? null,
-      person: (account.person ?? "shared") as Person,
+      person: account.person ?? SHARED_OWNER,
     },
     { ...meta, person: input.person },
   );
@@ -411,6 +426,31 @@ export async function updatePrivateAccount(
     await logPrivateAccountChanges(account.id, changes);
   } catch (e) {
     console.error("logPrivateAccountChanges failed (edit already saved)", e);
+  }
+}
+
+/**
+ * Moves an account to another owner — shared, a login member, or an
+ * added person. Works for every account kind, including IB portfolios
+ * (their metadata can't be edited, but ownership is just the column).
+ * The move is recorded in the metadata history as an owner change, so
+ * the account page shows where the account used to live. No-op when
+ * the owner is unchanged.
+ */
+export async function setAccountOwner(account: InvestmentAccount, person: OwnerId): Promise<void> {
+  const oldOwner = account.person ?? SHARED_OWNER;
+  if (oldOwner === person) return;
+  const { error } = await supabase
+    .from("investment_accounts")
+    .update({ person })
+    .eq("id", account.id);
+  if (error) throw error;
+  try {
+    await logPrivateAccountChanges(account.id, [
+      { field: "owner", oldValue: oldOwner, newValue: person },
+    ]);
+  } catch (e) {
+    console.error("logPrivateAccountChanges failed (owner already moved)", e);
   }
 }
 

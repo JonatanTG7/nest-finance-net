@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { ChevronDown, ChevronLeft, ChevronUp, Eye, EyeOff, GripVertical, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +11,19 @@ import { AppShell } from "@/components/AppShell";
 import { fetchInvestmentAccounts, fetchInvestmentTransactions } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
-import { computeIbTotals, grandTotalIlsShared } from "@/lib/net-worth";
-import { fetchAllIbHoldings, fetchAllIbPositions, IB_KIND } from "@/lib/ib";
-import { getQuotes } from "@/lib/ib.functions";
+import { grandTotalIlsShared } from "@/lib/net-worth";
+import { IB_KIND } from "@/lib/ib";
+import { useIbTotalsMap } from "@/lib/use-ib-totals";
 import { useUsdIlsRate } from "@/lib/fx";
 import { fetchVouchers } from "@/lib/vouchers";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 import { useCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
 import { computeAccountTotals } from "@/lib/account-totals";
-import { accountsOfPerson, isSharedAccount } from "@/lib/private-accounts";
-import { personAccentColor, useHouseholdPersons } from "@/lib/person";
+import { accountsOfPerson, filterAccountsByOwner } from "@/lib/private-accounts";
+import { SHARED_OWNER, personAccentColor, useHouseholdPersons, type OwnerId } from "@/lib/person";
 import { PersonEntryCard } from "@/components/investments/PersonEntryCard";
+import { AddPersonDialog } from "@/components/investments/AddPersonDialog";
+import { OwnerPicker } from "@/components/investments/OwnerPicker";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/investments/")({
@@ -44,20 +45,33 @@ function Investments() {
   const { hidden, toggle: togglePrivacy } = usePrivacyMode();
   const [editingOrder, setEditingOrder] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [addingPerson, setAddingPerson] = useState(false);
   const [name, setName] = useState("");
   const [kind, setKind] = useState("savings");
   const [balance, setBalance] = useState("");
   const [currency, setCurrency] = useState("ILS");
+  const [owner, setOwner] = useState<OwnerId>(SHARED_OWNER);
+  // Owner filter for the cards grid: "all" is the unfiltered view (shared
+  // cards + person entries), "shared" shows the shared cards on their own,
+  // and a person id shows that person's accounts as cards.
+  const [ownerFilter, setOwnerFilter] = useState<OwnerId | "all">("all");
   const [busy, setBusy] = useState(false);
   async function addAccount(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      await createInvestmentAccount({ name, kind, balance: Number(balance || 0), currency });
+      await createInvestmentAccount({
+        name,
+        kind,
+        balance: Number(balance || 0),
+        currency,
+        person: owner,
+      });
       await qc.invalidateQueries({ queryKey: ["investment_accounts"] });
       setAdding(false);
       setName("");
       setBalance("");
+      setOwner(SHARED_OWNER);
       toast.success("החשבון נוסף");
     } catch {
       toast.error("לא הצלחנו להוסיף את החשבון. בדוק את הפרטים ונסה שוב.");
@@ -65,7 +79,6 @@ function Investments() {
       setBusy(false);
     }
   }
-  const getQuotesFn = useServerFn(getQuotes);
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["investment_accounts"],
@@ -79,38 +92,13 @@ function Investments() {
     queryKey: ["trade-journal", "all"],
     queryFn: fetchAllTradeJournalEntries,
   });
-  const { data: ibHoldings = [] } = useQuery({
-    queryKey: ["ib", "holdings", "all"],
-    queryFn: fetchAllIbHoldings,
-    refetchInterval: 10_000,
-  });
-  const { data: ibPositions = [] } = useQuery({
-    queryKey: ["ib", "positions", "all"],
-    queryFn: fetchAllIbPositions,
-    refetchInterval: 15_000,
-  });
+  // Per-portfolio IB totals (cash + live positions), keyed by account id.
+  // The math lives in lib/net-worth so the email digest sender shares it;
+  // the hook is shared with the person pages so IB values agree everywhere.
+  const ibTotals = useIbTotalsMap();
   // No hardcoded fallback rate: when the rate is unavailable the ₪ values of
   // IB portfolios are shown as "rate unavailable" instead of a wrong number.
   const { rate: fxRate } = useUsdIlsRate();
-  const ibSymbols = useMemo(
-    () => Array.from(new Set(ibPositions.map((p) => p.symbol))),
-    [ibPositions],
-  );
-  const { data: ibQuotes = [] } = useQuery({
-    queryKey: ["ib", "quotes", ibSymbols],
-    queryFn: () => getQuotesFn({ data: { symbols: ibSymbols } }),
-    enabled: ibSymbols.length > 0,
-    staleTime: 5_000,
-    refetchInterval: 8_000,
-    refetchIntervalInBackground: false,
-  });
-
-  // Per-portfolio IB totals (cash + live positions), keyed by account id.
-  // The math lives in lib/net-worth so the email digest sender shares it.
-  const ibTotals = useMemo(
-    () => computeIbTotals(ibHoldings, ibPositions, ibQuotes, fxRate),
-    [ibHoldings, ibPositions, ibQuotes, fxRate],
-  );
 
   // Non-IB balances come from the shared totals rule (baseline + post-reset
   // transactions + post-reset journal P&L); IB portfolios are valued from
@@ -146,25 +134,39 @@ function Investments() {
     [vouchers],
   );
 
+  // The household members, derived from profiles + added people — one
+  // entry card each, leading to that person's private tab.
+  const { persons } = useHouseholdPersons();
+
   // Card order (accounts + vouchers card), saved per device. The grand
   // total card stays fixed at the top and is not part of the order.
-  // Only shared accounts get cards here — private accounts live in their
-  // owner's tab below (an account that moves to a person drops out of
-  // the saved order automatically).
-  const sharedAccounts = useMemo(() => accounts.filter(isSharedAccount), [accounts]);
-  const accountById = useMemo(
-    () => new Map(sharedAccounts.map((a) => [a.id, a])),
-    [sharedAccounts],
+  // The grid shows the accounts of the active owner filter: shared
+  // accounts in the "all"/"shared" views, one person's accounts when a
+  // person is picked (an account that moves to a person drops out of the
+  // saved order automatically). Reordering only works in the unfiltered
+  // "all" view — a filtered view is a subset, not the order itself.
+  const visibleAccounts = useMemo(
+    () => filterAccountsByOwner(accounts, ownerFilter),
+    [accounts, ownerFilter],
   );
+  const accountById = useMemo(
+    () => new Map(visibleAccounts.map((a) => [a.id, a])),
+    [visibleAccounts],
+  );
+  const showVouchersCard = ownerFilter === "all" || ownerFilter === SHARED_OWNER;
   const cardIds = useMemo(
-    () => [...sharedAccounts.map((a) => a.id), VOUCHERS_CARD_ID],
-    [sharedAccounts],
+    () => [...visibleAccounts.map((a) => a.id), ...(showVouchersCard ? [VOUCHERS_CARD_ID] : [])],
+    [visibleAccounts, showVouchersCard],
   );
   const { orderedIds, move } = useCardOrder(cardIds);
+  const reorderAllowed = ownerFilter === "all";
 
-  // The household members, derived from profiles — one entry card each,
-  // leading to that person's private tab.
-  const { persons } = useHouseholdPersons();
+  function changeOwnerFilter(next: OwnerId | "all") {
+    setOwnerFilter(next);
+    // Leaving the unfiltered view exits reorder mode — the filtered grid
+    // is not the saved order.
+    if (next !== "all") setEditingOrder(false);
+  }
 
   // The grand total mixes live FX (IB) with frozen historical rates (other
   // accounts) — an inherent limitation of the model. When the FX rate is
@@ -195,6 +197,8 @@ function Investments() {
               size="sm"
               onClick={() => setEditingOrder((v) => !v)}
               aria-pressed={editingOrder}
+              disabled={!reorderAllowed}
+              title={reorderAllowed ? undefined : "סידור כרטיסים זמין רק בתצוגת הכול"}
             >
               {editingOrder ? (
                 "סיום"
@@ -225,6 +229,31 @@ function Investments() {
             </p>
           )}
         </div>
+      </section>
+
+      <section className="px-5 md:px-0 mt-4 flex items-center gap-2 overflow-x-auto">
+        {(
+          [
+            ["all", "הכול"],
+            [SHARED_OWNER, "משותף"],
+            ...persons.map((p) => [p.person, p.label] as const),
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => changeOwnerFilter(value)}
+            aria-pressed={ownerFilter === value}
+            className={cn(
+              "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors",
+              ownerFilter === value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:bg-accent",
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </section>
 
       <section className="px-5 md:px-0 mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -344,7 +373,7 @@ function Investments() {
         })}
       </section>
 
-      {persons.length > 0 && (
+      {ownerFilter === "all" && (
         <section className="px-5 md:px-0 mt-6 mb-8">
           <h2 className="text-sm font-semibold mb-1">חשבונות פרטיים</h2>
           <p className="text-xs text-muted-foreground mb-3">
@@ -365,9 +394,27 @@ function Investments() {
                 />
               );
             })}
+            <button
+              type="button"
+              onClick={() => setAddingPerson(true)}
+              className="rounded-2xl border border-dashed bg-card/50 p-4 text-start hover:bg-accent active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-center gap-3">
+                <span className="size-10 rounded-full border border-dashed flex items-center justify-center text-muted-foreground shrink-0">
+                  <Plus className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">הוסף אדם</p>
+                  <p className="text-xs text-muted-foreground">
+                    ילד או בן בית נוסף — עם חשבונות פרטיים משלו
+                  </p>
+                </div>
+              </div>
+            </button>
           </div>
         </section>
       )}
+      <AddPersonDialog open={addingPerson} onOpenChange={setAddingPerson} />
       <Dialog open={adding} onOpenChange={setAdding}>
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader>
@@ -423,6 +470,10 @@ function Investments() {
                 onChange={(e) => setBalance(e.target.value)}
                 placeholder="0"
               />
+            </label>
+            <label className="block text-sm">
+              בעלים
+              <OwnerPicker value={owner} onChange={setOwner} />
             </label>
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "שומר…" : "הוסף חשבון"}

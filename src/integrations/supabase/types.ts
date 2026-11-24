@@ -386,6 +386,38 @@ export type Database = {
         };
         Relationships: [];
       };
+      household_people: {
+        Row: {
+          created_at: string;
+          household_id: string;
+          id: string;
+          name: string;
+          sort_order: number;
+        };
+        Insert: {
+          created_at?: string;
+          household_id: string;
+          id?: string;
+          name: string;
+          sort_order?: number;
+        };
+        Update: {
+          created_at?: string;
+          household_id?: string;
+          id?: string;
+          name?: string;
+          sort_order?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "household_people_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       ib_holdings: {
         Row: {
           cash_usd: number;
@@ -564,7 +596,7 @@ export type Database = {
           monthly_deposit_severance: number | null;
           name: string;
           notes: string | null;
-          person: Database["public"]["Enums"]["person"];
+          person: string;
           sort_order: number;
           source_date: string | null;
           starting_balance: number;
@@ -593,7 +625,7 @@ export type Database = {
           monthly_deposit_severance?: number | null;
           name: string;
           notes?: string | null;
-          person?: Database["public"]["Enums"]["person"];
+          person?: string;
           sort_order?: number;
           source_date?: string | null;
           starting_balance?: number;
@@ -622,7 +654,7 @@ export type Database = {
           monthly_deposit_severance?: number | null;
           name?: string;
           notes?: string | null;
-          person?: Database["public"]["Enums"]["person"];
+          person?: string;
           sort_order?: number;
           source_date?: string | null;
           starting_balance?: number;
