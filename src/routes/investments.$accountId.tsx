@@ -29,9 +29,11 @@ import {
   fetchPrivateAccountHistory,
   isSharedAccount,
   kindLabel,
+  setAccountOwner,
 } from "@/lib/private-accounts";
+import { OwnerPicker } from "@/components/investments/OwnerPicker";
 import { fetchTrackAllocations } from "@/lib/track-splits";
-import { useMemberLabels, type Person } from "@/lib/person";
+import { SHARED_OWNER, useMemberLabels, type OwnerId } from "@/lib/person";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchUsdIlsRate, useUsdIlsRate } from "@/lib/fx";
 import { fetchTradeJournalEntries, journalPnlUsdAfterReset } from "@/lib/trade-journal";
@@ -141,6 +143,19 @@ function AccountPage() {
     },
   });
 
+  // Owner reassignment — the only edit path for plain shared accounts
+  // without metadata (they have no "ערוך פרטים"). Moving the owner
+  // moves the account between the shared list and that person's tab.
+  const moveOwner = useMutation({
+    mutationFn: (person: OwnerId) => setAccountOwner(account!, person),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["investment_accounts"] });
+      qc.invalidateQueries({ queryKey: ["private-account-history", accountId] });
+      toast.success("הבעלים עודכן");
+    },
+    onError: () => toast.error("שגיאה בעדכון הבעלים"),
+  });
+
   return (
     <AppShell>
       <header className="px-5 md:px-0 pt-6 pb-3 flex items-center gap-2">
@@ -153,7 +168,7 @@ function AccountPage() {
           </h1>
           <p className="text-xs text-muted-foreground">
             {account && isPrivate
-              ? `${kindLabel(account.kind)} · ${labels[(account.person ?? "shared") as Person]} · ${account.currency}`
+              ? `${kindLabel(account.kind)} · ${labels[account.person ?? SHARED_OWNER] ?? "—"} · ${account.currency}`
               : `חשבון השקעה / חיסכון · ${account?.currency ?? "ILS"}`}
           </p>
         </div>
@@ -214,6 +229,26 @@ function AccountPage() {
               await save.mutateAsync(n);
             }}
           />
+
+          {account && (
+            <section className="px-5 md:px-0 mt-6">
+              <div className="rounded-2xl border bg-card p-4">
+                <label className="block text-sm">
+                  בעלים
+                  <div className="mt-1">
+                    <OwnerPicker
+                      value={account.person ?? SHARED_OWNER}
+                      onChange={(p) => moveOwner.mutate(p)}
+                      ariaLabel="בעלים"
+                    />
+                  </div>
+                </label>
+                <p className="text-xs text-muted-foreground mt-2">
+                  שינוי הבעלים מעביר את החשבון בין הרשימה המשותפת ללשונית של אותו אדם.
+                </p>
+              </div>
+            </section>
+          )}
 
           {showMetadata && account && (
             <section className="px-5 md:px-0 mt-6">
@@ -307,7 +342,7 @@ function AccountPage() {
                 <DetailRow label="הפקדה חודשית" value={depositSummary(account, hidden)} />
                 <DetailRow label="קוד האוצר" value={account.treasury_code} ltr />
                 <DetailRow label="מקור הנתונים" value={sourceSummary(account)} />
-                <DetailRow label="בעלים" value={labels[(account.person ?? "shared") as Person]} />
+                <DetailRow label="בעלים" value={labels[account.person ?? SHARED_OWNER] ?? "—"} />
               </div>
               {account.notes && (
                 <div className="rounded-2xl border bg-card p-4 mt-3">
@@ -336,13 +371,13 @@ function AccountPage() {
         <PrivateAccountDialog
           open={editingDetails}
           onOpenChange={setEditingDetails}
-          person={(account.person ?? "shared") as Person}
+          person={account.person ?? SHARED_OWNER}
           account={account}
           onDeleted={() => {
             if (isPrivate) {
               navigate({
                 to: "/investments/person/$person",
-                params: { person: (account.person ?? "shared") as string },
+                params: { person: account.person ?? SHARED_OWNER },
               });
             } else {
               navigate({ to: "/investments" });
@@ -365,7 +400,7 @@ function AccountPage() {
         <StatementImportDialog
           open={importingStatement}
           onOpenChange={setImportingStatement}
-          person={(account.person ?? "shared") as Person}
+          person={account.person ?? SHARED_OWNER}
           account={account}
         />
       )}
