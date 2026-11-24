@@ -31,13 +31,21 @@ export interface CsvSheet {
   rows: unknown[][];
 }
 
-/** RFC 4180 cell escaping: null/undefined → empty, quote when the value contains , " or a newline. */
+/**
+ * RFC 4180 cell escaping: null/undefined → empty, quote when the value
+ * contains , " or a newline. Plus CSV-injection neutralization: a cell
+ * spreadsheet apps would run as a formula (leading =, +, -, @, tab or CR,
+ * including after leading whitespace) gets a leading single quote so it
+ * opens as plain text.
+ */
 export function escapeCsvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "boolean") return value ? "true" : "false";
   const s = String(value);
-  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
+  const needsGuard =
+    s.startsWith("\t") || s.startsWith("\r") || /^[=+\-@]/.test(s.replace(/^\s+/, ""));
+  const body = /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return needsGuard ? `'${body}` : body;
 }
 
 /** BOM + header + rows, CRLF-separated. */
