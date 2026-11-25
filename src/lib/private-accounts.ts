@@ -102,6 +102,32 @@ export function kindLabel(kind: string): string {
 }
 
 /**
+ * Fee percentage for display: an unset half is 0% — a fee that was never
+ * entered is 0, not "unknown". The card's fee line shows both halves
+ * whenever at least one of them is set.
+ */
+export function formatFeePercent(fee: number | null | undefined): string {
+  return `${fee ?? 0}%`;
+}
+
+/**
+ * One history value for display: a cleared/never-set value shows nothing
+ * (no "—" placeholder). Owner ids resolve through the member labels,
+ * kinds through kindLabel, fees get a % suffix.
+ */
+export function displayHistoryValue(
+  field: string,
+  value: string | null,
+  labels: Record<string, string>,
+): string {
+  if (value == null) return "";
+  if (field === "owner") return labels[value] ?? value;
+  if (field === "kind") return kindLabel(value);
+  if (field === "fee_from_balance" || field === "fee_from_deposits") return `${value}%`;
+  return value;
+}
+
+/**
  * Browser-tab title for the account page: the account's name once it
  * loads, the generic label while it is unknown. TRY-IT — if Jonatan
  * vetoes it after seeing it live, deleting the effect in the route
@@ -146,6 +172,19 @@ export const ACCOUNT_COLORS: string[] = [
 export function normalizeColor(raw: string | null | undefined, kind: string): string {
   const c = (raw ?? "").trim();
   return /^#[0-9a-fA-F]{6}$/.test(c) ? c.toLowerCase() : kindColor(kind);
+}
+
+/**
+ * When the account type changes, the color follows the new type's default —
+ * unless the user already picked a color by hand, in which case it stays.
+ * Shared by the private-account dialog and the index "new account" dialog.
+ */
+export function colorAfterKindChange(
+  current: string | null | undefined,
+  colorTouched: boolean,
+  kind: string,
+): string {
+  return colorTouched ? normalizeColor(current, kind) : kindColor(kind);
 }
 
 /** Where the account's numbers came from (set by a statement import). */

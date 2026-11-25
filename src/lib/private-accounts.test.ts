@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   ACCOUNT_COLORS,
   accountsOfPerson,
+  colorAfterKindChange,
   diffPrivateAccountFields,
+  displayHistoryValue,
   filterAccountsByOwner,
+  formatFeePercent,
   isSharedAccount,
   kindColor,
   kindLabel,
@@ -263,6 +266,21 @@ describe("normalizeColor", () => {
   });
 });
 
+describe("colorAfterKindChange", () => {
+  it("follows the new kind default until the user picks a color by hand", () => {
+    expect(colorAfterKindChange(null, false, "pension")).toBe("#8b5cf6");
+    expect(colorAfterKindChange("#f59e0b", false, "investment")).toBe("#3b82f6");
+  });
+  it("keeps a hand-picked color when the kind changes", () => {
+    expect(colorAfterKindChange("#ec4899", true, "pension")).toBe("#ec4899");
+    expect(colorAfterKindChange("#EC4899", true, "provident")).toBe("#ec4899");
+  });
+  it("falls back to the kind default when a hand-picked color is missing", () => {
+    expect(colorAfterKindChange(null, true, "savings")).toBe("#f59e0b");
+    expect(colorAfterKindChange(undefined, true, "provident")).toBe("#10b981");
+  });
+});
+
 describe("sumPrivateAccountExtras", () => {
   const account = (partial: Record<string, number | null>) => ({
     monthly_deposit_employee: null,
@@ -293,6 +311,42 @@ describe("sumPrivateAccountExtras", () => {
       monthlyDeposits: null,
       expectedPension: null,
     });
+  });
+});
+
+describe("formatFeePercent", () => {
+  it("shows the fee when set", () => {
+    expect(formatFeePercent(0.1)).toBe("0.1%");
+    expect(formatFeePercent(0)).toBe("0%");
+  });
+
+  it("shows 0% when unset", () => {
+    expect(formatFeePercent(null)).toBe("0%");
+    expect(formatFeePercent(undefined)).toBe("0%");
+  });
+});
+
+describe("displayHistoryValue", () => {
+  const labels = { shared: "משותף", yonatan: "יונתן" };
+
+  it("shows nothing for a null value", () => {
+    expect(displayHistoryValue("company", null, labels)).toBe("");
+    expect(displayHistoryValue("fee_from_balance", null, labels)).toBe("");
+  });
+
+  it("resolves owner ids through the labels, falling back to the raw id", () => {
+    expect(displayHistoryValue("owner", "yonatan", labels)).toBe("יונתן");
+    expect(displayHistoryValue("owner", "person:xyz", labels)).toBe("person:xyz");
+  });
+
+  it("resolves kinds and appends % to fees", () => {
+    expect(displayHistoryValue("kind", "pension", labels)).toBe("קרן פנסיה");
+    expect(displayHistoryValue("fee_from_balance", "0.1", labels)).toBe("0.1%");
+    expect(displayHistoryValue("fee_from_deposits", "1.5", labels)).toBe("1.5%");
+  });
+
+  it("passes other values through unchanged", () => {
+    expect(displayHistoryValue("company", "מנורה", labels)).toBe("מנורה");
   });
 });
 
