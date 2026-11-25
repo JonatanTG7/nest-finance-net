@@ -37,11 +37,15 @@ import {
 } from "@/lib/private-accounts";
 import { arrangeDetailFields, fetchCustomFields, type DetailFieldDef } from "@/lib/account-details";
 import { OwnerPicker } from "@/components/investments/OwnerPicker";
-import { fetchTrackAllocations } from "@/lib/track-splits";
-import { SHARED_OWNER, useMemberLabels, type OwnerId } from "@/lib/person";
+import { fetchTrackAllocations, hasTrackSplit } from "@/lib/track-splits";
+import { resolveOwnerLabel, SHARED_OWNER, useMemberLabels, type OwnerId } from "@/lib/person";
 import { formatILS, formatMoney } from "@/lib/finance";
 import { fetchUsdIlsRate, useUsdIlsRate } from "@/lib/fx";
-import { fetchTradeJournalEntries, journalPnlUsdAfterReset } from "@/lib/trade-journal";
+import {
+  fetchTradeJournalEntries,
+  journalPnlUsdAfterReset,
+  showsTradeJournal,
+} from "@/lib/trade-journal";
 import { IB_KIND } from "@/lib/ib";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 
@@ -97,6 +101,11 @@ function AccountPage() {
     queryFn: () => fetchTrackAllocations(accountId),
     enabled: showMetadata,
   });
+  // The split section shows only for accounts that have tracks; a
+  // trackless account (e.g. a day-trading account) hides it entirely.
+  // The unified edit dialog still offers track editing, so tracks can
+  // be added later and the section appears then.
+  const showTrackSplit = showMetadata && hasTrackSplit(allocations, account?.track);
   const { data: customFields = [] } = useQuery({
     queryKey: ["account-custom-fields", accountId],
     queryFn: () => fetchCustomFields(accountId),
@@ -237,7 +246,7 @@ function AccountPage() {
       {
         key: "owner",
         label: "בעלים",
-        value: labels[account.person ?? SHARED_OWNER] ?? "—",
+        value: resolveOwnerLabel(labels, account.person),
         group: "meta",
       },
     ];
@@ -293,7 +302,7 @@ function AccountPage() {
           </h1>
           <p className="text-xs text-muted-foreground">
             {account && isPrivate
-              ? `${kindLabel(account.kind)} · ${labels[account.person ?? SHARED_OWNER] ?? "—"} · ${account.currency}`
+              ? `${kindLabel(account.kind)} · ${resolveOwnerLabel(labels, account.person)} · ${account.currency}`
               : `חשבון השקעה / חיסכון · ${account?.currency ?? "ILS"}`}
           </p>
         </div>
@@ -355,7 +364,7 @@ function AccountPage() {
             }}
           />
 
-          {showMetadata && account && (
+          {showTrackSplit && account && (
             <section className="px-5 md:px-0 mt-6">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <h2 className="text-base font-bold flex items-center gap-2">
@@ -402,21 +411,6 @@ function AccountPage() {
                         <TriangleAlert className="size-4 text-red-600 shrink-0" />
                         <p className="text-xs text-red-700 dark:text-red-400">
                           שים לב לגובה דמי הניהול — הם גבוהים מהממוצע בקרן
-                          {account.avg_fee_from_balance != null ||
-                          account.avg_fee_from_deposits != null ? (
-                            <span className="tabular-nums">
-                              {" "}
-                              (ממוצע:{" "}
-                              {account.avg_fee_from_balance != null
-                                ? `${maskAmountText(`${account.avg_fee_from_balance}%`, hidden)} מצבירה`
-                                : "—"}
-                              {" · "}
-                              {account.avg_fee_from_deposits != null
-                                ? `${maskAmountText(`${account.avg_fee_from_deposits}%`, hidden)} מהפקדות`
-                                : "—"}
-                              )
-                            </span>
-                          ) : null}
                         </p>
                       </div>
                     )}
@@ -493,11 +487,11 @@ function AccountPage() {
         </>
       )}
 
-      {/* The trading journal belongs to day-trading accounts (e.g. Colmex) —
-          private accounts like a pension never have one. */}
-      {account && account.kind !== IB_KIND && !isPrivate && (
-        <TradeJournalSection accountId={accountId} />
-      )}
+      {/* The trading journal belongs to day-trading accounts (e.g. Colmex):
+          non-IB investment-kind accounts, whatever their owner — moving
+          Colmex from shared to a person must not hide it. A pension,
+          study fund or savings account never has one. */}
+      {account && showsTradeJournal(account.kind) && <TradeJournalSection accountId={accountId} />}
 
       {showMetadata && (isPrivate || metadataHistory.length > 0) && (
         <PrivateAccountHistoryList rows={metadataHistory} hidden={hidden} />
