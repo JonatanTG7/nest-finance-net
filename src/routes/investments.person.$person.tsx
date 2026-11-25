@@ -7,6 +7,7 @@ import {
   EyeOff,
   FileUp,
   GraduationCap,
+  GripVertical,
   Landmark,
   Pencil,
   PiggyBank,
@@ -16,6 +17,8 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { ReorderControls } from "@/components/investments/ReorderControls";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +50,7 @@ import {
 } from "@/lib/household-people";
 import { IB_KIND } from "@/lib/ib";
 import { useIbTotalsMap } from "@/lib/use-ib-totals";
+import { useSharedCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
 import { useUsdIlsRate } from "@/lib/fx";
 import { formatILS } from "@/lib/finance";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
@@ -79,6 +83,7 @@ function PersonPage() {
   const [editing, setEditing] = useState<InvestmentAccount | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(false);
 
   // Added people (children) can be renamed and removed from their own
   // tab. Login members are never managed here — their names come from
@@ -143,6 +148,21 @@ function PersonPage() {
     () => (person ? accountsOfPerson(accounts, person.person) : []),
     [accounts, person],
   );
+
+  // Card order — the SAME per-device store as the assets index, so
+  // arranging here arranges there and vice versa. The full list (every
+  // account + the vouchers card) is the order's scope: this page shows
+  // only this person's subset, in their positions in the full order,
+  // and a move swaps two cards of this subset without touching
+  // anything else. The vouchers id stays in the list so its place on
+  // the index never moves because of a reorder here.
+  const allCardIds = useMemo(() => [...accounts.map((a) => a.id), VOUCHERS_CARD_ID], [accounts]);
+  const { orderedIds, moveWithin } = useSharedCardOrder(allCardIds);
+  const myAccountIds = useMemo(() => myAccounts.map((a) => a.id), [myAccounts]);
+  const orderedMyAccounts = useMemo(() => {
+    const byId = new Map(myAccounts.map((a) => [a.id, a]));
+    return orderedIds.map((id) => byId.get(id)).filter((a): a is InvestmentAccount => a != null);
+  }, [orderedIds, myAccounts]);
   const allocationsByAccount = useMemo(() => {
     const map = new Map<string, typeof allAllocations>();
     for (const a of allAllocations) {
@@ -193,6 +213,21 @@ function PersonPage() {
         </div>
         <Button
           variant="outline"
+          size="sm"
+          onClick={() => setEditingOrder((v) => !v)}
+          aria-pressed={editingOrder}
+        >
+          {editingOrder ? (
+            "סיום"
+          ) : (
+            <>
+              <GripVertical className="size-4" />
+              סדר כרטיסים
+            </>
+          )}
+        </Button>
+        <Button
+          variant="outline"
           size="icon"
           onClick={togglePrivacy}
           aria-label={hidden ? "הצג סכומים" : "הסתר סכומים"}
@@ -214,7 +249,21 @@ function PersonPage() {
       ) : (
         person && (
           <>
+            {/* Account actions sit above the total — compact, always in reach. */}
             <section className="px-5 md:px-0">
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => setAdding(true)}>
+                  <Plus className="size-4" />
+                  חשבון פרטי חדש
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
+                  <FileUp className="size-4" />
+                  ייבוא מדוח שנתי
+                </Button>
+              </div>
+            </section>
+
+            <section className="px-5 md:px-0 mt-4">
               <div
                 className="rounded-3xl border p-6"
                 style={{
@@ -246,33 +295,23 @@ function PersonPage() {
                     )}
                   </div>
                 )}
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => setAdding(true)}>
-                    <Plus className="size-4" />
-                    חשבון פרטי חדש
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
-                    <FileUp className="size-4" />
-                    ייבוא מדוח שנתי
-                  </Button>
-                  {addedRow && (
-                    <>
-                      <Button size="sm" variant="outline" onClick={() => setRenaming(true)}>
-                        <Pencil className="size-4" />
-                        שנה שם
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-destructive"
-                        onClick={() => setConfirmRemove(true)}
-                      >
-                        <Trash2 className="size-4" />
-                        מחק אדם
-                      </Button>
-                    </>
-                  )}
-                </div>
+                {addedRow && (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setRenaming(true)}>
+                      <Pencil className="size-4" />
+                      שנה שם
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive"
+                      onClick={() => setConfirmRemove(true)}
+                    >
+                      <Trash2 className="size-4" />
+                      מחק אדם
+                    </Button>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -314,15 +353,30 @@ function PersonPage() {
                   </div>
                 </div>
               ) : (
-                myAccounts.map((a) => (
-                  <PrivateAccountCard
+                orderedMyAccounts.map((a, index) => (
+                  <div
                     key={a.id}
-                    account={a}
-                    total={totals.get(a.id) ?? { native: 0, ils: 0 }}
-                    allocations={allocationsByAccount.get(a.id) ?? []}
-                    hidden={hidden}
-                    onEdit={() => setEditing(a)}
-                  />
+                    className={cn(editingOrder && "rounded-2xl ring-2 ring-primary/50")}
+                  >
+                    <PrivateAccountCard
+                      account={a}
+                      total={totals.get(a.id) ?? { native: 0, ils: 0 }}
+                      allocations={allocationsByAccount.get(a.id) ?? []}
+                      hidden={hidden}
+                      onEdit={() => setEditing(a)}
+                      linkDisabled={editingOrder}
+                      footer={
+                        editingOrder ? (
+                          <ReorderControls
+                            onUp={() => moveWithin(myAccountIds, a.id, "up")}
+                            onDown={() => moveWithin(myAccountIds, a.id, "down")}
+                            disableUp={index === 0}
+                            disableDown={index === orderedMyAccounts.length - 1}
+                          />
+                        ) : undefined
+                      }
+                    />
+                  </div>
                 ))
               )}
             </section>

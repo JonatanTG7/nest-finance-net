@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronUp, Eye, EyeOff, GripVertical, Plus } from "lucide-react";
+import { ChevronLeft, Eye, EyeOff, GripVertical, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +22,7 @@ import { computeAccountTotals } from "@/lib/account-totals";
 import { accountsOfPerson, filterAccountsByOwner } from "@/lib/private-accounts";
 import { SHARED_OWNER, personAccentColor, useHouseholdPersons, type OwnerId } from "@/lib/person";
 import { PersonEntryCard } from "@/components/investments/PersonEntryCard";
+import { ReorderControls } from "@/components/investments/ReorderControls";
 import { AddPersonDialog } from "@/components/investments/AddPersonDialog";
 import { OwnerPicker } from "@/components/investments/OwnerPicker";
 import { cn } from "@/lib/utils";
@@ -482,51 +483,5 @@ function Investments() {
         </DialogContent>
       </Dialog>
     </AppShell>
-  );
-}
-
-/**
- * Up/down buttons for reorder mode. Plain buttons, not drag-and-drop —
- * HTML5 drag-and-drop doesn't work on mobile touch, and these are
- * reliable everywhere.
- */
-function ReorderControls({
-  onUp,
-  onDown,
-  disableUp,
-  disableDown,
-}: {
-  onUp: () => void;
-  onDown: () => void;
-  disableUp: boolean;
-  disableDown: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onUp}
-        disabled={disableUp}
-        aria-label="הזז למעלה"
-        className="flex-1"
-      >
-        <ChevronUp className="size-4" />
-        למעלה
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onDown}
-        disabled={disableDown}
-        aria-label="הזז למטה"
-        className="flex-1"
-      >
-        <ChevronDown className="size-4" />
-        למטה
-      </Button>
-    </div>
   );
 }
