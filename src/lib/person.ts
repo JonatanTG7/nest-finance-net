@@ -131,6 +131,17 @@ export function personAccentColor(index: number): string {
 }
 
 /**
+ * Browser-tab title for a person page: the person's name when known,
+ * the generic label otherwise. The static route `head` can't see the
+ * loaded label, so the page sets the title itself once the person
+ * loads. (Try-it item, 2026-11-25: Jonatan checks it live and may veto.)
+ */
+export function resolvePersonPageTitle(label: string | null | undefined): string {
+  const trimmed = label?.trim();
+  return trimmed ? trimmed : "חשבונות פרטיים";
+}
+
+/**
  * Merges the login members (profile slots) with the added people into
  * one stable list: slots first, in slot order, then added people by
  * their sort order. Pure, so the merge rule is testable without a DB.

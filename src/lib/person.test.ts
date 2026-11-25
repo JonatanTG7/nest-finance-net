@@ -3,6 +3,7 @@ import {
   mergeHouseholdPersons,
   personAccentColor,
   resolveOwnerLabel,
+  resolvePersonPageTitle,
   type HouseholdPerson,
 } from "./person";
 import type { HouseholdPersonRow } from "./household-people";
@@ -77,5 +78,17 @@ describe("personAccentColor", () => {
     // Five colors: index 5 wraps back to the first.
     expect(personAccentColor(5)).toBe(personAccentColor(0));
     expect(personAccentColor(6)).toBe(personAccentColor(1));
+  });
+});
+
+describe("resolvePersonPageTitle", () => {
+  it("uses the person's name when known", () => {
+    expect(resolvePersonPageTitle("יונתן")).toBe("יונתן");
+    expect(resolvePersonPageTitle("Shiri")).toBe("Shiri");
+  });
+  it("falls back to the generic label when the person is unknown", () => {
+    expect(resolvePersonPageTitle(null)).toBe("חשבונות פרטיים");
+    expect(resolvePersonPageTitle(undefined)).toBe("חשבונות פרטיים");
+    expect(resolvePersonPageTitle("   ")).toBe("חשבונות פרטיים");
   });
 });
