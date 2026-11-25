@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Landmark, Pencil, PiggyBank, TriangleAlert, TrendingUp, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { feesAboveAverage, kindColor, kindLabel } from "@/lib/private-accounts";
+import { feesAboveAverage, formatFeePercent, kindColor, kindLabel } from "@/lib/private-accounts";
 import { buildSplitSegments, type TrackAllocationRow } from "@/lib/track-splits";
 import { IB_KIND } from "@/lib/ib";
 import type { InvestmentAccount } from "@/lib/db";
@@ -178,13 +178,9 @@ function CardBody({
           <p className="tabular-nums">
             דמי ניהול:{" "}
             <span className="text-foreground">
-              {account.fee_from_balance != null
-                ? `מצבירה ${maskAmountText(`${account.fee_from_balance}%`, hidden)}`
-                : "—"}
+              {`מצבירה ${maskAmountText(formatFeePercent(account.fee_from_balance), hidden)}`}
               {" · "}
-              {account.fee_from_deposits != null
-                ? `מהפקדות ${maskAmountText(`${account.fee_from_deposits}%`, hidden)}`
-                : "—"}
+              {`מהפקדות ${maskAmountText(formatFeePercent(account.fee_from_deposits), hidden)}`}
             </span>
           </p>
         )}
