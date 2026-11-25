@@ -5,6 +5,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { fetchCategories, fetchTransactionsBetween } from "@/lib/db";
 import { fetchBudgets, saveBudget } from "@/lib/budgets";
 import { budgetProgress, categorySpent } from "@/lib/finance-rules";
@@ -22,6 +32,7 @@ export function CategoryBudgets({ month }: { month: string }) {
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const eligible = (categories.data ?? []).filter((c) => c.type === "expense" || c.type === "fixed");
   async function save(e: React.FormEvent) {
     e.preventDefault(); setBusy(true);
@@ -30,7 +41,6 @@ export function CategoryBudgets({ month }: { month: string }) {
     finally { setBusy(false); }
   }
   async function remove(id: string) {
-    if (!window.confirm("להסיר את התקציב? התנועות יישארו.")) return;
     try { await saveBudget(id, null); await qc.invalidateQueries({ queryKey: ["category_budgets"] }); }
     catch { toast.error("לא הצלחנו להסיר את התקציב"); }
   }
@@ -41,7 +51,7 @@ export function CategoryBudgets({ month }: { month: string }) {
       const spent = categorySpent(txs.data ?? [], b.category_id, todayISO());
       const p = budgetProgress(spent, Number(b.amount_ils));
       return <div key={b.category_id} className="border rounded-lg bg-card p-4 space-y-2">
-        <div className="flex items-center gap-2"><span className="flex-1 text-sm font-semibold truncate">{c?.emoji} {c?.name ?? "קטגוריה"}</span><Button variant="ghost" size="icon" aria-label={`עריכת תקציב ${c?.name ?? ""}`} title="עריכת תקציב" onClick={() => { setCategory(b.category_id); setAmount(String(b.amount_ils)); setOpen(true); }}><Pencil className="size-4" /></Button><Button variant="ghost" size="icon" aria-label={`הסרת תקציב ${c?.name ?? ""}`} title="הסרת תקציב" onClick={() => remove(b.category_id)}><Trash2 className="size-4" /></Button></div>
+        <div className="flex items-center gap-2"><span className="flex-1 text-sm font-semibold truncate">{c?.emoji} {c?.name ?? "קטגוריה"}</span><Button variant="ghost" size="icon" aria-label={`עריכת תקציב ${c?.name ?? ""}`} title="עריכת תקציב" onClick={() => { setCategory(b.category_id); setAmount(String(b.amount_ils)); setOpen(true); }}><Pencil className="size-4" /></Button><Button variant="ghost" size="icon" aria-label={`הסרת תקציב ${c?.name ?? ""}`} title="הסרת תקציב" onClick={() => setConfirmId(b.category_id)}><Trash2 className="size-4" /></Button></div>
         <div className="flex justify-between gap-2 flex-wrap text-xs tabular-nums"><span>{formatILS(spent)} מתוך {formatILS(Number(b.amount_ils))}</span><span className={cn(p.state === "over" ? "text-destructive" : p.state === "near" ? "text-fixed" : "text-income")}>{p.state === "over" ? `חריגה: ${formatILS(-p.remaining)}` : p.state === "near" ? `מתקרבים לתקציב · ${p.percent}%` : `נותרו ${formatILS(p.remaining)}`}</span></div>
         <progress aria-label={`ניצול תקציב ${c?.name ?? ""}`} value={Math.min(p.percent, 100)} max="100" className={cn("w-full h-2", p.state === "over" ? "accent-destructive" : p.state === "near" ? "accent-fixed" : "accent-income")} />
       </div>;
@@ -51,5 +61,26 @@ export function CategoryBudgets({ month }: { month: string }) {
       <label className="block text-sm">תקציב חודשי (₪)<Input aria-label="תקציב חודשי (₪)" type="number" min="0.01" step="0.01" inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
       <Button type="submit" className="w-full" disabled={busy}>{busy ? "שומר…" : "שמור תקציב"}</Button>
     </form></DialogContent></Dialog>
+      <AlertDialog open={confirmId !== null} onOpenChange={(v) => !v && setConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>להסיר את התקציב?</AlertDialogTitle>
+            <AlertDialogDescription>התקציב החודשי יוסר. התנועות יישארו.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                const id = confirmId;
+                setConfirmId(null);
+                if (id) void remove(id);
+              }}
+            >
+              הסר
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
   </section>;
 }

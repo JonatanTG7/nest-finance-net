@@ -1,8 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Pencil, Trash2, ArrowRight, Repeat2, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { deleteTransaction, fetchTransaction } from "@/lib/db";
 import { formatILS, txTypeLabel } from "@/lib/finance";
 import { useMemberLabels } from "@/lib/person";
@@ -31,9 +42,10 @@ function ViewTx() {
     queryFn: () => fetchTransaction(id),
   });
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   async function handleDelete() {
     if (!tx) return;
-    if (!confirm("למחוק את התנועה?")) return;
     try {
       await deleteTransaction(tx.id);
       toast.success("נמחק");
@@ -83,7 +95,7 @@ function ViewTx() {
               ערוך
             </Link>
             <button
-              onClick={handleDelete}
+              onClick={() => setConfirmDelete(true)}
               className="h-10 px-3 rounded-full bg-destructive/10 text-destructive text-sm font-semibold flex items-center gap-1.5"
             >
               <Trash2 className="size-4" />
@@ -125,16 +137,14 @@ function ViewTx() {
 
         <div className="rounded-2xl border bg-card divide-y">
           <Detail label="סוג">{txTypeLabel[tx.type]}</Detail>
-          <Detail label="קטגוריה">
-            {tx.category ? (
+          {tx.category && (
+            <Detail label="קטגוריה">
               <span className="inline-flex items-center gap-2">
                 <span>{tx.category.emoji ?? "•"}</span>
                 {tx.category.name}
               </span>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </Detail>
+            </Detail>
+          )}
           {tx.location && <Detail label="מיקום">{tx.location}</Detail>}
           {tx.investment_account && (
             <Detail label="חשבון השקעה">
@@ -155,18 +165,14 @@ function ViewTx() {
               year: "numeric",
             }).format(new Date(tx.occurred_at))}
           </Detail>
-          <Detail label="אמצעי תשלום">
-            {tx.payment_method ? (
-              (paymentMethods.find((m) => m.key === tx.payment_method)?.label ?? tx.payment_method)
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </Detail>
+          {tx.payment_method && (
+            <Detail label="אמצעי תשלום">
+              {paymentMethods.find((m) => m.key === tx.payment_method)?.label ?? tx.payment_method}
+            </Detail>
+          )}
           <Detail label="שולם ע״י">{memberLabels[tx.entered_by]}</Detail>
-          <Detail label="תגיות">
-            {tags.length === 0 ? (
-              <span className="text-muted-foreground">—</span>
-            ) : (
+          {tags.length > 0 && (
+            <Detail label="תגיות">
               <div className="flex flex-wrap gap-1.5">
                 {tags.map((t) => (
                   <span
@@ -177,14 +183,37 @@ function ViewTx() {
                   </span>
                 ))}
               </div>
-            )}
-          </Detail>
+            </Detail>
+          )}
           {tx.note && (
             <Detail label="הערה">
               <span className="whitespace-pre-wrap">{tx.note}</span>
             </Detail>
           )}
         </div>
+
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>למחוק את התנועה?</AlertDialogTitle>
+              <AlertDialogDescription>
+                התנועה תימחק לצמיתות ולא ניתן יהיה לשחזר אותה.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ביטול</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  setConfirmDelete(false);
+                  void handleDelete();
+                }}
+              >
+                מחק
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppShell>
   );
