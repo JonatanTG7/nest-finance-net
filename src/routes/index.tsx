@@ -32,6 +32,7 @@ import {
   shiftMonth,
   txTypeLabel,
 } from "@/lib/finance";
+import { computeQuickInsights } from "@/lib/dashboard-insights";
 import { useSelectedMonth } from "@/lib/month-store";
 import { useMemberLabels } from "@/lib/person";
 import { useMyProfile } from "@/lib/household";
@@ -172,9 +173,6 @@ function Dashboard() {
       .map((d, i) => ({ ...d, color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length] }));
   }, [txs]);
 
-  // Top 5 categories (bar with category colors)
-  const topCats = useMemo(() => pieData.slice(0, 5), [pieData]);
-
   const prevTotals = useMemo(() => sumTotals(prevTxs), [prevTxs]);
 
   /** This period vs the one before it — total in / total out. */
@@ -228,35 +226,13 @@ function Dashboard() {
       .slice(0, 5);
   }, [pieData, prevByCategory]);
 
-  // A few concrete, at-a-glance facts for inspiration/awareness.
-  const quickInsights = useMemo(() => {
-    const outTotal = pieData.reduce((s, d) => s + d.value, 0);
-    const topCategory =
-      pieData.length > 0 && outTotal > 0
-        ? { ...pieData[0], pct: Math.round((pieData[0].value / outTotal) * 100) }
-        : null;
-
-    const spendTxs = txs.filter((t) => isCashflowOut(t.type));
-    const largest =
-      spendTxs.length > 0
-        ? spendTxs.reduce(
-            (max, t) => (Number(t.amount_ils) > Number(max.amount_ils) ? t : max),
-            spendTxs[0],
-          )
-        : null;
-
-    const daysElapsed = Math.max(
-      1,
-      Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000) -
-        Math.max(
-          0,
-          Math.round((new Date(end).getTime() - new Date(todayLocalISO()).getTime()) / 86_400_000),
-        ),
-    );
-    const avgDaily = outTotal / daysElapsed;
-
-    return { topCategory, largest, avgDaily };
-  }, [pieData, txs, start, end]);
+  // A few concrete, at-a-glance facts for inspiration/awareness — the
+  // largest single outflow and the average daily outflow. No top category:
+  // the donut above already shows it.
+  const quickInsights = useMemo(
+    () => computeQuickInsights(txs, start, end, today),
+    [txs, start, end, today],
+  );
 
   // Trend: 6 months, totals per type
   const trendData = useMemo(() => {
@@ -458,7 +434,7 @@ function Dashboard() {
         </section>
       )}
 
-      <div className="grid md:grid-cols-2 gap-4 mt-6 px-5 md:px-0">
+      <section className="px-5 md:px-0 mt-6">
         <Card title="הוצאות לפי קטגוריה">
           {pieData.length === 0 ? (
             <Empty>אין עדיין הוצאות בחודש זה</Empty>
@@ -525,71 +501,19 @@ function Dashboard() {
             </>
           )}
         </Card>
+      </section>
 
-        <Card title="טופ 5 קטגוריות">
-          {topCats.length === 0 ? (
-            <Empty>אין נתונים</Empty>
-          ) : (
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topCats} margin={{ top: 20, right: 8, left: 8, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11 }}
-                    interval={0}
-                    tickFormatter={(v: string) => (v.length > 6 ? v.slice(0, 6) + "…" : v)}
-                  />
-                  <YAxis tick={{ fontSize: 11 }} width={40} />
-                  <Tooltip
-                    formatter={(v: number) => formatILS(v)}
-                    contentStyle={{
-                      borderRadius: 12,
-                      border: "1px solid var(--border)",
-                      background: "var(--card)",
-                      color: "var(--foreground)",
-                    }}
-                    itemStyle={{ color: "var(--foreground)" }}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={48}>
-                    {topCats.map((d) => (
-                      <Cell key={d.key} fill={d.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {(quickInsights.topCategory || quickInsights.largest) && (
+      {quickInsights.largest && (
         <section className="px-5 md:px-0 mt-4">
           <Card title="תובנות מהירות">
             <ul className="space-y-3 text-sm">
-              {quickInsights.topCategory && (
-                <li className="flex items-center gap-3">
-                  <span
-                    className="size-2.5 rounded-full shrink-0"
-                    style={{ background: quickInsights.topCategory.color }}
-                  />
-                  <span>
-                    הקטגוריה המובילה היא <b>{quickInsights.topCategory.name}</b> —{" "}
-                    {formatILS(quickInsights.topCategory.value)} ({quickInsights.topCategory.pct}%
-                    מההוצאות)
-                  </span>
-                </li>
-              )}
-              {quickInsights.largest && (
-                <li className="flex items-center gap-3">
-                  <span className="size-2.5 rounded-full shrink-0 bg-rose-500" />
-                  <span>
-                    ההוצאה הבודדת הגדולה ביותר: <b>{quickInsights.largest.title}</b> —{" "}
-                    {formatILS(Number(quickInsights.largest.amount_ils))}
-                  </span>
-                </li>
-              )}
+              <li className="flex items-center gap-3">
+                <span className="size-2.5 rounded-full shrink-0 bg-rose-500" />
+                <span>
+                  ההוצאה הבודדת הגדולה ביותר: <b>{quickInsights.largest.title}</b> —{" "}
+                  {formatILS(Number(quickInsights.largest.amount_ils))}
+                </span>
+              </li>
               <li className="flex items-center gap-3">
                 <span className="size-2.5 rounded-full shrink-0 bg-sky-500" />
                 <span>
