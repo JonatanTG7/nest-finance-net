@@ -327,7 +327,7 @@ function HouseholdSection() {
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2">
-              <div className="font-semibold">{household?.name ?? "—"}</div>
+              <div className="font-semibold">{household?.name ?? "משק הבית שלי"}</div>
               <button
                 onClick={() => {
                   setNameDraft(household?.name ?? "");

@@ -102,14 +102,29 @@ export function kindLabel(kind: string): string {
 }
 
 /**
- * Browser-tab title for the account page: the account's name once it
- * loads, the generic label while it is unknown. TRY-IT — if Jonatan
- * vetoes it after seeing it live, deleting the effect in the route
- * (and this helper) reverts it.
+ * Fee percentage for display: an unset half is 0% — a fee that was never
+ * entered is 0, not "unknown". The card's fee line shows both halves
+ * whenever at least one of them is set.
  */
-export function resolveAccountPageTitle(name: string | null | undefined): string {
-  const trimmed = name?.trim();
-  return trimmed ? trimmed : "חשבון השקעה";
+export function formatFeePercent(fee: number | null | undefined): string {
+  return `${fee ?? 0}%`;
+}
+
+/**
+ * One history value for display: a cleared/never-set value shows nothing
+ * (no "—" placeholder). Owner ids resolve through the member labels,
+ * kinds through kindLabel, fees get a % suffix.
+ */
+export function displayHistoryValue(
+  field: string,
+  value: string | null,
+  labels: Record<string, string>,
+): string {
+  if (value == null) return "";
+  if (field === "owner") return labels[value] ?? value;
+  if (field === "kind") return kindLabel(value);
+  if (field === "fee_from_balance" || field === "fee_from_deposits") return `${value}%`;
+  return value;
 }
 
 export function kindColor(kind: string): string {
