@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNT_COLORS,
   accountsOfPerson,
   diffPrivateAccountFields,
   filterAccountsByOwner,
   isSharedAccount,
   kindColor,
   kindLabel,
+  normalizeColor,
   normalizePrivateMetadata,
   sumPrivateAccountExtras,
   type PrivateMetadata,
@@ -72,6 +74,7 @@ describe("diffPrivateAccountFields", () => {
     fee_from_balance: 0.1,
     fee_from_deposits: 1.5,
     track: "מניות",
+    color: "#8b5cf6",
     notes: null,
     person: "yonatan",
   };
@@ -99,6 +102,11 @@ describe("diffPrivateAccountFields", () => {
   it("reports clearing a field as a change to null", () => {
     expect(diffPrivateAccountFields(base, { ...base, track: null })).toEqual([
       { field: "track", oldValue: "מניות", newValue: null },
+    ]);
+  });
+  it("reports a color change", () => {
+    expect(diffPrivateAccountFields(base, { ...base, color: "#10b981" })).toEqual([
+      { field: "color", oldValue: "#8b5cf6", newValue: "#10b981" },
     ]);
   });
   it("reports an owner move", () => {
@@ -144,8 +152,36 @@ describe("normalizePrivateMetadata", () => {
       fee_from_balance: null,
       fee_from_deposits: 1.5,
       track: "מניות",
+      color: "#8b5cf6",
       notes: "מספר קופה 168",
     });
+  });
+  it("defaults the color to the kind color when none is picked", () => {
+    expect(
+      normalizePrivateMetadata({
+        name: "x",
+        kind: "provident",
+        company: "",
+        fee_from_balance: "",
+        fee_from_deposits: "",
+        track: "",
+        notes: "",
+      }).color,
+    ).toBe("#10b981");
+  });
+  it("keeps a picked palette color and falls back on a bad value", () => {
+    const form = {
+      name: "x",
+      kind: "pension",
+      company: "",
+      fee_from_balance: "",
+      fee_from_deposits: "",
+      track: "",
+      notes: "",
+    };
+    expect(normalizePrivateMetadata({ ...form, color: "#EC4899" }).color).toBe("#ec4899");
+    expect(normalizePrivateMetadata({ ...form, color: "red" }).color).toBe("#8b5cf6");
+    expect(normalizePrivateMetadata({ ...form, color: "" }).color).toBe("#8b5cf6");
   });
   it("turns blank notes into null", () => {
     expect(
@@ -208,6 +244,21 @@ describe("kind labels and colors", () => {
   it("colors known kinds and falls back to a neutral color", () => {
     expect(kindColor("pension")).toBe("#8b5cf6");
     expect(kindColor("mystery")).toBe("#64748b");
+  });
+  it("offers every kind default color in the palette", () => {
+    for (const kind of ["pension", "provident", "savings", "investment", "other"]) {
+      expect(ACCOUNT_COLORS).toContain(kindColor(kind));
+    }
+  });
+});
+
+describe("normalizeColor", () => {
+  it("accepts a #rrggbb hex (lowercased) and rejects the rest", () => {
+    expect(normalizeColor("#EC4899", "pension")).toBe("#ec4899");
+    expect(normalizeColor("red", "pension")).toBe("#8b5cf6");
+    expect(normalizeColor("#12345", "provident")).toBe("#10b981");
+    expect(normalizeColor(null, "savings")).toBe("#f59e0b");
+    expect(normalizeColor(undefined, "investment")).toBe("#3b82f6");
   });
 });
 

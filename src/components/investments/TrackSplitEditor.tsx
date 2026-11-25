@@ -17,6 +17,11 @@ import { usePrivacyMode } from "@/lib/privacy";
  * incomplete (allowed — the user may only know some tracks) and blocks
  * saving when a split exceeds 100% (always a mistake). An empty
  * percentage means "unknown", not zero.
+ *
+ * NOTE: superseded — the account page's single "ערוך" entry opens
+ * PrivateAccountDialog, which now covers the split (incl. deposits
+ * split and returns) together with details and color. This component
+ * is kept for now and no longer rendered anywhere.
  */
 export function TrackSplitEditor({
   open,

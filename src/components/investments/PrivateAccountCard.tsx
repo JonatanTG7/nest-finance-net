@@ -49,7 +49,8 @@ export function PrivateAccountCard({
   /** Extra content below the card body (e.g. reorder controls). */
   footer?: React.ReactNode;
 }) {
-  const color = kindColor(account.kind);
+  // The account's own picked color (kind default when never picked).
+  const color = account.color ?? kindColor(account.kind);
   const Icon = KIND_ICONS[account.kind] ?? Wallet;
   const segments = buildSplitSegments(allocations, total.ils ?? 0);
   const feeAlert = feesAboveAverage(account);
