@@ -42,10 +42,10 @@ import { useUsdIlsRate } from "@/lib/fx";
 import { formatILS } from "@/lib/finance";
 import {
   dailyChangePct,
+  dailyRealizedPnl,
   portfolioTotals,
   positionMarketValue,
   toIls,
-  totalRealizedPnl,
   unrealizedPct,
   unrealizedPnl,
 } from "@/lib/ib-rules";
@@ -172,6 +172,9 @@ function IbPortfolio() {
     queryKey: ["ib", "transactions", selectedId],
     queryFn: () => fetchIbTransactions(selectedId!),
     enabled: !!selectedId,
+    // The header's Realized P&L is the day's figure, so it must reset at
+    // midnight even with the page left open — a 60s poll is enough.
+    refetchInterval: 60_000,
   });
   // No hardcoded fallback rate: when the rate is unavailable the ₪ values
   // show "rate unavailable" instead of a wrong number.
@@ -282,7 +285,10 @@ function IbPortfolio() {
     () => dailyChangePct(totalDaily, portfolioUsd),
     [totalDaily, portfolioUsd],
   );
-  const realizedPnlTotal = useMemo(() => totalRealizedPnl(transactions), [transactions]);
+  // Daily figure — the header's Realized P&L resets every Israel day
+  // (like the IBKR app's own Realized P&L); 0 when there were no sells
+  // today. The label stays "Realized P&L" to match IBKR.
+  const realizedPnlTotal = useMemo(() => dailyRealizedPnl(transactions), [transactions]);
 
   const sortedRows = useMemo(() => {
     const arr = [...rows];
@@ -463,20 +469,6 @@ function IbPortfolio() {
           </section>
         )}
 
-        {selectedPortfolio && (
-          <section className="px-4 pt-2 pb-1 flex items-center gap-2">
-            <span className="text-xs text-zinc-500 shrink-0">Owner</span>
-            <div className="w-48">
-              <OwnerPicker
-                value={selectedPortfolio.person ?? SHARED_OWNER}
-                onChange={(o) => moveOwner.mutate(o)}
-                ariaLabel="Portfolio owner"
-                className="h-8 text-sm bg-zinc-900 border-zinc-700 text-zinc-100"
-              />
-            </div>
-          </section>
-        )}
-
         {!selectedId ? (
           <section className="px-4 py-6">
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm">
@@ -561,7 +553,7 @@ function IbPortfolio() {
               </button>
               <button onClick={() => setSyncOpen(true)} className={actionBtnClass}>
                 <Camera className="size-4" />
-                📸 Sync from IBKR
+                Sync from IBKR
               </button>
             </div>
 
@@ -628,6 +620,26 @@ function IbPortfolio() {
               </section>
             )}
           </>
+        )}
+
+        {/* Settings — the least important things, at the very bottom:
+            moving the portfolio to another owner. Only the privacy eye
+            stays at the top. */}
+        {selectedPortfolio && (
+          <section className="px-4 mt-8 pb-6">
+            <h2 className="text-xs font-medium text-zinc-500 mb-2">Settings</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-500 shrink-0">Owner</span>
+              <div className="w-48">
+                <OwnerPicker
+                  value={selectedPortfolio.person ?? SHARED_OWNER}
+                  onChange={(o) => moveOwner.mutate(o)}
+                  ariaLabel="Portfolio owner"
+                  className="h-8 text-sm bg-zinc-900 border-zinc-700 text-zinc-100"
+                />
+              </div>
+            </div>
+          </section>
         )}
       </div>
 

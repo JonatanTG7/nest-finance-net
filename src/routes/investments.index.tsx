@@ -19,7 +19,12 @@ import { fetchVouchers } from "@/lib/vouchers";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 import { useCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
 import { computeAccountTotals } from "@/lib/account-totals";
-import { accountsOfPerson, filterAccountsByOwner } from "@/lib/private-accounts";
+import {
+  accountsOfPerson,
+  colorAfterKindChange,
+  filterAccountsByOwner,
+} from "@/lib/private-accounts";
+import { AccountColorPicker } from "@/components/investments/AccountColorPicker";
 import { SHARED_OWNER, personAccentColor, useHouseholdPersons, type OwnerId } from "@/lib/person";
 import { PersonEntryCard } from "@/components/investments/PersonEntryCard";
 import { ReorderControls } from "@/components/investments/ReorderControls";
@@ -52,6 +57,15 @@ function Investments() {
   const [balance, setBalance] = useState("");
   const [currency, setCurrency] = useState("ILS");
   const [owner, setOwner] = useState<OwnerId>(SHARED_OWNER);
+  // Hand-picked card color (null until picked — the picker shows the kind
+  // default). Until the user picks one, changing the type follows the new
+  // type's default color, same as the private-account dialog.
+  const [color, setColor] = useState<string | null>(null);
+  const [colorTouched, setColorTouched] = useState(false);
+  function changeKind(next: string) {
+    setKind(next);
+    setColor((c) => colorAfterKindChange(c, colorTouched, next));
+  }
   // Owner filter for the cards grid: "all" is the unfiltered view (shared
   // cards + person entries), "shared" shows the shared cards on their own,
   // and a person id shows that person's accounts as cards.
@@ -67,12 +81,15 @@ function Investments() {
         balance: Number(balance || 0),
         currency,
         person: owner,
+        color: color ?? undefined,
       });
       await qc.invalidateQueries({ queryKey: ["investment_accounts"] });
       setAdding(false);
       setName("");
       setBalance("");
       setOwner(SHARED_OWNER);
+      setColor(null);
+      setColorTouched(false);
       toast.success("החשבון נוסף");
     } catch {
       toast.error("לא הצלחנו להוסיף את החשבון. בדוק את הפרטים ונסה שוב.");
@@ -194,7 +211,7 @@ function Investments() {
               {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setEditingOrder((v) => !v)}
               aria-pressed={editingOrder}
@@ -210,15 +227,23 @@ function Investments() {
                 </>
               )}
             </Button>
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="size-4" />
-              חשבון חדש
-            </Button>
           </div>
         </div>
       </header>
 
+      {/* Account actions sit above the total — compact, always in reach,
+          same as the person pages. Opening an account is a once-per-person
+          action, so it lives here as a small button, not in the header. */}
       <section className="px-5 md:px-0">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => setAdding(true)}>
+            <Plus className="size-4" />
+            חשבון חדש
+          </Button>
+        </div>
+      </section>
+
+      <section className="px-5 md:px-0 mt-4">
         <div className="rounded-3xl bg-gradient-to-br from-savings to-savings/70 text-foreground p-6">
           <p className="text-sm opacity-80">סך נכסים (ש"ח)</p>
           <p className="text-4xl font-bold mt-2 tabular-nums">
@@ -437,7 +462,7 @@ function Investments() {
               <select
                 aria-label="סוג חשבון"
                 value={kind}
-                onChange={(e) => setKind(e.target.value)}
+                onChange={(e) => changeKind(e.target.value)}
                 className="w-full h-10 border rounded-md bg-background px-3"
               >
                 <option value="savings">חיסכון / פיקדון</option>
@@ -446,6 +471,14 @@ function Investments() {
                 <option value="provident">קופת גמל / השתלמות</option>
               </select>
             </label>
+            <AccountColorPicker
+              value={color}
+              kind={kind}
+              onChange={(c) => {
+                setColorTouched(true);
+                setColor(c);
+              }}
+            />
             <label className="block text-sm">
               מטבע
               <select
