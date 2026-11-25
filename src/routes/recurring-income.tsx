@@ -13,6 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RecurringTabs } from "@/components/RecurringTabs";
 import {
   deleteRecurringIncome,
@@ -271,193 +281,223 @@ function RecurringIncomeDialog({
     }
   };
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const remove = async () => {
-    if (!item || !window.confirm("למחוק את ההכנסה הקבועה? תנועות שכבר נרשמו יישארו.")) return;
+    if (!item) return;
     await deleteRecurringIncome(item.id);
     invalidate();
     onClose();
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent dir="rtl" className="max-w-md max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{item ? "עריכת הכנסה קבועה" : "הכנסה קבועה חדשה"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              className="w-16 text-center text-xl"
-              value={f.emoji}
-              onChange={(e) => set("emoji", e.target.value)}
-            />
-            <Input
-              placeholder="שם (קצבת ילדים, שכר דירה…)"
-              value={f.name}
-              onChange={(e) => set("name", e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              inputMode="decimal"
-              placeholder={
-                duration === "count" && amountMode === "total" ? "סכום כולל" : "סכום לכל חודש"
-              }
-              aria-label={
-                duration === "count" && amountMode === "total" ? "סכום כולל" : "סכום לכל חודש"
-              }
-              value={f.amount || ""}
-              onChange={(e) => set("amount", Number(e.target.value))}
-            />
-            <select
-              className="rounded-md border bg-background px-2"
-              value={f.currency}
-              onChange={(e) => set("currency", e.target.value)}
-            >
-              {["ILS", "USD", "EUR"].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <label className="block text-sm">
-            יום כניסה בחודש
-            <Input
-              type="number"
-              min={1}
-              max={31}
-              value={f.billing_day}
-              onChange={(e) => set("billing_day", Number(e.target.value))}
-            />
-          </label>
-          <div>
-            <p className="text-sm mb-1">התקבל ע״י</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(["yonatan", "shiri", "shared"] as Person[]).map((p) => (
-                <Button
-                  key={p}
-                  type="button"
-                  variant={f.entered_by === p ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => set("entered_by", p)}
-                >
-                  {labels[p]}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-3 text-sm">
-            <label>
-              תחילת ההכנסה
+    <>
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent dir="rtl" className="max-w-md max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{item ? "עריכת הכנסה קבועה" : "הכנסה קבועה חדשה"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
               <Input
-                type="date"
-                value={f.start_date}
-                onChange={(e) => set("start_date", e.target.value)}
+                className="w-16 text-center text-xl"
+                value={f.emoji}
+                onChange={(e) => set("emoji", e.target.value)}
+              />
+              <Input
+                placeholder="שם (קצבת ילדים, שכר דירה…)"
+                value={f.name}
+                onChange={(e) => set("name", e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder={
+                  duration === "count" && amountMode === "total" ? "סכום כולל" : "סכום לכל חודש"
+                }
+                aria-label={
+                  duration === "count" && amountMode === "total" ? "סכום כולל" : "סכום לכל חודש"
+                }
+                value={f.amount || ""}
+                onChange={(e) => set("amount", Number(e.target.value))}
+              />
+              <select
+                className="rounded-md border bg-background px-2"
+                value={f.currency}
+                onChange={(e) => set("currency", e.target.value)}
+              >
+                {["ILS", "USD", "EUR"].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <label className="block text-sm">
+              יום כניסה בחודש
+              <Input
+                type="number"
+                min={1}
+                max={31}
+                value={f.billing_day}
+                onChange={(e) => set("billing_day", Number(e.target.value))}
               />
             </label>
-            <div className="grid grid-cols-3 gap-1" role="group" aria-label="משך ההכנסה">
-              {(
-                [
-                  { key: "unlimited", label: "ללא הגבלה" },
-                  { key: "count", label: "מספר פעמים" },
-                  { key: "date", label: "תאריך סיום" },
-                ] as const
-              ).map(({ key, label }) => (
-                <Button
-                  key={key}
-                  type="button"
-                  size="sm"
-                  variant={duration === key ? "default" : "outline"}
-                  aria-pressed={duration === key}
-                  onClick={() => {
-                    setDuration(key);
-                    if (key === "count" && f.payment_count == null) set("payment_count", 5);
-                  }}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-            {duration === "count" && (
-              <label className="block">
-                מספר פעמים
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={f.payment_count ?? ""}
-                  onChange={(e) =>
-                    set("payment_count", e.target.value === "" ? null : Number(e.target.value))
-                  }
-                />
-              </label>
-            )}
-            {duration === "count" && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2" role="group" aria-label="סוג הסכום">
+            <div>
+              <p className="text-sm mb-1">התקבל ע״י</p>
+              <div className="grid grid-cols-3 gap-2">
+                {(["yonatan", "shiri", "shared"] as Person[]).map((p) => (
                   <Button
+                    key={p}
                     type="button"
+                    variant={f.entered_by === p ? "default" : "outline"}
                     size="sm"
-                    variant={amountMode === "payment" ? "default" : "outline"}
-                    aria-pressed={amountMode === "payment"}
-                    onClick={() => {
-                      if (amountMode === "total" && !splitError) set("amount", paymentAmount);
-                      setAmountMode("payment");
-                    }}
+                    onClick={() => set("entered_by", p)}
                   >
-                    סכום לכל חודש
+                    {labels[p]}
                   </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={amountMode === "total" ? "default" : "outline"}
-                    aria-pressed={amountMode === "total"}
-                    onClick={() => {
-                      if (amountMode === "payment")
-                        set("amount", Math.round(f.amount * (f.payment_count ?? 1) * 100) / 100);
-                      setAmountMode("total");
-                    }}
-                  >
-                    סכום כולל
-                  </Button>
-                </div>
-                {amountMode === "total" && f.amount > 0 && (
-                  <p
-                    className={splitError ? "text-destructive" : "text-muted-foreground"}
-                    role="status"
-                  >
-                    {splitError ||
-                      `${f.payment_count} פעמים × ${new Intl.NumberFormat("he-IL", { style: "currency", currency: f.currency }).format(paymentAmount)}`}
-                  </p>
-                )}
+                ))}
               </div>
-            )}
-            {duration === "date" && (
-              <label className="block">
-                תאריך סיום
+            </div>
+            <div className="space-y-3 text-sm">
+              <label>
+                תחילת ההכנסה
                 <Input
                   type="date"
-                  value={f.end_date ?? ""}
-                  onChange={(e) => set("end_date", e.target.value || null)}
+                  value={f.start_date}
+                  onChange={(e) => set("start_date", e.target.value)}
                 />
               </label>
-            )}
+              <div className="grid grid-cols-3 gap-1" role="group" aria-label="משך ההכנסה">
+                {(
+                  [
+                    { key: "unlimited", label: "ללא הגבלה" },
+                    { key: "count", label: "מספר פעמים" },
+                    { key: "date", label: "תאריך סיום" },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <Button
+                    key={key}
+                    type="button"
+                    size="sm"
+                    variant={duration === key ? "default" : "outline"}
+                    aria-pressed={duration === key}
+                    onClick={() => {
+                      setDuration(key);
+                      if (key === "count" && f.payment_count == null) set("payment_count", 5);
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              {duration === "count" && (
+                <label className="block">
+                  מספר פעמים
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={f.payment_count ?? ""}
+                    onChange={(e) =>
+                      set("payment_count", e.target.value === "" ? null : Number(e.target.value))
+                    }
+                  />
+                </label>
+              )}
+              {duration === "count" && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2" role="group" aria-label="סוג הסכום">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={amountMode === "payment" ? "default" : "outline"}
+                      aria-pressed={amountMode === "payment"}
+                      onClick={() => {
+                        if (amountMode === "total" && !splitError) set("amount", paymentAmount);
+                        setAmountMode("payment");
+                      }}
+                    >
+                      סכום לכל חודש
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={amountMode === "total" ? "default" : "outline"}
+                      aria-pressed={amountMode === "total"}
+                      onClick={() => {
+                        if (amountMode === "payment")
+                          set("amount", Math.round(f.amount * (f.payment_count ?? 1) * 100) / 100);
+                        setAmountMode("total");
+                      }}
+                    >
+                      סכום כולל
+                    </Button>
+                  </div>
+                  {amountMode === "total" && f.amount > 0 && (
+                    <p
+                      className={splitError ? "text-destructive" : "text-muted-foreground"}
+                      role="status"
+                    >
+                      {splitError ||
+                        `${f.payment_count} פעמים × ${new Intl.NumberFormat("he-IL", { style: "currency", currency: f.currency }).format(paymentAmount)}`}
+                    </p>
+                  )}
+                </div>
+              )}
+              {duration === "date" && (
+                <label className="block">
+                  תאריך סיום
+                  <Input
+                    type="date"
+                    value={f.end_date ?? ""}
+                    onChange={(e) => set("end_date", e.target.value || null)}
+                  />
+                </label>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              התנועה תירשם אוטומטית רק ביום הכניסה עצמו. שינוי סכום חל מעכשיו והלאה.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            התנועה תירשם אוטומטית רק ביום הכניסה עצמו. שינוי סכום חל מעכשיו והלאה.
-          </p>
-        </div>
-        <DialogFooter className="gap-2">
-          {item && (
-            <Button variant="ghost" className="text-destructive" onClick={remove}>
-              מחק
+          <DialogFooter className="gap-2">
+            {item && (
+              <Button
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => setConfirmDelete(true)}
+              >
+                מחק
+              </Button>
+            )}
+            <Button onClick={save} disabled={busy}>
+              שמור
             </Button>
-          )}
-          <Button onClick={save} disabled={busy}>
-            שמור
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק את ההכנסה הקבועה?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ההכנסה הקבועה תימחק ולא יירשמו כניסות חדשות. תנועות שכבר נרשמו יישארו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                setConfirmDelete(false);
+                void remove();
+              }}
+            >
+              מחק
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
