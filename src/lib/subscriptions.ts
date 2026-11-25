@@ -90,11 +90,30 @@ export function syncSubscriptions(): Promise<number> {
   return syncing;
 }
 
+/**
+ * Category a generated fixed charge is filed under: the subscription's own
+ * category, falling back to the global "מנויים" category when it has none —
+ * a fixed charge must never land uncategorized. When there is no fallback
+ * either, the old behavior (null) is kept rather than failing the sync.
+ */
+export function categoryIdForSync(own: string | null, fallback: string | null): string | null {
+  return own ?? fallback;
+}
+
 async function doSync(): Promise<number> {
   const subs = (await fetchSubscriptions()).filter((s) => s.active);
   if (!subs.length) return 0;
   const today = todayISO();
   const household_id = await getMyHouseholdId();
+  // Global "מנויים" category (household_id NULL), resolved by name — never
+  // a hardcoded id, so the code stays generic across households.
+  const { data: subsCat } = await db
+    .from("categories")
+    .select("id")
+    .is("household_id", null)
+    .eq("name", "מנויים")
+    .maybeSingle();
+  const subscriptionsCategoryId: string | null = subsCat?.id ?? null;
   const { data: existing, error } = await db
     .from("transactions")
     .select("subscription_id, occurred_at")
@@ -139,7 +158,7 @@ async function doSync(): Promise<number> {
         currency: s.currency,
         fx_rate_to_ils: rate,
         amount_ils: Number((s.amount * rate).toFixed(2)),
-        category_id: s.category_id,
+        category_id: categoryIdForSync(s.category_id, subscriptionsCategoryId),
         title: `${s.emoji} ${s.name}`.trim(),
         note: "נוצר אוטומטית ממרכז המנויים",
         occurred_at: d,

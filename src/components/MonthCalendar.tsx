@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
-import { fetchTransactionsBetween, type Transaction } from "@/lib/db";
+import { fetchCategories, fetchTransactionsBetween, type Transaction } from "@/lib/db";
 import { formatILS, isCashflowOut, parseMonthKey } from "@/lib/finance";
 import { isoLocal, todayISO } from "@/lib/dates";
 import { fetchRateToIls } from "@/lib/fx";
@@ -40,6 +40,10 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
   const today = todayISO();
   const { data: cards = [] } = useCreditCards();
   const { data: subs = [] } = useSubscriptions();
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+  });
 
   // FX rates for pending fixed charges (converted to ₪ for the day totals).
   // A currency without a rate is left out of the totals — never guessed.
@@ -73,7 +77,7 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
       d.list.push(t);
       byDay.set(t.occurred_at, d);
     }
-    const allEvents = monthEvents(y, m, cards, subs, cardTxs);
+    const allEvents = monthEvents(y, m, cards, subs, cardTxs, categories);
     const events = new Map<string, CalendarEvent[]>();
     for (const e of allEvents) {
       events.set(e.date, [...(events.get(e.date) ?? []), e]);
@@ -103,7 +107,7 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
     const stats = computeCalendarStats(cells, byDay, today);
     return { cells, byDay, events, stats, pendingIls };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, txs, today, cards, subs, cardTxs, rates.data]);
+  }, [month, txs, today, cards, subs, cardTxs, categories, rates.data]);
 
   const weeks = Math.ceil(cells.length / 7);
   const openExpanded = () => {
@@ -307,7 +311,12 @@ function EventRow({ e }: { e: CalendarEvent }) {
   return (
     <div className="flex items-center gap-2 text-xs py-0.5">
       <span>{icon}</span>
-      <span className="flex-1 truncate">{e.kind === "card" ? `חיוב ${e.label}` : e.label}</span>
+      <span className="flex-1 truncate">
+        {e.kind === "card" ? `חיוב ${e.label}` : e.label}
+        {e.kind === "sub" && e.category ? (
+          <span className="text-muted-foreground"> · {e.category}</span>
+        ) : null}
+      </span>
       {amount && <span className="font-semibold" dir="auto">{amount}</span>}
     </div>
   );
