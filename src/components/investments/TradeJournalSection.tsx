@@ -302,12 +302,6 @@ export function TradeJournalSection({ accountId }: { accountId: string }) {
               qc.invalidateQueries({ queryKey: ["trade-journal"] });
               setFormOpen(false);
             }}
-            onRequestDelete={(e) => {
-              // Close the form first so the delete confirmation dialog
-              // opens on its own instead of stacking on top of the form.
-              setFormOpen(false);
-              setDeleteTarget(e);
-            }}
           />
         </DialogContent>
       </Dialog>
@@ -344,12 +338,10 @@ function TradeJournalForm({
   accountId,
   entry,
   onSaved,
-  onRequestDelete,
 }: {
   accountId: string;
   entry: TradeJournalEntry | null;
   onSaved: () => void;
-  onRequestDelete: (entry: TradeJournalEntry) => void;
 }) {
   const [symbol, setSymbol] = useState(entry?.symbol ?? "");
   const [side, setSide] = useState<TradeSide>((entry?.side as TradeSide) ?? "long");
@@ -505,21 +497,6 @@ function TradeJournalForm({
       <Button type="submit" disabled={busy} className="w-full">
         {busy ? "שומר…" : entry ? "שמור שינויים" : "הוסף עסקה"}
       </Button>
-
-      {/* Second, obvious way to delete a trade in edit mode — opens the
-          same confirmation dialog as the ⋮ menu, so deleting never depends
-          on reaching the menu button. */}
-      {entry && (
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full text-destructive border-destructive/40 hover:text-destructive hover:bg-destructive/10"
-          onClick={() => onRequestDelete(entry)}
-        >
-          <Trash2 className="size-4 me-2" />
-          מחק עסקה
-        </Button>
-      )}
     </form>
   );
 }

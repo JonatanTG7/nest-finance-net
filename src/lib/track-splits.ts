@@ -116,6 +116,19 @@ export function normalizePct(value: number | null | undefined): number | null {
   return Math.min(100, Math.max(0, Math.round(value * 10) / 10));
 }
 
+/**
+ * Whether the track-split section renders for an account: it has
+ * allocation rows, or a legacy single-track value. A trackless
+ * account (e.g. a day-trading account) shows no split section at all
+ * — not even the "add tracks" empty state.
+ */
+export function hasTrackSplit(
+  allocations: { allocation_pct_balance: number | null; allocation_pct_deposits: number | null }[],
+  legacyTrack: string | null | undefined,
+): boolean {
+  return allocations.length > 0 || (legacyTrack != null && legacyTrack.trim() !== "");
+}
+
 /** Sum of the set percentages for one split (nulls count as 0). */
 export function sumSplitPct(
   allocations: { allocation_pct_balance: number | null; allocation_pct_deposits: number | null }[],

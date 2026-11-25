@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   mergeHouseholdPersons,
   personAccentColor,
+  resolveOwnerLabel,
   resolvePersonPageTitle,
   type HouseholdPerson,
 } from "./person";
@@ -50,6 +51,23 @@ describe("mergeHouseholdPersons", () => {
         [],
       ).map((p) => p.person),
     ).toEqual(["yonatan"]);
+  });
+});
+
+describe("resolveOwnerLabel", () => {
+  const labels = { yonatan: "Jonatan", shiri: "Shiri", shared: "Shared", "person:c1": "Eitan" };
+
+  it("returns the label for a known owner", () => {
+    expect(resolveOwnerLabel(labels, "yonatan")).toBe("Jonatan");
+    expect(resolveOwnerLabel(labels, "person:c1")).toBe("Eitan");
+  });
+  it("falls back to the shared label for a null owner", () => {
+    expect(resolveOwnerLabel(labels, null)).toBe("Shared");
+    expect(resolveOwnerLabel(labels, undefined)).toBe("Shared");
+  });
+  it("never renders a dash for an unknown or not-yet-loaded owner id", () => {
+    expect(resolveOwnerLabel(labels, "person:gone")).toBe("Shared");
+    expect(resolveOwnerLabel({}, "yonatan")).toBe("Shared");
   });
 });
 
