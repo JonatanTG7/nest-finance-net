@@ -9,6 +9,7 @@ import {
   PRIVATE_ACCOUNT_KINDS,
   PRIVATE_KIND_LABELS,
   createPrivateAccount,
+  kindColor,
   kindLabel,
   updateAccountStatementColumns,
   updatePrivateAccount,
@@ -200,6 +201,10 @@ export function StatementImportDialog({
         fee_from_balance: feeBalance,
         fee_from_deposits: feeDeposits,
         track: account?.track ?? "",
+        // A statement import never touches the color — carry the existing
+        // one through on update so an import can't reset a hand-picked
+        // color to the kind default (same for notes below).
+        color: account?.color ?? kindColor(kind),
         // A statement import never touches notes — carry the existing
         // ones through on update so an import can't wipe them.
         notes: account?.notes ?? "",
