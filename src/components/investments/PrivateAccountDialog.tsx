@@ -16,10 +16,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TrackPicker } from "@/components/investments/TrackPicker";
+import { AccountColorPicker } from "@/components/investments/AccountColorPicker";
 import {
-  ACCOUNT_COLORS,
   PRIVATE_ACCOUNT_KINDS,
   PRIVATE_KIND_LABELS,
+  colorAfterKindChange,
   createPrivateAccount,
   deletePrivateAccount,
   kindColor,
@@ -160,7 +161,7 @@ export function PrivateAccountDialog({
 
   /** Changing the type re-colors to the new type's default, unless the user already picked a color by hand. */
   const changeKind = (kind: string) =>
-    setForm((f) => ({ ...f, kind, color: colorTouched ? f.color : kindColor(kind) }));
+    setForm((f) => ({ ...f, kind, color: colorAfterKindChange(f.color, colorTouched, kind) }));
 
   const invalidate = (accountId?: string) => {
     qc.invalidateQueries({ queryKey: ["investment_accounts"] });
@@ -268,32 +269,14 @@ export function PrivateAccountDialog({
                 ))}
               </select>
             </label>
-            <div className="block text-sm">
-              <span className="block mb-1.5">צבע</span>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="צבע החשבון">
-                {ACCOUNT_COLORS.map((c) => {
-                  const selected = (form.color ?? kindColor(form.kind)) === c;
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={`צבע ${c}`}
-                      aria-pressed={selected}
-                      onClick={() => {
-                        setColorTouched(true);
-                        set({ color: c });
-                      }}
-                      className={
-                        selected
-                          ? "size-8 rounded-full ring-2 ring-offset-2 ring-foreground"
-                          : "size-8 rounded-full hover:scale-110 transition"
-                      }
-                      style={{ background: c }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+            <AccountColorPicker
+              value={form.color}
+              kind={form.kind}
+              onChange={(c) => {
+                setColorTouched(true);
+                set({ color: c });
+              }}
+            />
             <label className="block text-sm">
               חברה מנהלת
               <Input
