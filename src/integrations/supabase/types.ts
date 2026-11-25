@@ -65,6 +65,54 @@ export type Database = {
           },
         ];
       };
+      account_custom_fields: {
+        Row: {
+          created_at: string;
+          household_id: string;
+          id: string;
+          investment_account_id: string;
+          label: string;
+          sort_order: number;
+          updated_at: string;
+          value: string;
+        };
+        Insert: {
+          created_at?: string;
+          household_id: string;
+          id?: string;
+          investment_account_id: string;
+          label: string;
+          sort_order?: number;
+          updated_at?: string;
+          value: string;
+        };
+        Update: {
+          created_at?: string;
+          household_id?: string;
+          id?: string;
+          investment_account_id?: string;
+          label?: string;
+          sort_order?: number;
+          updated_at?: string;
+          value?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "account_custom_fields_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "account_custom_fields_investment_account_id_fkey";
+            columns: ["investment_account_id"];
+            isOneToOne: false;
+            referencedRelation: "investment_accounts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       categories: {
         Row: {
           color: string;
@@ -588,6 +636,7 @@ export type Database = {
           expected_monthly_pension: number | null;
           fee_from_balance: number | null;
           fee_from_deposits: number | null;
+          hidden_detail_fields: string[];
           household_id: string;
           id: string;
           kind: string;
@@ -617,6 +666,7 @@ export type Database = {
           expected_monthly_pension?: number | null;
           fee_from_balance?: number | null;
           fee_from_deposits?: number | null;
+          hidden_detail_fields?: string[];
           household_id: string;
           id?: string;
           kind?: string;
@@ -646,6 +696,7 @@ export type Database = {
           expected_monthly_pension?: number | null;
           fee_from_balance?: number | null;
           fee_from_deposits?: number | null;
+          hidden_detail_fields?: string[];
           household_id?: string;
           id?: string;
           kind?: string;

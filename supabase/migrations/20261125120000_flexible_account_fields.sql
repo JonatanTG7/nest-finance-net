@@ -8,9 +8,10 @@
 --   * account_custom_fields holds free-text label + value rows the owner
 --     adds to an account (rendered with the account fields, above the
 --     meta block), mirroring track_allocations;
---   * private_account_history accepts the two new change kinds
---     ('custom_field', 'hidden_fields') so custom-field edits and
---     hide/show toggles are logged like any other metadata edit.
+--   * private_account_history accepts the new change kinds
+--     ('custom_field', 'hidden_fields', 'color') so custom-field edits,
+--     hide/show toggles and color picks are logged like any other
+--     metadata edit.
 -- Existing rows are untouched (empty hidden list, no custom fields).
 
 ALTER TABLE public.investment_accounts
@@ -39,9 +40,9 @@ CREATE POLICY account_custom_fields_delete ON public.account_custom_fields FOR D
 
 CREATE INDEX account_custom_fields_account_idx ON public.account_custom_fields (household_id, investment_account_id, sort_order);
 
--- History field values are a fixed CHECK list; extend it for the two new
+-- History field values are a fixed CHECK list; extend it for the new
 -- change kinds. The constraint name is Postgres' generated
--- "<table>_<column>_check".
+-- "<table>_<column>_check" (verified live 2026-11-25).
 ALTER TABLE public.private_account_history DROP CONSTRAINT IF EXISTS private_account_history_field_check;
 ALTER TABLE public.private_account_history ADD CONSTRAINT private_account_history_field_check
-  CHECK (field IN ('company', 'fee_from_balance', 'fee_from_deposits', 'track', 'name', 'kind', 'owner', 'custom_field', 'hidden_fields'));
+  CHECK (field IN ('company', 'fee_from_balance', 'fee_from_deposits', 'track', 'name', 'kind', 'owner', 'color', 'custom_field', 'hidden_fields'));
