@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACCOUNT_COLORS,
   accountsOfPerson,
+  colorAfterKindChange,
   diffPrivateAccountFields,
   filterAccountsByOwner,
   isSharedAccount,
@@ -259,6 +260,21 @@ describe("normalizeColor", () => {
     expect(normalizeColor("#12345", "provident")).toBe("#10b981");
     expect(normalizeColor(null, "savings")).toBe("#f59e0b");
     expect(normalizeColor(undefined, "investment")).toBe("#3b82f6");
+  });
+});
+
+describe("colorAfterKindChange", () => {
+  it("follows the new kind default until the user picks a color by hand", () => {
+    expect(colorAfterKindChange(null, false, "pension")).toBe("#8b5cf6");
+    expect(colorAfterKindChange("#f59e0b", false, "investment")).toBe("#3b82f6");
+  });
+  it("keeps a hand-picked color when the kind changes", () => {
+    expect(colorAfterKindChange("#ec4899", true, "pension")).toBe("#ec4899");
+    expect(colorAfterKindChange("#EC4899", true, "provident")).toBe("#ec4899");
+  });
+  it("falls back to the kind default when a hand-picked color is missing", () => {
+    expect(colorAfterKindChange(null, true, "savings")).toBe("#f59e0b");
+    expect(colorAfterKindChange(undefined, true, "provident")).toBe("#10b981");
   });
 });
 

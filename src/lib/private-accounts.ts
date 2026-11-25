@@ -137,6 +137,19 @@ export function normalizeColor(raw: string | null | undefined, kind: string): st
   return /^#[0-9a-fA-F]{6}$/.test(c) ? c.toLowerCase() : kindColor(kind);
 }
 
+/**
+ * When the account type changes, the color follows the new type's default —
+ * unless the user already picked a color by hand, in which case it stays.
+ * Shared by the private-account dialog and the index "new account" dialog.
+ */
+export function colorAfterKindChange(
+  current: string | null | undefined,
+  colorTouched: boolean,
+  kind: string,
+): string {
+  return colorTouched ? normalizeColor(current, kind) : kindColor(kind);
+}
+
 /** Where the account's numbers came from (set by a statement import). */
 export const DATA_SOURCE_LABELS: Record<string, string> = {
   manual: "הזנה ידנית",
