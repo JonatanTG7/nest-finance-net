@@ -5,9 +5,10 @@ import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import { fetchTransactionsBetween, type Transaction } from "@/lib/db";
 import { formatILS, isCashflowOut, parseMonthKey } from "@/lib/finance";
 import { isoLocal, todayISO } from "@/lib/dates";
+import { fetchRateToIls } from "@/lib/fx";
 import { useCreditCards } from "@/lib/credit_cards";
 import { useSubscriptions } from "@/lib/subscriptions";
-import { monthEvents, type CalendarEvent } from "@/lib/calendar-events";
+import { monthEvents, pendingFixedCharges, type CalendarEvent } from "@/lib/calendar-events";
 import { computeCalendarStats, type CalendarDayData } from "@/lib/calendar-stats";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,18 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
   const { data: cards = [] } = useCreditCards();
   const { data: subs = [] } = useSubscriptions();
 
+  // FX rates for pending fixed charges (converted to ₪ for the day totals).
+  // A currency without a rate is left out of the totals — never guessed.
+  const subCurrencies = [...new Set(subs.filter((s) => s.active).map((s) => s.currency))].sort();
+  const rates = useQuery({
+    queryKey: ["fx", "calendar-pending", subCurrencies],
+    queryFn: async () =>
+      Object.fromEntries(
+        await Promise.all(subCurrencies.map(async (c) => [c, await fetchRateToIls(c)] as const)),
+      ),
+    staleTime: 60 * 60 * 1000,
+  });
+
   const first = parseMonthKey(month);
   const y = first.getFullYear();
   const m = first.getMonth();
@@ -49,7 +62,7 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
     queryFn: () => fetchTransactionsBetween(isoLocal(new Date(y, m - 1, 1)), isoLocal(new Date(y, m + 1, 1))),
   });
 
-  const { cells, byDay, events, stats } = useMemo(() => {
+  const { cells, byDay, events, stats, pendingIls } = useMemo(() => {
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     const byDay = new Map<string, DayData>();
     for (const t of txs) {
@@ -60,18 +73,37 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
       d.list.push(t);
       byDay.set(t.occurred_at, d);
     }
+    const allEvents = monthEvents(y, m, cards, subs, cardTxs);
     const events = new Map<string, CalendarEvent[]>();
-    for (const e of monthEvents(y, m, cards, subs, cardTxs)) {
+    for (const e of allEvents) {
       events.set(e.date, [...(events.get(e.date) ?? []), e]);
+    }
+    // Fixed charges expected on a day but not yet recorded as a transaction
+    // count toward that day's total, so the day summary shows the full
+    // expected spend. Charges already recorded are never added twice
+    // (pendingFixedCharges matches on subscription_id + date).
+    const pendingIls = new Map<string, number>();
+    for (const p of pendingFixedCharges(allEvents, txs)) {
+      const rate = p.currency === "ILS" ? 1 : rates.data?.[p.currency];
+      if (!Number.isFinite(rate) || (rate as number) <= 0) continue;
+      pendingIls.set(
+        p.date,
+        (pendingIls.get(p.date) ?? 0) + Math.round(p.amount * (rate as number) * 100) / 100,
+      );
+    }
+    for (const [date, amount] of pendingIls) {
+      const d = byDay.get(date) ?? { out: 0, inc: 0, list: [] };
+      d.out += amount;
+      byDay.set(date, d);
     }
     const cells: (string | null)[] = Array(first.getDay()).fill(null);
     for (let i = 1; i <= daysInMonth; i++) cells.push(isoLocal(new Date(y, m, i)));
     while (cells.length % 7) cells.push(null);
 
     const stats = computeCalendarStats(cells, byDay, today);
-    return { cells, byDay, events, stats };
+    return { cells, byDay, events, stats, pendingIls };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, txs, today, cards, subs, cardTxs]);
+  }, [month, txs, today, cards, subs, cardTxs, rates.data]);
 
   const weeks = Math.ceil(cells.length / 7);
   const openExpanded = () => {
@@ -81,11 +113,11 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
   };
 
   const grid = (big: boolean) => (
-    <div className="rounded-2xl bg-card border p-2">
-      <div className="grid grid-cols-7 text-center text-[11px] text-muted-foreground mb-1">
+    <div className="rounded-2xl bg-card border p-2.5">
+      <div className="grid grid-cols-7 text-center text-xs font-semibold text-muted-foreground mb-1.5">
         {DOW.map((d) => <div key={d} className="py-1">{d}</div>)}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5">
         {cells.map((c, i) => {
           if (!c) return <div key={i} />;
           const d = byDay.get(c);
@@ -96,21 +128,41 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
               key={c}
               onClick={() => setSelected(c)}
               className={cn(
-                "rounded-lg flex flex-col items-center justify-start pt-1 text-xs border border-transparent transition",
-                big ? "min-h-20" : "aspect-square",
+                "rounded-xl flex flex-col items-center justify-start pt-1.5 pb-1 text-xs border border-transparent transition",
+                big ? "min-h-24" : "min-h-16",
                 d?.out ? "bg-destructive/10" : "bg-muted/30",
                 future && !ev.length && "opacity-50",
                 c === today && "border-primary ring-1 ring-primary",
                 selected === c && "bg-primary/20",
               )}
             >
-              <span className="font-semibold">{Number(c.slice(8))}</span>
+              <span className={cn("font-bold", big ? "text-base" : "text-sm")}>
+                {Number(c.slice(8))}
+              </span>
               {d?.out ? (
-                <span className="text-[9px] text-destructive leading-tight" dir="ltr">{Math.round(d.out).toLocaleString()}</span>
+                <span
+                  className={cn(
+                    "text-destructive leading-tight tabular-nums",
+                    big ? "text-xs" : "text-[11px]",
+                  )}
+                  dir="ltr"
+                >
+                  {Math.round(d.out).toLocaleString()}
+                </span>
               ) : !future ? (
-                <span className="text-[10px] text-income">✓</span>
+                <span className="text-[11px] text-income">✓</span>
               ) : null}
-              {d?.inc ? <span className="size-1.5 rounded-full bg-income mt-0.5" /> : null}
+              {d?.inc ? (
+                <span
+                  className={cn(
+                    "text-income leading-tight tabular-nums",
+                    big ? "text-xs" : "text-[11px]",
+                  )}
+                  dir="ltr"
+                >
+                  +{Math.round(d.inc).toLocaleString()}
+                </span>
+              ) : null}
               <EventIcons events={ev} />
             </button>
           );
@@ -156,7 +208,10 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
   };
 
   const sel = selected ? byDay.get(selected) : undefined;
-  const selEvents = selected ? events.get(selected) ?? [] : [];
+  const selEvents = selected ? (events.get(selected) ?? []) : [];
+  const selPending = selected ? (pendingIls.get(selected) ?? 0) : 0;
+  const selPendingLabel =
+    selPending > 0 ? ` · ${formatILS(Math.round(selPending))} קבועות` : "";
 
   return (
     <div className="space-y-3">
@@ -181,7 +236,7 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
 
       {expanded && (
         <div className="fixed inset-0 z-40 bg-background overflow-y-auto">
-          <div className="max-w-2xl mx-auto p-4 space-y-3">
+          <div className="max-w-3xl mx-auto p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-lg">{first.toLocaleDateString("he-IL", { month: "long", year: "numeric" })}</h2>
               <button onClick={() => setExpanded(false)} aria-label="סגור"><X className="size-6" /></button>
@@ -193,7 +248,9 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">💰 משכורת · 💳 חיוב אשראי · 🔁 קבועה · נקודה ירוקה = הכנסה</p>
+            <p className="text-xs text-muted-foreground">
+              💰 משכורת · 💳 חיוב אשראי · 🔁 קבועה · סכום ירוק = הכנסה
+            </p>
             {view === "month" ? grid(true) : weekView()}
           </div>
         </div>
@@ -210,7 +267,9 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
             </div>
             {selEvents.length > 0 && (
               <div className="mb-4 rounded-xl bg-muted/40 p-3">
-                <div className="text-xs font-semibold text-muted-foreground mb-1">צפוי ביום זה</div>
+                <div className="text-xs font-semibold text-muted-foreground mb-1">
+                  צפוי ביום זה{selPendingLabel}
+                </div>
                 {selEvents.map((e, k) => <EventRow key={k} e={e} />)}
               </div>
             )}
