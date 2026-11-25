@@ -9,10 +9,11 @@ import { fetchRateToIls } from "@/lib/fx";
 import { useCreditCards } from "@/lib/credit_cards";
 import { useSubscriptions } from "@/lib/subscriptions";
 import { monthEvents, pendingFixedCharges, type CalendarEvent } from "@/lib/calendar-events";
+import { computeCalendarStats, type CalendarDayData } from "@/lib/calendar-stats";
 import { cn } from "@/lib/utils";
 
 const DOW = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
-type DayData = { out: number; inc: number; list: Transaction[] };
+type DayData = CalendarDayData;
 
 function money(amount: number, currency = "ILS") {
   if (currency === "ILS") return formatILS(Math.round(amount));
@@ -99,23 +100,8 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
     for (let i = 1; i <= daysInMonth; i++) cells.push(isoLocal(new Date(y, m, i)));
     while (cells.length % 7) cells.push(null);
 
-    let noSpend = 0, total = 0, elapsed = 0;
-    let heavy: { day: string; out: number } | null = null;
-    for (const c of cells) {
-      if (!c || c > today) continue;
-      elapsed++;
-      const out = byDay.get(c)?.out ?? 0;
-      total += out;
-      if (out === 0) noSpend++;
-      if (out > 0 && (!heavy || out > heavy.out)) heavy = { day: c, out };
-    }
-    return {
-      cells,
-      byDay,
-      events,
-      stats: { noSpend, avg: elapsed ? total / elapsed : 0, heavy },
-      pendingIls,
-    };
+    const stats = computeCalendarStats(cells, byDay, today);
+    return { cells, byDay, events, stats, pendingIls };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, txs, today, cards, subs, cardTxs, rates.data]);
 
@@ -229,10 +215,15 @@ export function MonthCalendar({ month, txs }: { month: string; txs: Transaction[
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className={cn("grid gap-2", stats.heavy ? "grid-cols-3" : "grid-cols-2")}>
         <Kpi label="ימים בלי הוצאות" value={`${stats.noSpend} 🎉`} />
         <Kpi label="ממוצע יומי" value={formatILS(Math.round(stats.avg))} />
-        <Kpi label="היום הכבד" value={stats.heavy ? `${Number(stats.heavy.day.slice(8))} · ${formatILS(Math.round(stats.heavy.out))}` : "—"} />
+        {stats.heavy && (
+          <Kpi
+            label="היום הכבד"
+            value={`${Number(stats.heavy.day.slice(8))} · ${formatILS(Math.round(stats.heavy.out))}`}
+          />
+        )}
       </div>
 
       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
