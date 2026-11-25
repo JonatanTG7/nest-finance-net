@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dailyChangePct,
+  dailyRealizedPnl,
   isFxRateUsable,
   portfolioTotals,
   positionCostBasis,
@@ -40,6 +41,67 @@ describe("IB portfolio rules", () => {
       ]),
     ).toBe(460);
     expect(totalRealizedPnl([])).toBe(0);
+  });
+  it("sums realized P&L for today only (Israel day)", () => {
+    const now = new Date("2026-11-25T12:00:00+02:00");
+    expect(
+      dailyRealizedPnl(
+        [
+          {
+            kind: "sell",
+            price: 150,
+            prior_avg_price: 100,
+            quantity: 10,
+            occurred_at: "2026-11-25",
+          },
+          { kind: "sell", price: 90, prior_avg_price: 100, quantity: 4, occurred_at: "2026-11-24" },
+          { kind: "buy", price: 200, prior_avg_price: 100, quantity: 5, occurred_at: "2026-11-25" },
+          {
+            kind: "sell",
+            price: 300,
+            prior_avg_price: null,
+            quantity: 2,
+            occurred_at: "2026-11-25",
+          },
+          // No date — can't be attributed to a day, so never counted.
+          { kind: "sell", price: 200, prior_avg_price: 100, quantity: 1 },
+        ],
+        now,
+      ),
+    ).toBe(500);
+    expect(dailyRealizedPnl([], now)).toBe(0);
+  });
+  it("uses the Israel calendar day, not the UTC day", () => {
+    // 01:30 in Israel is 23:30 UTC the previous day — still "today" here.
+    const now = new Date("2026-11-25T01:30:00+02:00");
+    expect(
+      dailyRealizedPnl(
+        [
+          {
+            kind: "sell",
+            price: 150,
+            prior_avg_price: 100,
+            quantity: 10,
+            occurred_at: "2026-11-25",
+          },
+        ],
+        now,
+      ),
+    ).toBe(500);
+    expect(
+      dailyRealizedPnl(
+        [
+          {
+            kind: "sell",
+            price: 150,
+            prior_avg_price: 100,
+            quantity: 10,
+            occurred_at: "2026-11-24",
+          },
+        ],
+        now,
+      ),
+    ).toBe(0);
   });
   it("computes daily change % vs start-of-day value", () => {
     expect(dailyChangePct(49, 38252)).toBeCloseTo((49 / 38203) * 100, 6);

@@ -8,6 +8,8 @@
  * UI shows "rate unavailable" instead of a wrong shekel number.
  */
 
+import { israelToday } from "./email-digest-rules";
+
 /** Weighted-average cost basis after buying `qty` at `price`. */
 export function weightedAvg(oldQty: number, oldAvg: number, qty: number, price: number): number {
   if (oldQty < 0 || oldAvg < 0 || qty <= 0 || price < 0) {
@@ -28,6 +30,8 @@ export interface SellTransactionInput {
   price: number;
   prior_avg_price: number | null;
   quantity: number;
+  /** Trade date as "YYYY-MM-DD" (the occurred_at date column). */
+  occurred_at?: string;
 }
 
 /**
@@ -38,6 +42,34 @@ export function totalRealizedPnl(transactions: SellTransactionInput[]): number {
   let sum = 0;
   for (const t of transactions) {
     if (t.kind === "sell" && t.prior_avg_price != null) {
+      sum += realizedPnl(t.price, t.prior_avg_price, t.quantity);
+    }
+  }
+  return sum;
+}
+
+/**
+ * Realized P&L for TODAY only — the header's Realized P&L resets every
+ * day. Only sells whose occurred_at is today count; buys never realize
+ * P&L, and a sell without a recorded prior average cost contributes 0.
+ * A sell with no date can't be attributed to a day, so it contributes 0
+ * too — never guessed into today.
+ *
+ * "Today" is the Israel calendar day (Asia/Jerusalem, via israelToday —
+ * the app's established Israel-day primitive), not the UTC day: for the
+ * first hours of every day the two differ. occurred_at is a plain date
+ * string, but the first 10 chars are compared so a timestamp form would
+ * still match by its calendar date.
+ */
+export function dailyRealizedPnl(
+  transactions: SellTransactionInput[],
+  now: Date = new Date(),
+): number {
+  const today = israelToday(now).ymd;
+  let sum = 0;
+  for (const t of transactions) {
+    const day = typeof t.occurred_at === "string" ? t.occurred_at.slice(0, 10) : "";
+    if (t.kind === "sell" && day === today && t.prior_avg_price != null) {
       sum += realizedPnl(t.price, t.prior_avg_price, t.quantity);
     }
   }
