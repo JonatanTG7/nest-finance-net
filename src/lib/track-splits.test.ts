@@ -3,6 +3,7 @@ import {
   balanceInTrack,
   buildSplitSegments,
   deriveTrackType,
+  hasTrackSplit,
   mergeImportedTracks,
   normalizePct,
   splitStatus,
@@ -177,5 +178,21 @@ describe("mergeImportedTracks", () => {
     ]);
     expect(added).toBe(1);
     expect(toSave.map((t) => t.track_name)).toEqual(["מסלול מניות", "מסלול חדש"]);
+  });
+});
+
+describe("hasTrackSplit", () => {
+  const one = [{ allocation_pct_balance: 100, allocation_pct_deposits: null }];
+  it("is false for a trackless account (no rows, no legacy track)", () => {
+    expect(hasTrackSplit([], null)).toBe(false);
+    expect(hasTrackSplit([], undefined)).toBe(false);
+    expect(hasTrackSplit([], "")).toBe(false);
+    expect(hasTrackSplit([], "   ")).toBe(false);
+  });
+  it("is true when allocation rows exist", () => {
+    expect(hasTrackSplit(one, null)).toBe(true);
+  });
+  it("is true for a legacy single-track value with no rows", () => {
+    expect(hasTrackSplit([], "מור חיסכון לכל ילד")).toBe(true);
   });
 });

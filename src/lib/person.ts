@@ -97,6 +97,17 @@ export function useMemberLabels(): Record<string, string> {
   return data ?? personLabel;
 }
 
+/**
+ * Owner display label — never a dash: an unknown or not-yet-loaded owner
+ * id falls back to the shared label, which the map always carries.
+ */
+export function resolveOwnerLabel(
+  labels: Record<string, string>,
+  owner: OwnerId | null | undefined,
+): string {
+  return labels[owner ?? SHARED_OWNER] ?? labels[SHARED_OWNER] ?? "Shared";
+}
+
 /** One person who can own accounts — never "shared". */
 export interface HouseholdPerson {
   person: OwnerId;

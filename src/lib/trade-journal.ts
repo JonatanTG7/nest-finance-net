@@ -9,6 +9,19 @@ export type TradeSide = "long" | "short";
  * Pure rules
  * ------------------------------------------------------------------ */
 
+/**
+ * Whether the trading journal renders on an account page. It belongs
+ * to day-trading accounts (e.g. Colmex Pro): non-IB investment-kind
+ * accounts, whatever their owner — an owner change must never hide
+ * it. A pension, study fund or savings account never has one, and
+ * neither does an IB account: IB accounts carry their own kind
+ * ("interactive"), so they are excluded by construction — their value
+ * comes from positions.
+ */
+export function showsTradeJournal(kind: string): boolean {
+  return kind === "investment";
+}
+
 /** Tickers are stored uppercase without whitespace. */
 export function normalizeSymbol(symbol: string): string {
   return symbol.trim().toUpperCase();

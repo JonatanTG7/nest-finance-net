@@ -3,6 +3,7 @@ import {
   filterJournalEntriesBySymbol,
   journalPnlUsdAfterReset,
   normalizeSymbol,
+  showsTradeJournal,
   tradeJournalSummary,
 } from "./trade-journal";
 
@@ -95,5 +96,19 @@ describe("journalPnlUsdAfterReset", () => {
         "2026-02-01T00:00:00Z",
       ),
     ).toBeCloseTo(37);
+  });
+});
+
+describe("showsTradeJournal", () => {
+  it("shows the journal for investment-kind accounts, whatever the owner", () => {
+    expect(showsTradeJournal("investment")).toBe(true);
+  });
+  it("hides the journal for IB and fund accounts", () => {
+    expect(showsTradeJournal("interactive")).toBe(false);
+    expect(showsTradeJournal("pension")).toBe(false);
+    expect(showsTradeJournal("provident")).toBe(false);
+    expect(showsTradeJournal("savings")).toBe(false);
+    expect(showsTradeJournal("checking")).toBe(false);
+    expect(showsTradeJournal("money_market")).toBe(false);
   });
 });
