@@ -9,6 +9,7 @@ import {
   kindLabel,
   normalizeColor,
   normalizePrivateMetadata,
+  resolveAccountPageTitle,
   sumPrivateAccountExtras,
   type PrivateMetadata,
 } from "./private-accounts";
@@ -292,5 +293,18 @@ describe("sumPrivateAccountExtras", () => {
       monthlyDeposits: null,
       expectedPension: null,
     });
+  });
+});
+
+describe("resolveAccountPageTitle", () => {
+  it("uses the account's name when known", () => {
+    expect(resolveAccountPageTitle("מנורה מבטחים פנסיה מקיפה")).toBe("מנורה מבטחים פנסיה מקיפה");
+    expect(resolveAccountPageTitle("Colmex Pro")).toBe("Colmex Pro");
+  });
+
+  it("falls back to the generic label when the account is unknown", () => {
+    expect(resolveAccountPageTitle(null)).toBe("חשבון השקעה");
+    expect(resolveAccountPageTitle(undefined)).toBe("חשבון השקעה");
+    expect(resolveAccountPageTitle("   ")).toBe("חשבון השקעה");
   });
 });

@@ -101,6 +101,17 @@ export function kindLabel(kind: string): string {
   return PRIVATE_KIND_LABELS[kind] ?? kind;
 }
 
+/**
+ * Browser-tab title for the account page: the account's name once it
+ * loads, the generic label while it is unknown. TRY-IT — if Jonatan
+ * vetoes it after seeing it live, deleting the effect in the route
+ * (and this helper) reverts it.
+ */
+export function resolveAccountPageTitle(name: string | null | undefined): string {
+  const trimmed = name?.trim();
+  return trimmed ? trimmed : "חשבון השקעה";
+}
+
 export function kindColor(kind: string): string {
   return PRIVATE_KIND_COLORS[kind] ?? PRIVATE_KIND_COLORS.other;
 }
