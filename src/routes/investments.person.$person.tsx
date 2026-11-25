@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Eye,
@@ -42,7 +42,12 @@ import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
 import { fetchAllTrackAllocations } from "@/lib/track-splits";
 import { computeAccountTotals } from "@/lib/account-totals";
 import { accountsOfPerson, sumPrivateAccountExtras } from "@/lib/private-accounts";
-import { ownerIdForAddedPerson, personAccentColor, useHouseholdPersons } from "@/lib/person";
+import {
+  ownerIdForAddedPerson,
+  personAccentColor,
+  resolvePersonPageTitle,
+  useHouseholdPersons,
+} from "@/lib/person";
 import {
   deleteHouseholdPerson,
   useHouseholdPeople,
@@ -76,6 +81,15 @@ function PersonPage() {
   const personIndex = persons.findIndex((p) => p.person === personParam);
   const person = personIndex >= 0 ? persons[personIndex] : null;
   const accent = personAccentColor(Math.max(personIndex, 0));
+
+  // TRY-IT (2026-11-25): the browser tab shows the person's name instead
+  // of the generic "חשבונות פרטיים". The static route `head` above can't
+  // see the loaded label, so the title is set here once the person loads;
+  // navigating away lets the next route's head take over again. If Jonatan
+  // vetoes it after seeing it live, delete this effect (and the helper).
+  useEffect(() => {
+    document.title = resolvePersonPageTitle(person?.label);
+  }, [person?.label]);
 
   const [adding, setAdding] = useState(false);
   const [template, setTemplate] = useState<{ kind: string; name: string } | null>(null);
@@ -295,23 +309,6 @@ function PersonPage() {
                     )}
                   </div>
                 )}
-                {addedRow && (
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setRenaming(true)}>
-                      <Pencil className="size-4" />
-                      שנה שם
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-destructive"
-                      onClick={() => setConfirmRemove(true)}
-                    >
-                      <Trash2 className="size-4" />
-                      מחק אדם
-                    </Button>
-                  </div>
-                )}
               </div>
             </section>
 
@@ -346,10 +343,6 @@ function PersonPage() {
                       <Plus className="size-4" />
                       חשבון מסוג אחר
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
-                      <FileUp className="size-4" />
-                      ייבוא מדוח שנתי
-                    </Button>
                   </div>
                 </div>
               ) : (
@@ -380,6 +373,30 @@ function PersonPage() {
                 ))
               )}
             </section>
+
+            {/* Settings — the least important things, at the very bottom
+                (same pattern as the account page): renaming / removing an
+                added person. Only the privacy eye stays at the top. */}
+            {addedRow && (
+              <section className="px-5 md:px-0 mt-6 mb-8">
+                <h2 className="text-sm font-semibold text-muted-foreground mb-2">הגדרות</h2>
+                <div className="rounded-2xl border bg-card p-4 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setRenaming(true)}>
+                    <Pencil className="size-4" />
+                    שנה שם
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive"
+                    onClick={() => setConfirmRemove(true)}
+                  >
+                    <Trash2 className="size-4" />
+                    מחק אדם
+                  </Button>
+                </div>
+              </section>
+            )}
 
             <PrivateAccountDialog
               open={adding || template != null || editing != null}
