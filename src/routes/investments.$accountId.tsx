@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -32,6 +32,7 @@ import {
   fetchPrivateAccountHistory,
   isSharedAccount,
   kindLabel,
+  resolveAccountPageTitle,
   setAccountOwner,
   setHiddenDetailFields,
 } from "@/lib/private-accounts";
@@ -74,6 +75,12 @@ function AccountPage() {
     () => accounts.find((a) => a.id === accountId) ?? null,
     [accounts, accountId],
   );
+  // Browser tab shows the account's name once it loads (same pattern as
+  // the person page title in PR #30). Navigating away lets the next
+  // route's static head take over again.
+  useEffect(() => {
+    document.title = resolveAccountPageTitle(account?.name);
+  }, [account?.name]);
   const isPrivate = !!account && !isSharedAccount(account);
   // The metadata section shows for private accounts (always — even
   // before any details were entered) and for shared accounts that
