@@ -1,8 +1,20 @@
-import { billingDateIn, isScheduledBilling, type SubscriptionSchedule } from "./subscription-schedule";
+import {
+  billingDateIn,
+  isScheduledBilling,
+  type SubscriptionSchedule,
+} from "./subscription-schedule";
 
 export type CalendarEvent =
   | { kind: "card"; date: string; label: string; amount: number }
-  | { kind: "sub"; date: string; label: string; emoji: string; amount: number; currency: string }
+  | {
+      kind: "sub";
+      date: string;
+      label: string;
+      emoji: string;
+      amount: number;
+      currency: string;
+      subscriptionId: string;
+    }
   | { kind: "salary"; date: string; label: string };
 
 /** Fixed household paydays: Shiri on the 1st, Yonatan on the 10th. */
@@ -12,8 +24,20 @@ export const PAYDAYS = [
 ];
 
 type Card = { id: string; name: string; last_four: string; billing_day: number };
-type Sub = SubscriptionSchedule & { name: string; emoji: string; amount: number; currency: string };
-type Tx = { occurred_at: string; amount_ils: number | string; credit_card_id?: string | null; type: string };
+type Sub = SubscriptionSchedule & {
+  id: string;
+  name: string;
+  emoji: string;
+  amount: number;
+  currency: string;
+};
+type Tx = {
+  occurred_at: string;
+  amount_ils: number | string;
+  credit_card_id?: string | null;
+  type: string;
+  subscription_id?: string | null;
+};
 
 /** Expected events for a month (year, 0-based month). Card totals sum credit txs charged on that billing date. */
 export function monthEvents(year: number, month: number, cards: Card[], subs: Sub[], txs: Tx[]): CalendarEvent[] {
@@ -29,9 +53,52 @@ export function monthEvents(year: number, month: number, cards: Card[], subs: Su
   for (const s of subs) {
     if (!s.active) continue;
     const date = billingDateIn(s, year, month);
-    if (isScheduledBilling(s, date)) out.push({ kind: "sub", date, label: s.name, emoji: s.emoji, amount: s.amount, currency: s.currency });
+    if (isScheduledBilling(s, date))
+      out.push({
+        kind: "sub",
+        date,
+        label: s.name,
+        emoji: s.emoji,
+        amount: s.amount,
+        currency: s.currency,
+        subscriptionId: s.id,
+      });
   }
   return out;
+}
+
+export type PendingFixedCharge = {
+  date: string;
+  label: string;
+  emoji: string;
+  amount: number;
+  currency: string;
+};
+
+/**
+ * Fixed charges expected this month that have NOT been recorded as a
+ * transaction yet (future billing dates, or dates the sync hasn't run for).
+ * A charge counts as recorded only when a transaction carries the same
+ * subscription_id on the same billing date — matching on name or amount
+ * would double-count a charge that was already generated.
+ * Card charges and salaries are never pending here: card amounts are sums
+ * of transactions already counted on their purchase dates, and salaries
+ * carry no amount.
+ */
+export function pendingFixedCharges(events: CalendarEvent[], txs: Tx[]): PendingFixedCharge[] {
+  const recorded = new Set(
+    txs.filter((t) => t.subscription_id).map((t) => `${t.subscription_id}|${t.occurred_at}`),
+  );
+  return events
+    .filter((e): e is Extract<CalendarEvent, { kind: "sub" }> => e.kind === "sub")
+    .filter((e) => !recorded.has(`${e.subscriptionId}|${e.date}`))
+    .map((e) => ({
+      date: e.date,
+      label: e.label,
+      emoji: e.emoji,
+      amount: e.amount,
+      currency: e.currency,
+    }));
 }
 
 function chargeDateFor(iso: string, billingDay: number): string {

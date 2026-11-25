@@ -122,6 +122,7 @@ export function TransactionForm({
   const [type, setType] = useState<TxType>(existing?.type ?? "expense");
   const [showNewCat, setShowNewCat] = useState(false);
   const [catToDelete, setCatToDelete] = useState<Category | null>(null);
+  const [confirmDeleteTx, setConfirmDeleteTx] = useState(false);
   const [catTxCount, setCatTxCount] = useState<number | null>(null);
   const [deletingCat, setDeletingCat] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -526,7 +527,6 @@ export function TransactionForm({
 
   async function handleDelete() {
     if (!existing) return;
-    if (!confirm("למחוק את התנועה?")) return;
     try {
       await deleteTransaction(existing.id);
       toast.success("נמחק");
@@ -1236,12 +1236,35 @@ export function TransactionForm({
           {existing && (
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => setConfirmDeleteTx(true)}
               className="w-full h-11 rounded-2xl bg-destructive/10 text-destructive font-semibold text-sm"
             >
               מחק תנועה
             </button>
           )}
+
+          <AlertDialog open={confirmDeleteTx} onOpenChange={setConfirmDeleteTx}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>למחוק את התנועה?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  התנועה תימחק לצמיתות ולא ניתן יהיה לשחזר אותה.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>ביטול</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setConfirmDeleteTx(false);
+                    void handleDelete();
+                  }}
+                >
+                  מחק
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </AppShell>
