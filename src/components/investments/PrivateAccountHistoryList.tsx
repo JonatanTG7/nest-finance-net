@@ -1,7 +1,7 @@
 import { History } from "lucide-react";
 import {
   PRIVATE_FIELD_LABELS,
-  kindLabel,
+  displayHistoryValue,
   type PrivateAccountField,
   type PrivateAccountHistoryRow,
 } from "@/lib/private-accounts";
@@ -19,8 +19,6 @@ function fmtDate(iso: string) {
   });
 }
 
-const FEE_FIELDS: PrivateAccountField[] = ["fee_from_balance", "fee_from_deposits"];
-
 /**
  * History of metadata changes for a private account (company, fees,
  * track...) — so past values can be looked up later. Each row shows one
@@ -36,15 +34,10 @@ export function PrivateAccountHistoryList({
 }) {
   const labels = useMemberLabels();
 
-  const displayValue = (field: string, value: string | null): string => {
-    if (value == null) return "—";
-    // Owner values are raw owner ids ("shared", a slot, or
-    // "person:<id>") — the labels map covers all of them.
-    if (field === "owner") return labels[value] ?? value;
-    if (field === "kind") return kindLabel(value);
-    if (FEE_FIELDS.includes(field as PrivateAccountField)) return `${value}%`;
-    return value;
-  };
+  // A cleared/never-set value shows nothing (no "—" placeholder);
+  // the arrow still shows which side changed.
+  const displayValue = (field: string, value: string | null): string =>
+    displayHistoryValue(field, value, labels);
 
   return (
     <section className="px-5 md:px-0 mt-6 mb-8">

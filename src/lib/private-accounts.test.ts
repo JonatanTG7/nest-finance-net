@@ -4,7 +4,9 @@ import {
   accountsOfPerson,
   colorAfterKindChange,
   diffPrivateAccountFields,
+  displayHistoryValue,
   filterAccountsByOwner,
+  formatFeePercent,
   isSharedAccount,
   kindColor,
   kindLabel,
@@ -308,5 +310,41 @@ describe("sumPrivateAccountExtras", () => {
       monthlyDeposits: null,
       expectedPension: null,
     });
+  });
+});
+
+describe("formatFeePercent", () => {
+  it("shows the fee when set", () => {
+    expect(formatFeePercent(0.1)).toBe("0.1%");
+    expect(formatFeePercent(0)).toBe("0%");
+  });
+
+  it("shows 0% when unset", () => {
+    expect(formatFeePercent(null)).toBe("0%");
+    expect(formatFeePercent(undefined)).toBe("0%");
+  });
+});
+
+describe("displayHistoryValue", () => {
+  const labels = { shared: "משותף", yonatan: "יונתן" };
+
+  it("shows nothing for a null value", () => {
+    expect(displayHistoryValue("company", null, labels)).toBe("");
+    expect(displayHistoryValue("fee_from_balance", null, labels)).toBe("");
+  });
+
+  it("resolves owner ids through the labels, falling back to the raw id", () => {
+    expect(displayHistoryValue("owner", "yonatan", labels)).toBe("יונתן");
+    expect(displayHistoryValue("owner", "person:xyz", labels)).toBe("person:xyz");
+  });
+
+  it("resolves kinds and appends % to fees", () => {
+    expect(displayHistoryValue("kind", "pension", labels)).toBe("קרן פנסיה");
+    expect(displayHistoryValue("fee_from_balance", "0.1", labels)).toBe("0.1%");
+    expect(displayHistoryValue("fee_from_deposits", "1.5", labels)).toBe("1.5%");
+  });
+
+  it("passes other values through unchanged", () => {
+    expect(displayHistoryValue("company", "מנורה", labels)).toBe("מנורה");
   });
 });

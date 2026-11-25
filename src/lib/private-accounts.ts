@@ -101,6 +101,32 @@ export function kindLabel(kind: string): string {
   return PRIVATE_KIND_LABELS[kind] ?? kind;
 }
 
+/**
+ * Fee percentage for display: an unset half is 0% — a fee that was never
+ * entered is 0, not "unknown". The card's fee line shows both halves
+ * whenever at least one of them is set.
+ */
+export function formatFeePercent(fee: number | null | undefined): string {
+  return `${fee ?? 0}%`;
+}
+
+/**
+ * One history value for display: a cleared/never-set value shows nothing
+ * (no "—" placeholder). Owner ids resolve through the member labels,
+ * kinds through kindLabel, fees get a % suffix.
+ */
+export function displayHistoryValue(
+  field: string,
+  value: string | null,
+  labels: Record<string, string>,
+): string {
+  if (value == null) return "";
+  if (field === "owner") return labels[value] ?? value;
+  if (field === "kind") return kindLabel(value);
+  if (field === "fee_from_balance" || field === "fee_from_deposits") return `${value}%`;
+  return value;
+}
+
 export function kindColor(kind: string): string {
   return PRIVATE_KIND_COLORS[kind] ?? PRIVATE_KIND_COLORS.other;
 }
