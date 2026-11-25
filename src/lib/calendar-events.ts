@@ -14,6 +14,8 @@ export type CalendarEvent =
       amount: number;
       currency: string;
       subscriptionId: string;
+      /** Display name of the subscription's category, null when it has none. */
+      category?: string | null;
     }
   | { kind: "salary"; date: string; label: string };
 
@@ -30,6 +32,7 @@ type Sub = SubscriptionSchedule & {
   emoji: string;
   amount: number;
   currency: string;
+  category_id?: string | null;
 };
 type Tx = {
   occurred_at: string;
@@ -39,8 +42,18 @@ type Tx = {
   subscription_id?: string | null;
 };
 
-/** Expected events for a month (year, 0-based month). Card totals sum credit txs charged on that billing date. */
-export function monthEvents(year: number, month: number, cards: Card[], subs: Sub[], txs: Tx[]): CalendarEvent[] {
+export type CategoryRef = { id: string; name: string };
+
+/** Expected events for a month (year, 0-based month). Card totals sum credit txs charged on that billing date. A subscription event carries its category's display name when the subscription has one (resolved from `categories`); otherwise the category is null — never guessed. */
+export function monthEvents(
+  year: number,
+  month: number,
+  cards: Card[],
+  subs: Sub[],
+  txs: Tx[],
+  categories: CategoryRef[] = [],
+): CalendarEvent[] {
+  const categoryName = new Map(categories.map((c) => [c.id, c.name]));
   const out: CalendarEvent[] = [];
   for (const p of PAYDAYS) out.push({ kind: "salary", date: billingDateIn({ billing_day: p.day }, year, month), label: p.label });
   for (const c of cards) {
@@ -62,6 +75,7 @@ export function monthEvents(year: number, month: number, cards: Card[], subs: Su
         amount: s.amount,
         currency: s.currency,
         subscriptionId: s.id,
+        category: s.category_id ? (categoryName.get(s.category_id) ?? null) : null,
       });
   }
   return out;
@@ -73,6 +87,8 @@ export type PendingFixedCharge = {
   emoji: string;
   amount: number;
   currency: string;
+  /** Display name of the subscription's category, null when it has none. */
+  category?: string | null;
 };
 
 /**
@@ -98,6 +114,7 @@ export function pendingFixedCharges(events: CalendarEvent[], txs: Tx[]): Pending
       emoji: e.emoji,
       amount: e.amount,
       currency: e.currency,
+      category: e.category ?? null,
     }));
 }
 

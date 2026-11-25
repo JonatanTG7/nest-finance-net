@@ -50,8 +50,41 @@ describe("pendingFixedCharges", () => {
   it("reports a charge with no matching transaction as pending", () => {
     const ev = monthEvents(2026, 10, [], [sub], []);
     expect(pendingFixedCharges(ev, [])).toEqual([
-      { date: "2026-11-19", label: "ביטוח", emoji: "🚗", amount: 400, currency: "ILS" },
+      {
+        date: "2026-11-19",
+        label: "ביטוח",
+        emoji: "🚗",
+        amount: 400,
+        currency: "ILS",
+        category: null,
+      },
     ]);
+  });
+  it("carries the subscription's category name onto the event and the pending charge", () => {
+    const cats = [{ id: "cat-subs", name: "מנויים" }];
+    const withCat = { ...sub, category_id: "cat-subs" };
+    const ev = monthEvents(2026, 10, [], [withCat], [], cats);
+    expect(ev.find((e) => e.kind === "sub")).toMatchObject({ category: "מנויים" });
+    expect(pendingFixedCharges(ev, [])).toEqual([
+      {
+        date: "2026-11-19",
+        label: "ביטוח",
+        emoji: "🚗",
+        amount: 400,
+        currency: "ILS",
+        category: "מנויים",
+      },
+    ]);
+  });
+  it("shows no category when the subscription has none", () => {
+    const ev = monthEvents(2026, 10, [], [sub], []);
+    expect(ev.find((e) => e.kind === "sub")).toMatchObject({ category: null });
+  });
+  it("shows no category when the subscription's category is unknown — never guessed", () => {
+    const cats = [{ id: "cat-other", name: "אחר" }];
+    const withUnknownCat = { ...sub, category_id: "cat-missing" };
+    const ev = monthEvents(2026, 10, [], [withUnknownCat], [], cats);
+    expect(ev.find((e) => e.kind === "sub")).toMatchObject({ category: null });
   });
   it("does not double-count a charge already recorded as a transaction", () => {
     const ev = monthEvents(2026, 10, [], [sub], []);
