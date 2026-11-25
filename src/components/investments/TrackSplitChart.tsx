@@ -18,7 +18,8 @@ import { maskAmountText } from "@/lib/privacy";
  * a legend table — one row per track (color chip, name, % of balance,
  * ₪ in track, annual return, deposits % when set). Tracks without a
  * percentage (imported from a statement, which never lists them) show
- * "—" and fold into the gray "unallocated" remainder.
+ * just the name — no % or ₪ cells, since no share can be computed —
+ * and fold into the gray "unallocated" remainder.
  */
 export function TrackSplitChart({
   allocations,
@@ -140,12 +141,16 @@ export function TrackSplitChart({
                   )}
                 </span>
               )}
-              <span className="text-xs tabular-nums shrink-0 w-14 text-start">
-                {pct != null ? maskAmountText(`${pct}%`, hidden) : "—"}
-              </span>
-              <span className="font-semibold tabular-nums shrink-0 w-24 text-start">
-                {pct != null ? maskAmountText(formatILS(amount), hidden) : "—"}
-              </span>
+              {pct != null && (
+                <>
+                  <span className="text-xs tabular-nums shrink-0 w-14 text-start">
+                    {maskAmountText(`${pct}%`, hidden)}
+                  </span>
+                  <span className="font-semibold tabular-nums shrink-0 w-24 text-start">
+                    {maskAmountText(formatILS(amount), hidden)}
+                  </span>
+                </>
+              )}
             </div>
           );
         })}
