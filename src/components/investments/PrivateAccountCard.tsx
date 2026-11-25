@@ -31,6 +31,8 @@ export function PrivateAccountCard({
   allocations,
   hidden = false,
   onEdit,
+  linkDisabled = false,
+  footer,
 }: {
   account: InvestmentAccount;
   /** ils is null when the FX rate is unavailable (USD account). */
@@ -39,12 +41,30 @@ export function PrivateAccountCard({
   /** Privacy mode: mask all digits. */
   hidden?: boolean;
   onEdit: () => void;
+  /**
+   * Reorder mode: no navigation and no edit pencil — tapping must not
+   * open anything while the user is rearranging.
+   */
+  linkDisabled?: boolean;
+  /** Extra content below the card body (e.g. reorder controls). */
+  footer?: React.ReactNode;
 }) {
-  const color = kindColor(account.kind);
+  // The account's own picked color (kind default when never picked).
+  const color = account.color ?? kindColor(account.kind);
   const Icon = KIND_ICONS[account.kind] ?? Wallet;
   const segments = buildSplitSegments(allocations, total.ils ?? 0);
   const feeAlert = feesAboveAverage(account);
   const isIb = account.kind === IB_KIND;
+  const body = (
+    <CardBody
+      account={account}
+      total={total}
+      segments={segments}
+      hasAllocations={allocations.length > 0}
+      feeAlert={feeAlert}
+      hidden={hidden}
+    />
+  );
 
   return (
     <div className="rounded-2xl border bg-card p-4">
@@ -62,7 +82,7 @@ export function PrivateAccountCard({
         >
           {kindLabel(account.kind)}
         </span>
-        {!isIb && (
+        {!isIb && !linkDisabled && (
           <Button
             variant="ghost"
             size="icon"
@@ -75,20 +95,15 @@ export function PrivateAccountCard({
           </Button>
         )}
       </div>
-      {isIb ? (
+      {linkDisabled ? (
+        body
+      ) : isIb ? (
         <Link
           to="/investments/ib"
           search={{ account: account.id }}
           className="block active:scale-[0.99] transition-transform"
         >
-          <CardBody
-            account={account}
-            total={total}
-            segments={segments}
-            hasAllocations={allocations.length > 0}
-            feeAlert={feeAlert}
-            hidden={hidden}
-          />
+          {body}
         </Link>
       ) : (
         <Link
@@ -96,16 +111,10 @@ export function PrivateAccountCard({
           params={{ accountId: account.id }}
           className="block active:scale-[0.99] transition-transform"
         >
-          <CardBody
-            account={account}
-            total={total}
-            segments={segments}
-            hasAllocations={allocations.length > 0}
-            feeAlert={feeAlert}
-            hidden={hidden}
-          />
+          {body}
         </Link>
       )}
+      {footer}
     </div>
   );
 }

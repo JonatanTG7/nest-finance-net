@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeCardOrder, moveCardOrder } from "./investments-order";
+import { mergeCardOrder, moveCardOrder, moveCardWithinSubset } from "./investments-order";
 
 describe("mergeCardOrder", () => {
   it("keeps the current order when nothing is saved", () => {
@@ -49,5 +49,46 @@ describe("moveCardOrder", () => {
     const order = ["a", "b", "c"];
     moveCardOrder(order, "b", "up");
     expect(order).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("moveCardWithinSubset", () => {
+  it("swaps with the adjacent card of the same subset, skipping others", () => {
+    // Full order: shared a, person's b, shared c, person's d, vouchers.
+    const full = ["a", "b", "c", "d", "vouchers"];
+    expect(moveCardWithinSubset(full, ["b", "d"], "d", "up")).toEqual([
+      "a",
+      "d",
+      "c",
+      "b",
+      "vouchers",
+    ]);
+    expect(moveCardWithinSubset(full, ["b", "d"], "b", "down")).toEqual([
+      "a",
+      "d",
+      "c",
+      "b",
+      "vouchers",
+    ]);
+  });
+
+  it("is a no-op at the subset edges and for unknown ids", () => {
+    const full = ["a", "b", "c", "d"];
+    expect(moveCardWithinSubset(full, ["b", "d"], "b", "up")).toEqual(full);
+    expect(moveCardWithinSubset(full, ["b", "d"], "d", "down")).toEqual(full);
+    expect(moveCardWithinSubset(full, ["b", "d"], "zzz", "up")).toEqual(full);
+    expect(moveCardWithinSubset(full, ["b", "d"], "a", "up")).toEqual(full);
+  });
+
+  it("keeps cards outside the subset exactly where they were", () => {
+    const full = ["a", "b", "c", "d", "vouchers"];
+    const next = moveCardWithinSubset(full, ["b", "d"], "b", "down");
+    expect(next.filter((id) => !["b", "d"].includes(id))).toEqual(["a", "c", "vouchers"]);
+  });
+
+  it("never mutates its input", () => {
+    const full = ["a", "b", "c", "d"];
+    moveCardWithinSubset(full, ["b", "d"], "d", "up");
+    expect(full).toEqual(["a", "b", "c", "d"]);
   });
 });

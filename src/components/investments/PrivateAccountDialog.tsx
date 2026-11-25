@@ -17,10 +17,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TrackPicker } from "@/components/investments/TrackPicker";
 import {
+  ACCOUNT_COLORS,
   PRIVATE_ACCOUNT_KINDS,
   PRIVATE_KIND_LABELS,
   createPrivateAccount,
   deletePrivateAccount,
+  kindColor,
   updatePrivateAccount,
   type PrivateAccountForm,
 } from "@/lib/private-accounts";
@@ -50,13 +52,15 @@ function formFromAccount(
   initialKind?: string,
   initialName?: string,
 ): PrivateAccountForm {
+  const kind = a?.kind ?? initialKind ?? "pension";
   return {
     name: a?.name ?? initialName ?? "",
-    kind: a?.kind ?? initialKind ?? "pension",
+    kind,
     company: a?.company ?? "",
     fee_from_balance: a?.fee_from_balance != null ? String(a.fee_from_balance) : "",
     fee_from_deposits: a?.fee_from_deposits != null ? String(a.fee_from_deposits) : "",
     track: a?.track ?? "",
+    color: a?.color ?? kindColor(kind),
     notes: a?.notes ?? "",
   };
 }
@@ -65,7 +69,10 @@ function formFromAccount(
  * Add / edit dialog for a private account (pension, study fund,
  * provident...): name, type, managing company, the two management fees,
  * the track split (preset chips + percentages, right here at creation —
- * no need to create first and split later), and free-text notes.
+ * no need to create first and split later), the card color, and free-text
+ * notes. This is the ONE editor for an account: it covers details +
+ * track split (incl. the deposits split and annual returns) + color, so
+ * the account page needs no second "edit split" entry point.
  * The single free-text "מסלול" field only shows when no split rows exist;
  * once tracks are picked it is cleared, since the split replaces it.
  * The balance is only set when adding; afterwards it is updated on the
@@ -93,6 +100,12 @@ export function PrivateAccountDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [tracks, setTracks] = useState<PickerRow[]>([]);
   const [tracksLoaded, setTracksLoaded] = useState(false);
+  // The deposits split (share of future deposits per track) lives in
+  // this dialog too, so the separate split editor isn't needed.
+  const [depositsEnabled, setDepositsEnabled] = useState(false);
+  // Until the user picks a color by hand, changing the account type
+  // follows the new type's default color.
+  const [colorTouched, setColorTouched] = useState(false);
   // Guards the one-time track init per open, so a refetch while the
   // dialog is open never overwrites the user's edits.
   const tracksInitRef = useRef<string | null>(null);
@@ -116,6 +129,12 @@ export function PrivateAccountDialog({
     setConfirmDelete(false);
     setTracks([]);
     setTracksLoaded(false);
+    setDepositsEnabled(false);
+    // A stored color that differs from the kind default was picked by
+    // hand once — changing the type must not wipe it.
+    setColorTouched(
+      account != null && account.color != null && account.color !== kindColor(account.kind),
+    );
     tracksInitRef.current = null;
   }, [open, account, person, initialKind, initialName]);
 
@@ -132,11 +151,16 @@ export function PrivateAccountDialog({
     if (allocationsQuery.isSuccess && tracksInitRef.current !== (account?.id ?? null)) {
       tracksInitRef.current = account?.id ?? null;
       setTracks(allocationsQuery.data.map(rowFromAllocation));
+      setDepositsEnabled(allocationsQuery.data.some((a) => a.allocation_pct_deposits != null));
       setTracksLoaded(true);
     }
   }, [open, editing, allocationsQuery.isSuccess, allocationsQuery.data, account]);
 
   const set = (patch: Partial<PrivateAccountForm>) => setForm((f) => ({ ...f, ...patch }));
+
+  /** Changing the type re-colors to the new type's default, unless the user already picked a color by hand. */
+  const changeKind = (kind: string) =>
+    setForm((f) => ({ ...f, kind, color: colorTouched ? f.color : kindColor(kind) }));
 
   const invalidate = (accountId?: string) => {
     qc.invalidateQueries({ queryKey: ["investment_accounts"] });
@@ -147,7 +171,7 @@ export function PrivateAccountDialog({
     qc.invalidateQueries({ queryKey: ["track-allocations", "all"] });
   };
 
-  const canSaveSplit = splitCanSave(tracks, false);
+  const canSaveSplit = splitCanSave(tracks, depositsEnabled);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -158,11 +182,13 @@ export function PrivateAccountDialog({
         await updatePrivateAccount(account, { ...formToSave, person: owner });
         savedId = account.id;
         // Only touch the tracks when they were actually loaded — a save
-        // before the fetch finished must not wipe them. "keep": the
-        // dialog is balance-only, so a deposits split set in the editor
-        // must survive an edit save.
+        // before the fetch finished must not wipe them. Turning the
+        // deposits split off clears it; leaving it on keeps the values.
         if (tracksLoaded) {
-          await saveTrackAllocations(savedId, rowsToInputs(tracks, "keep"));
+          await saveTrackAllocations(
+            savedId,
+            rowsToInputs(tracks, depositsEnabled ? "keep" : "clear"),
+          );
         }
       } else {
         savedId = await createPrivateAccount({
@@ -232,7 +258,7 @@ export function PrivateAccountDialog({
               <select
                 aria-label="סוג חשבון"
                 value={form.kind}
-                onChange={(e) => set({ kind: e.target.value })}
+                onChange={(e) => changeKind(e.target.value)}
                 className="w-full h-10 border rounded-md bg-background px-3"
               >
                 {PRIVATE_ACCOUNT_KINDS.map((k) => (
@@ -242,6 +268,32 @@ export function PrivateAccountDialog({
                 ))}
               </select>
             </label>
+            <div className="block text-sm">
+              <span className="block mb-1.5">צבע</span>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="צבע החשבון">
+                {ACCOUNT_COLORS.map((c) => {
+                  const selected = (form.color ?? kindColor(form.kind)) === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-label={`צבע ${c}`}
+                      aria-pressed={selected}
+                      onClick={() => {
+                        setColorTouched(true);
+                        set({ color: c });
+                      }}
+                      className={
+                        selected
+                          ? "size-8 rounded-full ring-2 ring-offset-2 ring-foreground"
+                          : "size-8 rounded-full hover:scale-110 transition"
+                      }
+                      style={{ background: c }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
             <label className="block text-sm">
               חברה מנהלת
               <Input
@@ -288,8 +340,10 @@ export function PrivateAccountDialog({
               <TrackPicker
                 rows={tracks}
                 onChange={setTracks}
-                depositsEnabled={false}
-                onDepositsEnabledChange={() => {}}
+                depositsEnabled={depositsEnabled}
+                onDepositsEnabledChange={setDepositsEnabled}
+                showDepositsToggle
+                showReturn
                 hidden={hidden}
               />
             )}
