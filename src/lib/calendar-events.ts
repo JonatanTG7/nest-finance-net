@@ -19,7 +19,7 @@ export type CalendarEvent =
     }
   | { kind: "salary"; date: string; label: string };
 
-/** Fixed household paydays: Shiri on the 1st, Yonatan on the 10th. */
+/** Fixed household paydays: Shiri on the 1st, Jonatan on the 10th. */
 export const PAYDAYS = [
   { day: 1, label: "משכורת שירי" },
   { day: 10, label: "משכורת יונתן" },

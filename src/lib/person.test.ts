@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildExportPersonLabels,
   mergeHouseholdPersons,
   personAccentColor,
+  resolveExportPersonLabel,
   resolveOwnerLabel,
   resolvePersonPageTitle,
   type HouseholdPerson,
@@ -68,6 +70,29 @@ describe("resolveOwnerLabel", () => {
   it("never renders a dash for an unknown or not-yet-loaded owner id", () => {
     expect(resolveOwnerLabel(labels, "person:gone")).toBe("Shared");
     expect(resolveOwnerLabel({}, "yonatan")).toBe("Shared");
+  });
+});
+
+describe("export person labels", () => {
+  const labels = buildExportPersonLabels([{ id: "c1", name: "Eitan" }]);
+
+  it("maps the login slots to their English first names", () => {
+    expect(labels).toEqual({
+      yonatan: "Jonatan",
+      shiri: "Shiri",
+      shared: "Shared",
+      "person:c1": "Eitan",
+    });
+    expect(resolveExportPersonLabel(labels, "yonatan")).toBe("Jonatan");
+    expect(resolveExportPersonLabel(labels, "shiri")).toBe("Shiri");
+    expect(resolveExportPersonLabel(labels, "shared")).toBe("Shared");
+    expect(resolveExportPersonLabel(labels, "person:c1")).toBe("Eitan");
+  });
+  it("never leaks a raw enum value or id into the export", () => {
+    expect(resolveExportPersonLabel(labels, null)).toBe("Shared");
+    expect(resolveExportPersonLabel(labels, undefined)).toBe("Shared");
+    expect(resolveExportPersonLabel(labels, "person:gone")).toBe("Shared");
+    expect(resolveExportPersonLabel({}, "yonatan")).toBe("Shared");
   });
 });
 

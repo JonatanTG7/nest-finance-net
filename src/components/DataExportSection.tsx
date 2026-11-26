@@ -42,6 +42,7 @@ import {
 import { fetchSubscriptions } from "@/lib/subscriptions";
 import { fetchRecurringIncome } from "@/lib/recurring-income";
 import { fetchHouseholdPeople } from "@/lib/household-people";
+import { buildExportPersonLabels } from "@/lib/person";
 import { fetchAllTrackAllocations } from "@/lib/track-splits";
 import { fetchAllTradeJournalEntries } from "@/lib/trade-journal";
 import { fetchTripsRaw } from "@/lib/trips";
@@ -145,25 +146,34 @@ export function DataExportSection() {
       const ledgerLists = await Promise.all(portfolios.map((p) => fetchIbTransactions(p.id)));
       const ibLedger = ledgerLists.flat();
 
+      // Person display names for the export: "Jonatan"/"Shiri"/"Shared" plus
+      // added people's names — a raw enum value never lands in a CSV.
+      const personLabels = buildExportPersonLabels(people);
+
       const date = new Date();
       setFiles([
-        prepareFile("transactions", "עסקאות", transactionsToRows(txs, cards, trips), date),
-        prepareFile("accounts", "חשבונות", accountsToRows(accounts), date),
+        prepareFile(
+          "transactions",
+          "עסקאות",
+          transactionsToRows(txs, cards, trips, personLabels),
+          date,
+        ),
+        prepareFile("accounts", "חשבונות", accountsToRows(accounts, personLabels), date),
         prepareFile(
           "track-allocations",
           "פיצולי מסלולים",
           trackAllocationsToRows(trackAllocations),
           date,
         ),
-        prepareFile("subscriptions", "מנויים", subscriptionsToRows(subs), date),
+        prepareFile("subscriptions", "מנויים", subscriptionsToRows(subs, personLabels), date),
         prepareFile(
           "recurring-income",
           "הכנסות קבועות",
-          recurringIncomeToRows(recurringIncome),
+          recurringIncomeToRows(recurringIncome, personLabels),
           date,
         ),
         prepareFile("trading-journal", "יומן מסחר", journalToRows(journal), date),
-        prepareFile("vouchers", "שוברים", vouchersToRows(vouchers), date),
+        prepareFile("vouchers", "שוברים", vouchersToRows(vouchers, personLabels), date),
         prepareFile("trips", "טיולים", tripsToRows(trips), date),
         prepareFile("ib-positions", "פוזיציות IB", ibPositionsToRows(ibPositions), date),
         prepareFile("ib-cash", "מזומן IB", ibCashToRows(ibCash), date),

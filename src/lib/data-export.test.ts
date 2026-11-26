@@ -135,6 +135,7 @@ describe("transactionsToRows", () => {
     expect(headers).toContain("photo_url");
     const row = rows[0];
     expect(row[headers.indexOf("category")]).toBe("מזון");
+    expect(row[headers.indexOf("entered_by")]).toBe("Jonatan");
     expect(row[headers.indexOf("credit_card")]).toBe("ויזה (*1234)");
     expect(row[headers.indexOf("investment_account")]).toBe("עו״ש");
     expect(row[headers.indexOf("trip")]).toBe("פראג");
@@ -178,6 +179,7 @@ describe("transactionsToRows", () => {
     );
     const row = rows[0];
     expect(row[headers.indexOf("category")]).toBe("");
+    expect(row[headers.indexOf("entered_by")]).toBe("Shiri");
     expect(row[headers.indexOf("credit_card")]).toBe("");
     expect(row[headers.indexOf("trip")]).toBe("");
     expect(row[headers.indexOf("tags")]).toBe("");
@@ -208,7 +210,35 @@ describe("accountsToRows", () => {
     ]);
     expect(headers).not.toContain("household_id");
     expect(rows[0][headers.indexOf("company")]).toBe("מנורה");
+    expect(rows[0][headers.indexOf("person")]).toBe("Jonatan");
     expect(rows[0][headers.indexOf("fee_from_deposits")]).toBe(1.5);
+  });
+
+  it("resolves an added person's owner id to their name", () => {
+    const { headers, rows } = accountsToRows(
+      [
+        {
+          id: "a2",
+          name: "חיסכון לילד",
+          kind: "savings",
+          person: "person:c1",
+          company: "מור",
+          fee_from_balance: 0,
+          fee_from_deposits: 0,
+          track: null,
+          currency: "ILS",
+          starting_balance: 58,
+          starting_balance_ils: 58,
+          balance_reset_at: null,
+          color: "#123456",
+          sort_order: 1,
+          created_at: "2026-01-01",
+          updated_at: "2026-01-02",
+        },
+      ],
+      { yonatan: "Jonatan", shiri: "Shiri", shared: "Shared", "person:c1": "Eitan" },
+    );
+    expect(rows[0][headers.indexOf("person")]).toBe("Eitan");
   });
 });
 
@@ -254,6 +284,7 @@ describe("recurringIncomeToRows", () => {
       },
     ]);
     expect(rows[0][headers.indexOf("active")]).toBe(true);
+    expect(rows[0][headers.indexOf("entered_by")]).toBe("Shared");
     expect(headers).not.toContain("payment_method");
     expect(toCsv(headers, rows)).toContain(",true");
   });
@@ -280,6 +311,7 @@ describe("subscriptionsToRows", () => {
       },
     ]);
     expect(rows[0][headers.indexOf("active")]).toBe(true);
+    expect(rows[0][headers.indexOf("entered_by")]).toBe("Jonatan");
     expect(toCsv(headers, rows)).toContain(",true");
   });
 });
@@ -324,6 +356,7 @@ describe("vouchersToRows", () => {
       },
     ]);
     expect(rows[0][headers.indexOf("image_url")]).toBe("household-1/v1.jpg");
+    expect(rows[0][headers.indexOf("entered_by")]).toBe("Shiri");
   });
 });
 

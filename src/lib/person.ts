@@ -108,6 +108,40 @@ export function resolveOwnerLabel(
   return labels[owner ?? SHARED_OWNER] ?? labels[SHARED_OWNER] ?? "Shared";
 }
 
+/**
+ * Static English names for the data export: the two login slots always
+ * show their English first names — never the raw DB enum value ("yonatan"
+ * is the internal key, "Jonatan" is the person's name), and never the
+ * Hebrew fallback labels. Added people are looked up from the
+ * household-people records the export already loads.
+ */
+export const exportPersonLabel: Record<Person, string> = {
+  yonatan: "Jonatan",
+  shiri: "Shiri",
+  shared: "Shared",
+};
+
+/** Full export label map: static English slot names + added people's names. */
+export function buildExportPersonLabels(
+  added: Pick<HouseholdPersonRow, "id" | "name">[],
+): Record<string, string> {
+  const out: Record<string, string> = { ...exportPersonLabel };
+  for (const p of added) out[ownerIdForAddedPerson(p.id)] = p.name;
+  return out;
+}
+
+/**
+ * Export display name for an owner id — a raw enum value or id never
+ * lands in a CSV: unknown or null ids fall back to "Shared", same as
+ * resolveOwnerLabel.
+ */
+export function resolveExportPersonLabel(
+  labels: Record<string, string>,
+  owner: OwnerId | null | undefined,
+): string {
+  return labels[owner ?? SHARED_OWNER] ?? labels[SHARED_OWNER] ?? "Shared";
+}
+
 /** One person who can own accounts — never "shared". */
 export interface HouseholdPerson {
   person: OwnerId;
