@@ -4,6 +4,7 @@ import {
   maskAmountText,
   maskPrivateAmountText,
   parsePrivacyStored,
+  personPageHidden,
   PRIVACY_MASK,
 } from "./privacy";
 
@@ -59,6 +60,13 @@ describe("maskPrivateAmountText", () => {
     expect(maskPrivateAmountText("₪ 124,075")).toBe("₪ ****");
     expect(maskPrivateAmountText("3.25%")).toBe("****%");
     expect(maskPrivateAmountText("—")).toBe("—");
+  });
+});
+
+describe("personPageHidden", () => {
+  it("starts masked and reveals only via the local per-visit toggle", () => {
+    expect(personPageHidden(false)).toBe(true);
+    expect(personPageHidden(true)).toBe(false);
   });
 });
 
