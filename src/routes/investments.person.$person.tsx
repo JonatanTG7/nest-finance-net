@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  Eye,
+  EyeOff,
   FileUp,
   GraduationCap,
   GripVertical,
@@ -56,7 +58,7 @@ import { useIbTotalsMap } from "@/lib/use-ib-totals";
 import { useSharedCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
 import { useUsdIlsRate } from "@/lib/fx";
 import { formatILS } from "@/lib/finance";
-import { maskPrivateAmountText } from "@/lib/privacy";
+import { maskAmountText, personPageHidden } from "@/lib/privacy";
 
 export const Route = createFileRoute("/investments/person/$person")({
   head: () => ({ meta: [{ title: "חשבונות פרטיים" }] }),
@@ -95,6 +97,17 @@ function PersonPage() {
   const [renaming, setRenaming] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [editingOrder, setEditingOrder] = useState(false);
+  // This person's amounts reveal only here, per visit: this state is
+  // local (never localStorage, never the global mode) and dies with the
+  // page, so leaving the person re-masks everything — same pattern as
+  // the account page's local reveal.
+  const [revealed, setRevealed] = useState(false);
+  // Switching persons directly (same route, new param) keeps this
+  // component mounted — re-mask the reveal for the new person.
+  useEffect(() => {
+    setRevealed(false);
+  }, [personParam]);
+  const hidden = personPageHidden(revealed);
 
   // Added people (children) can be renamed and removed from their own
   // tab. Login members are never managed here — their names come from
@@ -224,6 +237,15 @@ function PersonPage() {
         </div>
         <Button
           variant="outline"
+          size="icon"
+          onClick={() => setRevealed((v) => !v)}
+          aria-label={hidden ? "הצג סכומים" : "הסתר סכומים"}
+          title={hidden ? "הצג סכומים" : "הסתר סכומים"}
+        >
+          {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </Button>
+        <Button
+          variant="outline"
           size="sm"
           onClick={() => setEditingOrder((v) => !v)}
           aria-pressed={editingOrder}
@@ -251,20 +273,6 @@ function PersonPage() {
       ) : (
         person && (
           <>
-            {/* Account actions sit above the total — compact, always in reach. */}
-            <section className="px-5 md:px-0">
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => setAdding(true)}>
-                  <Plus className="size-4" />
-                  חשבון פרטי חדש
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
-                  <FileUp className="size-4" />
-                  ייבוא מדוח שנתי
-                </Button>
-              </div>
-            </section>
-
             <section className="px-5 md:px-0 mt-4">
               <div
                 className="rounded-3xl border p-6"
@@ -275,7 +283,7 @@ function PersonPage() {
               >
                 <p className="text-sm opacity-80">סך חשבונות פרטיים (ש"ח)</p>
                 <p className="text-4xl font-bold mt-2 tabular-nums">
-                  {maskPrivateAmountText(formatILS(totalIls))}
+                  {maskAmountText(formatILS(totalIls), hidden)}
                 </p>
                 {(extras.monthlyDeposits != null || extras.expectedPension != null) && (
                   <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
@@ -283,7 +291,7 @@ function PersonPage() {
                       <div>
                         <p className="text-xs opacity-70">הפקדה חודשית כוללת</p>
                         <p className="text-base font-semibold tabular-nums">
-                          {maskPrivateAmountText(formatILS(extras.monthlyDeposits))}
+                          {maskAmountText(formatILS(extras.monthlyDeposits), hidden)}
                         </p>
                       </div>
                     )}
@@ -291,7 +299,7 @@ function PersonPage() {
                       <div>
                         <p className="text-xs opacity-70">קצבה חודשית צפויה</p>
                         <p className="text-base font-semibold tabular-nums">
-                          {maskPrivateAmountText(formatILS(extras.expectedPension))}
+                          {maskAmountText(formatILS(extras.expectedPension), hidden)}
                         </p>
                       </div>
                     )}
@@ -345,6 +353,7 @@ function PersonPage() {
                       allocations={allocationsByAccount.get(a.id) ?? []}
                       onEdit={() => setEditing(a)}
                       linkDisabled={editingOrder}
+                      hidden={hidden}
                       footer={
                         editingOrder ? (
                           <ReorderControls
@@ -363,9 +372,9 @@ function PersonPage() {
 
             {/* Settings — the least important things, at the very bottom
                 (same pattern as the account page): renaming / removing an
-                added person. There is no privacy eye on this page — private
-                amounts are always masked here; the only reveal is inside
-                an account page. */}
+                added person. The amounts on this page follow the local
+                per-visit eye in the header: masked on entry, revealed
+                only while here, re-masked on leaving. */}
             {addedRow && (
               <section className="px-5 md:px-0 mt-6 mb-8">
                 <h2 className="text-sm font-semibold text-muted-foreground mb-2">הגדרות</h2>
@@ -386,6 +395,22 @@ function PersonPage() {
                 </div>
               </section>
             )}
+
+            {/* Rare actions — at the very bottom, below the settings:
+                opening an account and importing a statement are not
+                touched day-to-day, so they sit here as small buttons. */}
+            <section className="px-5 md:px-0 mt-6 mb-8">
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+                  <Plus className="size-4" />
+                  חשבון פרטי חדש
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
+                  <FileUp className="size-4" />
+                  ייבוא מדוח שנתי
+                </Button>
+              </div>
+            </section>
 
             <PrivateAccountDialog
               open={adding || template != null || editing != null}

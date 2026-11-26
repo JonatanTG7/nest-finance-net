@@ -6,7 +6,7 @@ import { buildSplitSegments, type TrackAllocationRow } from "@/lib/track-splits"
 import { IB_KIND } from "@/lib/ib";
 import type { InvestmentAccount } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
-import { maskPrivateAmountText } from "@/lib/privacy";
+import { maskAmountText } from "@/lib/privacy";
 
 const KIND_ICONS: Record<string, typeof Landmark> = {
   pension: Landmark,
@@ -25,9 +25,11 @@ const KIND_ICONS: Record<string, typeof Landmark> = {
  * the IB screen and have no edit pencil — IB metadata is not editable
  * (ownership moves from the IB screen).
  *
- * Amounts on this card are ALWAYS masked: it lives on a list screen
- * and there is no reveal path here — the only reveal is the local
- * toggle inside the account page.
+ * Amounts on this card follow the `hidden` prop (default masked): on
+ * the person page it is wired to that page's local per-visit reveal,
+ * so the card shows the amounts only while the eye on the person page
+ * is open; leaving the page re-masks them. The only other reveal is
+ * the local toggle inside the account page.
  */
 export function PrivateAccountCard({
   account,
@@ -35,6 +37,7 @@ export function PrivateAccountCard({
   allocations,
   onEdit,
   linkDisabled = false,
+  hidden = true,
   footer,
 }: {
   account: InvestmentAccount;
@@ -47,6 +50,8 @@ export function PrivateAccountCard({
    * open anything while the user is rearranging.
    */
   linkDisabled?: boolean;
+  /** Mask the balance and fee amounts (default: masked). */
+  hidden?: boolean;
   /** Extra content below the card body (e.g. reorder controls). */
   footer?: React.ReactNode;
 }) {
@@ -63,6 +68,7 @@ export function PrivateAccountCard({
       segments={segments}
       hasAllocations={allocations.length > 0}
       feeAlert={feeAlert}
+      hidden={hidden}
     />
   );
 
@@ -126,12 +132,14 @@ function CardBody({
   segments,
   hasAllocations,
   feeAlert,
+  hidden,
 }: {
   account: InvestmentAccount;
   total: { native: number; ils: number | null };
   segments: ReturnType<typeof buildSplitSegments>;
   hasAllocations: boolean;
   feeAlert: boolean;
+  hidden: boolean;
 }) {
   return (
     <>
@@ -139,12 +147,12 @@ function CardBody({
         className="text-2xl font-bold mt-2 tabular-nums"
         dir={account.currency !== "ILS" ? "ltr" : undefined}
       >
-        {maskPrivateAmountText(formatMoney(total.native, account.currency))}
+        {maskAmountText(formatMoney(total.native, account.currency), hidden)}
       </p>
       {account.currency !== "ILS" && (
         <p className="text-xs text-muted-foreground tabular-nums">
           {total.ils != null ? (
-            <>≈ {maskPrivateAmountText(formatILS(total.ils))}</>
+            <>≈ {maskAmountText(formatILS(total.ils), hidden)}</>
           ) : (
             "שער דולר לא זמין"
           )}
@@ -176,9 +184,9 @@ function CardBody({
           <p className="tabular-nums">
             דמי ניהול:{" "}
             <span className="text-foreground">
-              {`מצבירה ${maskPrivateAmountText(formatFeePercent(account.fee_from_balance))}`}
+              {`מצבירה ${maskAmountText(formatFeePercent(account.fee_from_balance), hidden)}`}
               {" · "}
-              {`מהפקדות ${maskPrivateAmountText(formatFeePercent(account.fee_from_deposits))}`}
+              {`מהפקדות ${maskAmountText(formatFeePercent(account.fee_from_deposits), hidden)}`}
             </span>
           </p>
         )}

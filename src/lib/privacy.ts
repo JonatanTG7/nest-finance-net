@@ -19,13 +19,23 @@ const PRIVACY_KEY = "investments_privacy_blurred";
 const PRIVACY_EVENT = "investments-privacy-change";
 
 /**
- * Private accounts are ALWAYS masked on list screens (person page,
- * person entry cards): the global reveal never unmasks them. The only
- * reveal path is the local per-visit toggle inside the account page,
- * so a private amount is masked with hidden=true, always.
+ * Private amounts are ALWAYS masked on the assets-index person entry
+ * cards: the global reveal never unmasks them. The person page and the
+ * account page each have their own local per-visit reveal instead (see
+ * `personPageHidden` / `accountPageHidden`), so a private amount is
+ * masked with hidden=true, always, everywhere else.
  */
 export function maskPrivateAmountText(text: string): string {
   return maskAmountText(text, true);
+}
+
+/**
+ * Effective masking on the person page: the page follows only its
+ * local per-visit reveal (default masked). Entering a specific person
+ * may show that person's data while on the page; leaving re-masks.
+ */
+export function personPageHidden(localRevealed: boolean): boolean {
+  return !localRevealed;
 }
 
 /**
