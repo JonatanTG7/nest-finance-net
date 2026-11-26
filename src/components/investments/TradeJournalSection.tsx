@@ -35,6 +35,7 @@ import {
   type TradeSide,
 } from "@/lib/trade-journal";
 import { todayISO } from "@/lib/dates";
+import { maskAmountText } from "@/lib/privacy";
 import { cn } from "@/lib/utils";
 
 function fmtDate(iso: string) {
@@ -61,9 +62,18 @@ const SIDE_LABEL: Record<TradeSide, string> = { long: "לונג", short: "שור
  * Trading journal on a non-IB investment account page (e.g. the Colmex Pro
  * day-trading account): a dense professional table, one row per trade,
  * newest first. Each trade's P&L counts toward the displayed account
- * balance (trades logged after the last manual balance reset).
+ * balance (trades logged after the last manual balance reset). When
+ * `hidden` is set (a private account not revealed inside its page),
+ * the P&L amounts mask like every other amount on the page.
  */
-export function TradeJournalSection({ accountId }: { accountId: string }) {
+export function TradeJournalSection({
+  accountId,
+  hidden = false,
+}: {
+  accountId: string;
+  /** Mask the P&L amounts (private account, not revealed inside). */
+  hidden?: boolean;
+}) {
   const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TradeJournalEntry | null>(null);
@@ -149,7 +159,7 @@ export function TradeJournalSection({ accountId }: { accountId: string }) {
             )}
             dir="ltr"
           >
-            P&amp;L מצטבר: {fmtPnl(summary.totalPnl)}
+            P&amp;L מצטבר: {maskAmountText(fmtPnl(summary.totalPnl), hidden)}
           </span>
           <span className="rounded-full border px-3 py-1 text-sm text-muted-foreground">
             {summary.count} עסקאות
@@ -244,7 +254,7 @@ export function TradeJournalSection({ accountId }: { accountId: string }) {
                     )}
                     dir="ltr"
                   >
-                    {fmtPnl(Number(e.pnl_usd))}
+                    {maskAmountText(fmtPnl(Number(e.pnl_usd)), hidden)}
                   </td>
                   <td
                     className="px-3 py-2 text-muted-foreground max-w-[180px] truncate"

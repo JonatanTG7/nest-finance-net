@@ -6,7 +6,7 @@ import { buildSplitSegments, type TrackAllocationRow } from "@/lib/track-splits"
 import { IB_KIND } from "@/lib/ib";
 import type { InvestmentAccount } from "@/lib/db";
 import { formatILS, formatMoney } from "@/lib/finance";
-import { maskAmountText } from "@/lib/privacy";
+import { maskPrivateAmountText } from "@/lib/privacy";
 
 const KIND_ICONS: Record<string, typeof Landmark> = {
   pension: Landmark,
@@ -24,12 +24,15 @@ const KIND_ICONS: Record<string, typeof Landmark> = {
  * statement's red fee balloon appears. IB portfolios link straight to
  * the IB screen and have no edit pencil — IB metadata is not editable
  * (ownership moves from the IB screen).
+ *
+ * Amounts on this card are ALWAYS masked: it lives on a list screen
+ * and there is no reveal path here — the only reveal is the local
+ * toggle inside the account page.
  */
 export function PrivateAccountCard({
   account,
   total,
   allocations,
-  hidden = false,
   onEdit,
   linkDisabled = false,
   footer,
@@ -38,8 +41,6 @@ export function PrivateAccountCard({
   /** ils is null when the FX rate is unavailable (USD account). */
   total: { native: number; ils: number | null };
   allocations: TrackAllocationRow[];
-  /** Privacy mode: mask all digits. */
-  hidden?: boolean;
   onEdit: () => void;
   /**
    * Reorder mode: no navigation and no edit pencil — tapping must not
@@ -62,7 +63,6 @@ export function PrivateAccountCard({
       segments={segments}
       hasAllocations={allocations.length > 0}
       feeAlert={feeAlert}
-      hidden={hidden}
     />
   );
 
@@ -126,14 +126,12 @@ function CardBody({
   segments,
   hasAllocations,
   feeAlert,
-  hidden,
 }: {
   account: InvestmentAccount;
   total: { native: number; ils: number | null };
   segments: ReturnType<typeof buildSplitSegments>;
   hasAllocations: boolean;
   feeAlert: boolean;
-  hidden: boolean;
 }) {
   return (
     <>
@@ -141,12 +139,12 @@ function CardBody({
         className="text-2xl font-bold mt-2 tabular-nums"
         dir={account.currency !== "ILS" ? "ltr" : undefined}
       >
-        {maskAmountText(formatMoney(total.native, account.currency), hidden)}
+        {maskPrivateAmountText(formatMoney(total.native, account.currency))}
       </p>
       {account.currency !== "ILS" && (
         <p className="text-xs text-muted-foreground tabular-nums">
           {total.ils != null ? (
-            <>≈ {maskAmountText(formatILS(total.ils), hidden)}</>
+            <>≈ {maskPrivateAmountText(formatILS(total.ils))}</>
           ) : (
             "שער דולר לא זמין"
           )}
@@ -178,9 +176,9 @@ function CardBody({
           <p className="tabular-nums">
             דמי ניהול:{" "}
             <span className="text-foreground">
-              {`מצבירה ${maskAmountText(formatFeePercent(account.fee_from_balance), hidden)}`}
+              {`מצבירה ${maskPrivateAmountText(formatFeePercent(account.fee_from_balance))}`}
               {" · "}
-              {`מהפקדות ${maskAmountText(formatFeePercent(account.fee_from_deposits), hidden)}`}
+              {`מהפקדות ${maskPrivateAmountText(formatFeePercent(account.fee_from_deposits))}`}
             </span>
           </p>
         )}

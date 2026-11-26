@@ -3,8 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  Eye,
-  EyeOff,
   FileUp,
   GraduationCap,
   GripVertical,
@@ -58,7 +56,7 @@ import { useIbTotalsMap } from "@/lib/use-ib-totals";
 import { useSharedCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
 import { useUsdIlsRate } from "@/lib/fx";
 import { formatILS } from "@/lib/finance";
-import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
+import { maskPrivateAmountText } from "@/lib/privacy";
 
 export const Route = createFileRoute("/investments/person/$person")({
   head: () => ({ meta: [{ title: "חשבונות פרטיים" }] }),
@@ -76,7 +74,6 @@ function PersonPage() {
   const { person: personParam } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { hidden, toggle: togglePrivacy } = usePrivacyMode();
   const { persons, isLoading: personsLoading } = useHouseholdPersons();
   const personIndex = persons.findIndex((p) => p.person === personParam);
   const person = personIndex >= 0 ? persons[personIndex] : null;
@@ -240,15 +237,6 @@ function PersonPage() {
             </>
           )}
         </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={togglePrivacy}
-          aria-label={hidden ? "הצג סכומים" : "הסתר סכומים"}
-          title={hidden ? "הצג סכומים" : "הסתר סכומים"}
-        >
-          {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-        </Button>
       </header>
 
       {!person && !personsLoading ? (
@@ -287,7 +275,7 @@ function PersonPage() {
               >
                 <p className="text-sm opacity-80">סך חשבונות פרטיים (ש"ח)</p>
                 <p className="text-4xl font-bold mt-2 tabular-nums">
-                  {maskAmountText(formatILS(totalIls), hidden)}
+                  {maskPrivateAmountText(formatILS(totalIls))}
                 </p>
                 {(extras.monthlyDeposits != null || extras.expectedPension != null) && (
                   <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
@@ -295,7 +283,7 @@ function PersonPage() {
                       <div>
                         <p className="text-xs opacity-70">הפקדה חודשית כוללת</p>
                         <p className="text-base font-semibold tabular-nums">
-                          {maskAmountText(formatILS(extras.monthlyDeposits), hidden)}
+                          {maskPrivateAmountText(formatILS(extras.monthlyDeposits))}
                         </p>
                       </div>
                     )}
@@ -303,7 +291,7 @@ function PersonPage() {
                       <div>
                         <p className="text-xs opacity-70">קצבה חודשית צפויה</p>
                         <p className="text-base font-semibold tabular-nums">
-                          {maskAmountText(formatILS(extras.expectedPension), hidden)}
+                          {maskPrivateAmountText(formatILS(extras.expectedPension))}
                         </p>
                       </div>
                     )}
@@ -355,7 +343,6 @@ function PersonPage() {
                       account={a}
                       total={totals.get(a.id) ?? { native: 0, ils: 0 }}
                       allocations={allocationsByAccount.get(a.id) ?? []}
-                      hidden={hidden}
                       onEdit={() => setEditing(a)}
                       linkDisabled={editingOrder}
                       footer={
@@ -376,7 +363,9 @@ function PersonPage() {
 
             {/* Settings — the least important things, at the very bottom
                 (same pattern as the account page): renaming / removing an
-                added person. Only the privacy eye stays at the top. */}
+                added person. There is no privacy eye on this page — private
+                amounts are always masked here; the only reveal is inside
+                an account page. */}
             {addedRow && (
               <section className="px-5 md:px-0 mt-6 mb-8">
                 <h2 className="text-sm font-semibold text-muted-foreground mb-2">הגדרות</h2>

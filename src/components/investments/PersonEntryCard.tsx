@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, User } from "lucide-react";
 import { formatILS } from "@/lib/finance";
-import { maskAmountText } from "@/lib/privacy";
+import { maskPrivateAmountText } from "@/lib/privacy";
 import type { HouseholdPerson } from "@/lib/person";
 
 /**
@@ -9,20 +9,21 @@ import type { HouseholdPerson } from "@/lib/person";
  * opens that person's private tab (pension, study fund...). The accent
  * color comes from the card's position in the list, not from the member
  * — nothing here is tied to a specific person.
+ *
+ * The total is ALWAYS masked: this is a list screen and there is no
+ * reveal path here — the only reveal is the local toggle inside the
+ * account page.
  */
 export function PersonEntryCard({
   person,
   count,
   totalIls,
   color,
-  hidden = false,
 }: {
   person: HouseholdPerson;
   count: number;
   totalIls: number;
   color: string;
-  /** Privacy mode: mask the total with asterisks. */
-  hidden?: boolean;
 }) {
   const initial = person.label.trim().charAt(0) || "?";
   return (
@@ -69,7 +70,7 @@ export function PersonEntryCard({
           <ChevronLeft className="size-4 text-muted-foreground shrink-0" />
         </div>
         <p className="text-2xl font-bold mt-3 tabular-nums">
-          {maskAmountText(formatILS(totalIls), hidden)}
+          {maskPrivateAmountText(formatILS(totalIls))}
         </p>
         <p className="text-xs text-muted-foreground mt-1">סך חשבונות פרטיים</p>
       </div>

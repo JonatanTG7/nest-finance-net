@@ -48,7 +48,7 @@ import {
   showsTradeJournal,
 } from "@/lib/trade-journal";
 import { IB_KIND } from "@/lib/ib";
-import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
+import { maskAmountText, accountPageHidden, usePrivacyMode } from "@/lib/privacy";
 
 export const Route = createFileRoute("/investments/$accountId")({
   head: () => ({ meta: [{ title: "חשבון השקעה" }] }),
@@ -64,6 +64,11 @@ function AccountPage() {
   const [importingStatement, setImportingStatement] = useState(false);
   const [editingCustomFields, setEditingCustomFields] = useState(false);
   const [showHiddenDetails, setShowHiddenDetails] = useState(false);
+  // Private accounts reveal only here, per visit: this state is local
+  // (never localStorage, never the global mode) and dies with the page,
+  // so leaving the account re-masks everything. Shared accounts keep
+  // the global privacy mode below.
+  const [privateRevealed, setPrivateRevealed] = useState(false);
   const { hidden, toggle: togglePrivacy } = usePrivacyMode();
   const labels = useMemberLabels();
 
@@ -81,7 +86,15 @@ function AccountPage() {
   useEffect(() => {
     document.title = resolveAccountPageTitle(account?.name);
   }, [account?.name]);
+  // Switching accounts directly (same route, new param) keeps this
+  // component mounted — re-mask the private reveal for the new account.
+  useEffect(() => {
+    setPrivateRevealed(false);
+  }, [accountId]);
   const isPrivate = !!account && !isSharedAccount(account);
+  // Effective masking: a private account follows only the local reveal
+  // above; a shared account follows the global privacy mode.
+  const pageHidden = accountPageHidden(isPrivate, hidden, privateRevealed);
   // The metadata section shows for private accounts (always — even
   // before any details were entered) and for shared accounts that
   // already have metadata. Shared accounts without metadata stay
@@ -202,7 +215,7 @@ function AccountPage() {
         label: "דמי ניהול מצבירה",
         value:
           account.fee_from_balance != null
-            ? maskAmountText(`${account.fee_from_balance}%`, hidden)
+            ? maskAmountText(`${account.fee_from_balance}%`, pageHidden)
             : null,
         group: "account",
       },
@@ -211,7 +224,7 @@ function AccountPage() {
         label: "דמי ניהול מהפקדות",
         value:
           account.fee_from_deposits != null
-            ? maskAmountText(`${account.fee_from_deposits}%`, hidden)
+            ? maskAmountText(`${account.fee_from_deposits}%`, pageHidden)
             : null,
         group: "account",
       },
@@ -226,14 +239,14 @@ function AccountPage() {
         label: "קצבה חודשית צפויה",
         value:
           account.expected_monthly_pension != null
-            ? maskAmountText(formatILS(account.expected_monthly_pension), hidden)
+            ? maskAmountText(formatILS(account.expected_monthly_pension), pageHidden)
             : null,
         group: "account",
       },
       {
         key: "monthly_deposit",
         label: "הפקדה חודשית",
-        value: depositSummary(account, hidden),
+        value: depositSummary(account, pageHidden),
         group: "account",
       },
       {
@@ -257,7 +270,7 @@ function AccountPage() {
         group: "meta",
       },
     ];
-  }, [account, allocations, customFields, hidden, labels]);
+  }, [account, allocations, customFields, pageHidden, labels]);
   const { account: accountDetailRows, meta: metaDetailRows } = useMemo(
     () => arrangeDetailFields(detailDefs, hiddenDetailKeys),
     [detailDefs, hiddenDetailKeys],
@@ -313,14 +326,16 @@ function AccountPage() {
               : `חשבון השקעה / חיסכון · ${account?.currency ?? "ILS"}`}
           </p>
         </div>
+        {/* A private account's eye toggles only the local per-visit
+            reveal; a shared account's eye toggles the global mode. */}
         <Button
           variant="outline"
           size="icon"
-          onClick={togglePrivacy}
-          aria-label={hidden ? "הצג סכומים" : "הסתר סכומים"}
-          title={hidden ? "הצג סכומים" : "הסתר סכומים"}
+          onClick={() => (isPrivate ? setPrivateRevealed((v) => !v) : togglePrivacy())}
+          aria-label={pageHidden ? "הצג סכומים" : "הסתר סכומים"}
+          title={pageHidden ? "הצג סכומים" : "הסתר סכומים"}
         >
-          {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {pageHidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </Button>
       </header>
 
@@ -345,11 +360,11 @@ function AccountPage() {
                 <p className="text-sm opacity-80">סכום נוכחי</p>
               </div>
               <p className="text-4xl font-bold mt-2 tabular-nums">
-                {maskAmountText(formatILS(currentIls), hidden)}
+                {maskAmountText(formatILS(currentIls), pageHidden)}
               </p>
               {account && account.currency !== "ILS" && (
                 <p className="text-sm opacity-70 mt-1 tabular-nums" dir="ltr">
-                  ≈ {maskAmountText(formatMoney(currentNative, account.currency), hidden)}
+                  ≈ {maskAmountText(formatMoney(currentNative, account.currency), pageHidden)}
                 </p>
               )}
               <div className="mt-5">
@@ -382,7 +397,7 @@ function AccountPage() {
               <TrackSplitChart
                 allocations={allocations}
                 balanceIls={currentIls}
-                hidden={hidden}
+                hidden={pageHidden}
                 onEdit={() => setEditingDetails(true)}
               />
             </section>
@@ -498,13 +513,18 @@ function AccountPage() {
           non-IB investment-kind accounts, whatever their owner — moving
           Colmex from shared to a person must not hide it. A pension,
           study fund or savings account never has one. */}
-      {account && showsTradeJournal(account.kind) && <TradeJournalSection accountId={accountId} />}
-
-      {showMetadata && (isPrivate || metadataHistory.length > 0) && (
-        <PrivateAccountHistoryList rows={metadataHistory} hidden={hidden} />
+      {/* A private account's journal P&L follows the same local reveal;
+          a shared account's journal keeps today's always-visible
+          behavior. */}
+      {account && showsTradeJournal(account.kind) && (
+        <TradeJournalSection accountId={accountId} hidden={isPrivate ? pageHidden : false} />
       )}
 
-      <BalanceHistoryList rows={history} hidden={hidden} />
+      {showMetadata && (isPrivate || metadataHistory.length > 0) && (
+        <PrivateAccountHistoryList rows={metadataHistory} hidden={pageHidden} />
+      )}
+
+      <BalanceHistoryList rows={history} hidden={pageHidden} />
 
       {/* Settings — the least important things, at the very bottom:
           moving the account to another owner, and the rare annual-report
