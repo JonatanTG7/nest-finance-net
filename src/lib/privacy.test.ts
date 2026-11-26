@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { maskAmountText, parsePrivacyStored, PRIVACY_MASK } from "./privacy";
+import {
+  accountPageHidden,
+  maskAmountText,
+  maskPrivateAmountText,
+  parsePrivacyStored,
+  PRIVACY_MASK,
+} from "./privacy";
 
 describe("parsePrivacyStored", () => {
   it("defaults to hidden when nothing is stored", () => {
@@ -45,5 +51,28 @@ describe("maskAmountText", () => {
   it("leaves digit-free strings untouched", () => {
     expect(maskAmountText("—", true)).toBe("—");
     expect(maskAmountText("", true)).toBe("");
+  });
+});
+
+describe("maskPrivateAmountText", () => {
+  it("always masks, even when the global mode is revealed", () => {
+    expect(maskPrivateAmountText("₪ 124,075")).toBe("₪ ****");
+    expect(maskPrivateAmountText("3.25%")).toBe("****%");
+    expect(maskPrivateAmountText("—")).toBe("—");
+  });
+});
+
+describe("accountPageHidden", () => {
+  it("a private account follows only its local reveal, never the global mode", () => {
+    // Revealed globally, not revealed locally → still masked.
+    expect(accountPageHidden(true, false, false)).toBe(true);
+    expect(accountPageHidden(true, false, true)).toBe(false);
+    expect(accountPageHidden(true, true, false)).toBe(true);
+  });
+
+  it("a shared account follows the global mode", () => {
+    expect(accountPageHidden(false, true, false)).toBe(true);
+    expect(accountPageHidden(false, false, false)).toBe(false);
+    expect(accountPageHidden(false, true, true)).toBe(true);
   });
 });

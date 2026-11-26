@@ -18,7 +18,28 @@ import { useCallback, useEffect, useState } from "react";
 const PRIVACY_KEY = "investments_privacy_blurred";
 const PRIVACY_EVENT = "investments-privacy-change";
 
-/** Fixed mask shown in place of a hidden amount — no digits, no magnitude. */
+/**
+ * Private accounts are ALWAYS masked on list screens (person page,
+ * person entry cards): the global reveal never unmasks them. The only
+ * reveal path is the local per-visit toggle inside the account page,
+ * so a private amount is masked with hidden=true, always.
+ */
+export function maskPrivateAmountText(text: string): string {
+  return maskAmountText(text, true);
+}
+
+/**
+ * Effective masking on the single-account page: a private account
+ * follows only its local per-visit reveal (default masked), a shared
+ * account follows the global privacy mode.
+ */
+export function accountPageHidden(
+  isPrivate: boolean,
+  globalHidden: boolean,
+  localRevealed: boolean,
+): boolean {
+  return isPrivate ? !localRevealed : globalHidden;
+}
 export const PRIVACY_MASK = "****";
 
 /**
