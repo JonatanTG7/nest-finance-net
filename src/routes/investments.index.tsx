@@ -416,7 +416,6 @@ function Investments() {
                   count={mine.length}
                   totalIls={totalIls}
                   color={personAccentColor(i)}
-                  hidden={hidden}
                 />
               );
             })}
