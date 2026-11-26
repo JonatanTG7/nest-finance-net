@@ -19,11 +19,7 @@ import { fetchVouchers } from "@/lib/vouchers";
 import { maskAmountText, usePrivacyMode } from "@/lib/privacy";
 import { useCardOrder, VOUCHERS_CARD_ID } from "@/lib/investments-order";
 import { computeAccountTotals } from "@/lib/account-totals";
-import {
-  accountsOfPerson,
-  colorAfterKindChange,
-  filterAccountsByOwner,
-} from "@/lib/private-accounts";
+import { accountsOfPerson, colorAfterKindChange, isSharedAccount } from "@/lib/private-accounts";
 import { AccountColorPicker } from "@/components/investments/AccountColorPicker";
 import { SHARED_OWNER, personAccentColor, useHouseholdPersons, type OwnerId } from "@/lib/person";
 import { PersonEntryCard } from "@/components/investments/PersonEntryCard";
@@ -66,10 +62,6 @@ function Investments() {
     setKind(next);
     setColor((c) => colorAfterKindChange(c, colorTouched, next));
   }
-  // Owner filter for the cards grid: "all" is the unfiltered view (shared
-  // cards + person entries), "shared" shows the shared cards on their own,
-  // and a person id shows that person's accounts as cards.
-  const [ownerFilter, setOwnerFilter] = useState<OwnerId | "all">("all");
   const [busy, setBusy] = useState(false);
   async function addAccount(e: React.FormEvent) {
     e.preventDefault();
@@ -156,35 +148,20 @@ function Investments() {
   // entry card each, leading to that person's private tab.
   const { persons } = useHouseholdPersons();
 
-  // Card order (accounts + vouchers card), saved per device. The grand
-  // total card stays fixed at the top and is not part of the order.
-  // The grid shows the accounts of the active owner filter: shared
-  // accounts in the "all"/"shared" views, one person's accounts when a
-  // person is picked (an account that moves to a person drops out of the
-  // saved order automatically). Reordering only works in the unfiltered
-  // "all" view — a filtered view is a subset, not the order itself.
-  const visibleAccounts = useMemo(
-    () => filterAccountsByOwner(accounts, ownerFilter),
-    [accounts, ownerFilter],
-  );
+  // Card order (shared accounts + vouchers card), saved per device. The
+  // grand total card stays fixed at the top and is not part of the order.
+  // The grid shows shared accounts only — a person's accounts live on
+  // their own tab (the person entries below), never as cards here.
+  const sharedAccounts = useMemo(() => accounts.filter(isSharedAccount), [accounts]);
   const accountById = useMemo(
-    () => new Map(visibleAccounts.map((a) => [a.id, a])),
-    [visibleAccounts],
+    () => new Map(sharedAccounts.map((a) => [a.id, a])),
+    [sharedAccounts],
   );
-  const showVouchersCard = ownerFilter === "all" || ownerFilter === SHARED_OWNER;
   const cardIds = useMemo(
-    () => [...visibleAccounts.map((a) => a.id), ...(showVouchersCard ? [VOUCHERS_CARD_ID] : [])],
-    [visibleAccounts, showVouchersCard],
+    () => [...sharedAccounts.map((a) => a.id), VOUCHERS_CARD_ID],
+    [sharedAccounts],
   );
   const { orderedIds, move } = useCardOrder(cardIds);
-  const reorderAllowed = ownerFilter === "all";
-
-  function changeOwnerFilter(next: OwnerId | "all") {
-    setOwnerFilter(next);
-    // Leaving the unfiltered view exits reorder mode — the filtered grid
-    // is not the saved order.
-    if (next !== "all") setEditingOrder(false);
-  }
 
   // The grand total mixes live FX (IB) with frozen historical rates (other
   // accounts) — an inherent limitation of the model. When the FX rate is
@@ -215,8 +192,6 @@ function Investments() {
               size="sm"
               onClick={() => setEditingOrder((v) => !v)}
               aria-pressed={editingOrder}
-              disabled={!reorderAllowed}
-              title={reorderAllowed ? undefined : "סידור כרטיסים זמין רק בתצוגת הכול"}
             >
               {editingOrder ? (
                 "סיום"
@@ -231,18 +206,6 @@ function Investments() {
         </div>
       </header>
 
-      {/* Account actions sit above the total — compact, always in reach,
-          same as the person pages. Opening an account is a once-per-person
-          action, so it lives here as a small button, not in the header. */}
-      <section className="px-5 md:px-0">
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => setAdding(true)}>
-            <Plus className="size-4" />
-            חשבון חדש
-          </Button>
-        </div>
-      </section>
-
       <section className="px-5 md:px-0 mt-4">
         <div className="rounded-3xl bg-gradient-to-br from-savings to-savings/70 text-foreground p-6">
           <p className="text-sm opacity-80">סך נכסים (ש"ח)</p>
@@ -255,31 +218,6 @@ function Investments() {
             </p>
           )}
         </div>
-      </section>
-
-      <section className="px-5 md:px-0 mt-4 flex items-center gap-2 overflow-x-auto">
-        {(
-          [
-            ["all", "הכול"],
-            [SHARED_OWNER, "משותף"],
-            ...persons.map((p) => [p.person, p.label] as const),
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => changeOwnerFilter(value)}
-            aria-pressed={ownerFilter === value}
-            className={cn(
-              "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors",
-              ownerFilter === value
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground border-border hover:bg-accent",
-            )}
-          >
-            {label}
-          </button>
-        ))}
       </section>
 
       <section className="px-5 md:px-0 mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -399,46 +337,57 @@ function Investments() {
         })}
       </section>
 
-      {ownerFilter === "all" && (
-        <section className="px-5 md:px-0 mt-6 mb-8">
-          <h2 className="text-sm font-semibold mb-1">חשבונות פרטיים</h2>
-          <p className="text-xs text-muted-foreground mb-3">
-            פנסיה, קרן השתלמות וקופות גמל — לכל אחד מבני הבית בנפרד.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {persons.map((p, i) => {
-              const mine = accountsOfPerson(accounts, p.person);
-              const totalIls = mine.reduce((s, a) => s + (totals.get(a.id)?.ils ?? 0), 0);
-              return (
-                <PersonEntryCard
-                  key={p.person}
-                  person={p}
-                  count={mine.length}
-                  totalIls={totalIls}
-                  color={personAccentColor(i)}
-                />
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => setAddingPerson(true)}
-              className="rounded-2xl border border-dashed bg-card/50 p-4 text-start hover:bg-accent active:scale-[0.99] transition-transform"
-            >
-              <div className="flex items-center gap-3">
-                <span className="size-10 rounded-full border border-dashed flex items-center justify-center text-muted-foreground shrink-0">
-                  <Plus className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">הוסף אדם</p>
-                  <p className="text-xs text-muted-foreground">
-                    ילד או בן בית נוסף — עם חשבונות פרטיים משלו
-                  </p>
-                </div>
+      <section className="px-5 md:px-0 mt-6 mb-8">
+        <h2 className="text-sm font-semibold mb-1">חשבונות פרטיים</h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          פנסיה, קרן השתלמות וקופות גמל — לכל אחד מבני הבית בנפרד.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {persons.map((p, i) => {
+            const mine = accountsOfPerson(accounts, p.person);
+            const totalIls = mine.reduce((s, a) => s + (totals.get(a.id)?.ils ?? 0), 0);
+            return (
+              <PersonEntryCard
+                key={p.person}
+                person={p}
+                count={mine.length}
+                totalIls={totalIls}
+                color={personAccentColor(i)}
+              />
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setAddingPerson(true)}
+            className="rounded-2xl border border-dashed bg-card/50 p-4 text-start hover:bg-accent active:scale-[0.99] transition-transform"
+          >
+            <div className="flex items-center gap-3">
+              <span className="size-10 rounded-full border border-dashed flex items-center justify-center text-muted-foreground shrink-0">
+                <Plus className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">הוסף אדם</p>
+                <p className="text-xs text-muted-foreground">
+                  ילד או בן בית נוסף — עם חשבונות פרטיים משלו
+                </p>
               </div>
-            </button>
-          </div>
-        </section>
-      )}
+            </div>
+          </button>
+        </div>
+      </section>
+
+      {/* Settings — at the very bottom: opening an account is a rare,
+          once-per-person action, so it lives here as a small button,
+          not above the total. */}
+      <section className="px-5 md:px-0 mt-6 mb-8">
+        <h2 className="text-sm font-semibold text-muted-foreground mb-2">הגדרות</h2>
+        <div className="rounded-2xl border bg-card p-4 flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+            <Plus className="size-4" />
+            חשבון חדש
+          </Button>
+        </div>
+      </section>
       <AddPersonDialog open={addingPerson} onOpenChange={setAddingPerson} />
       <Dialog open={adding} onOpenChange={setAdding}>
         <DialogContent dir="rtl" className="max-w-md">
