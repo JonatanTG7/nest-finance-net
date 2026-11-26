@@ -15,6 +15,7 @@
  */
 import { isoLocal } from "@/lib/dates";
 import { cardLabel } from "@/lib/credit_cards";
+import { exportPersonLabel, resolveExportPersonLabel } from "@/lib/person";
 import type { Category, InvestmentAccount, Tag, Transaction } from "@/lib/db";
 import type { IbHoldings, IbPosition, IbTransaction } from "@/lib/ib";
 import type { Subscription } from "@/lib/subscriptions";
@@ -147,6 +148,7 @@ export function transactionsToRows(
   txs: ExportTransaction[],
   creditCards: CreditCard[],
   trips: TripRef[],
+  personLabels: Record<string, string> = { ...exportPersonLabel },
 ): CsvSheet {
   const cardsById = new Map(creditCards.map((c) => [c.id, c]));
   const tripsById = new Map(trips.map((t) => [t.id, t]));
@@ -165,7 +167,7 @@ export function transactionsToRows(
         tx.fx_rate_to_ils,
         tx.amount_ils,
         tx.category?.name ?? "",
-        tx.entered_by,
+        resolveExportPersonLabel(personLabels, tx.entered_by),
         tx.payment_method,
         card ? cardLabel(card) : "",
         tx.investment_account?.name ?? "",
@@ -202,7 +204,10 @@ export type ExportAccount = Pick<
 >;
 
 /** Accounts sheet: table columns 1:1, household_id dropped (same on every row). */
-export function accountsToRows(accounts: ExportAccount[]): CsvSheet {
+export function accountsToRows(
+  accounts: ExportAccount[],
+  personLabels: Record<string, string> = { ...exportPersonLabel },
+): CsvSheet {
   return {
     headers: [
       "id",
@@ -226,7 +231,7 @@ export function accountsToRows(accounts: ExportAccount[]): CsvSheet {
       a.id,
       a.name,
       a.kind,
-      a.person,
+      resolveExportPersonLabel(personLabels, a.person),
       a.company,
       a.fee_from_balance,
       a.fee_from_deposits,
@@ -291,7 +296,10 @@ export function trackAllocationsToRows(allocations: ExportTrackAllocation[]): Cs
 }
 
 /** Recurring-income sheet: columns 1:1 (no payment method / card — income has none). */
-export function recurringIncomeToRows(items: RecurringIncome[]): CsvSheet {
+export function recurringIncomeToRows(
+  items: RecurringIncome[],
+  personLabels: Record<string, string> = { ...exportPersonLabel },
+): CsvSheet {
   return {
     headers: [
       "id",
@@ -315,7 +323,7 @@ export function recurringIncomeToRows(items: RecurringIncome[]): CsvSheet {
       s.amount,
       s.currency,
       s.billing_day,
-      s.entered_by,
+      resolveExportPersonLabel(personLabels, s.entered_by),
       s.start_date,
       s.end_date,
       s.payment_count,
@@ -325,7 +333,10 @@ export function recurringIncomeToRows(items: RecurringIncome[]): CsvSheet {
 }
 
 /** Subscriptions sheet: columns 1:1. */
-export function subscriptionsToRows(subs: Subscription[]): CsvSheet {
+export function subscriptionsToRows(
+  subs: Subscription[],
+  personLabels: Record<string, string> = { ...exportPersonLabel },
+): CsvSheet {
   return {
     headers: [
       "id",
@@ -351,7 +362,7 @@ export function subscriptionsToRows(subs: Subscription[]): CsvSheet {
       s.amount,
       s.currency,
       s.billing_day,
-      s.entered_by,
+      resolveExportPersonLabel(personLabels, s.entered_by),
       s.payment_method,
       s.credit_card_id,
       s.start_date,
@@ -427,7 +438,10 @@ export type ExportVoucher = Pick<
  * Vouchers sheet: table columns 1:1, household_id dropped. image_url is the
  * RAW storage path — never the 1-hour signed URL fetchVouchers() returns.
  */
-export function vouchersToRows(vouchers: ExportVoucher[]): CsvSheet {
+export function vouchersToRows(
+  vouchers: ExportVoucher[],
+  personLabels: Record<string, string> = { ...exportPersonLabel },
+): CsvSheet {
   return {
     headers: [
       "id",
@@ -454,7 +468,7 @@ export function vouchersToRows(vouchers: ExportVoucher[]): CsvSheet {
       v.expiry_date,
       v.image_url,
       v.source,
-      v.entered_by,
+      resolveExportPersonLabel(personLabels, v.entered_by),
       v.occurred_at,
       v.created_at,
       v.updated_at,
